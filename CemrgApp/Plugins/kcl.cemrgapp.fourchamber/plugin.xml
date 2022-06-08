@@ -3,7 +3,7 @@
 
   <extension point="org.blueberry.ui.views">
     <view id="org.mitk.views.fourchamberheart"
-          name="Four Chamber Heart"
+          name="Cemrg Four Chamber Heart"
           class="FourChamberView"
           icon="resources/icon.xpm" />
   </extension>
