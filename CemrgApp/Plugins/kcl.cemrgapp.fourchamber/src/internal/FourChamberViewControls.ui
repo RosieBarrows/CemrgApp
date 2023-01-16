@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>222</width>
-    <height>161</height>
+    <width>232</width>
+    <height>420</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -31,12 +31,110 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="button_loaddicom">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step1: Load DICOM</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_processimg">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step2: Process Images</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_convert2nii">
+     <property name="text">
+      <string>Convert to Nifti</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="buttonPerformImageProcessing">
      <property name="toolTip">
       <string>Do image processing</string>
      </property>
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
      <property name="text">
-      <string>Do Something</string>
+      <string>   Step 3: Do Something</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_splitpulms">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step 4: Split pulm veins</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_labelmasks">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step 5: Label masks</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_savelabels">
+     <property name="text">
+      <string>Save labels</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_modifyveins">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step 6: Modify veins</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_saveveinseeds">
+     <property name="text">
+      <string>Save seeds</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_createclipveins">
+     <property name="text">
+      <string>Create/clip veins</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_createmyo">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step 7: Create myocardium</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_dilatelabels">
+     <property name="text">
+      <string>Dilate labels</string>
      </property>
     </widget>
    </item>

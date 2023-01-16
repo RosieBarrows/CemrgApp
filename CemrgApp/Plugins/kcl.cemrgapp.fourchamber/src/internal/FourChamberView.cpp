@@ -106,10 +106,20 @@ void FourChamberView::SetFocus(){
 void FourChamberView::CreateQtPartControl(QWidget *parent){
     // Link the slots to the buttons in the GUI here
     m_Controls.setupUi(parent);
-
+    connect(m_Controls.button_loaddicom, SIGNAL(clicked()), this, SLOT(LoadDICOM()));
+    connect(m_Controls.button_processimg, SIGNAL(clicked()), this, SLOT(ProcessIMGS()));
+    connect(m_Controls.button_convert2nii, SIGNAL(clicked()), this, SLOT(ConvertNII()));
     connect(m_Controls.buttonPerformImageProcessing, SIGNAL(clicked()), this, SLOT(DoImageProcessing()));
+    connect(m_Controls.button_labelmasks, SIGNAL(clicked()), this, SLOT(LabelMasks()));
+    connect(m_Controls.button_modifyveins, SIGNAL(clicked()), this, SLOT(ModifyVeins()));
+    connect(m_Controls.button_createmyo, SIGNAL(clicked()), this, SLOT(CreateMyo()));
 
     // Set default variables and initialise objects
+    m_Controls.button_convert2nii->setVisible(false);
+    m_Controls.button_savelabels->setVisible(false);
+    m_Controls.button_saveveinseeds->setVisible(false);
+    m_Controls.button_createclipveins->setVisible(false);
+    m_Controls.button_dilatelabels->setVisible(false);
 }
 
 void FourChamberView::OnSelectionChanged(
@@ -178,12 +188,12 @@ void FourChamberView::LoadDICOM() {
 }
 
 void FourChamberView::ProcessIMGS() {
-    //Toggle visibility of buttons
-    // if (m_Controls.button_2_1->isVisible()) {
-    //     m_Controls.button_2_1->setVisible(false);
-    // } else {
-    //     m_Controls.button_2_1->setVisible(true);
-    // }
+    // Toggle visibility of buttons
+    if (m_Controls.button_convert2nii->isVisible()) {
+        m_Controls.button_convert2nii->setVisible(false);
+    } else {
+        m_Controls.button_convert2nii->setVisible(true);
+    }
 }
 
 void FourChamberView::ConvertNII() {
@@ -269,6 +279,38 @@ void FourChamberView::DoImageProcessing(){
     int reply = Ask("Question", "Are you tired today?");
     if(reply==QMessageBox::Yes){
         QMessageBox::information(NULL, "Answer", "Oh no, get some rest!");
+    }
+}
+
+void FourChamberView::LabelMasks() {
+    // Toggle visibility of buttons
+    if (m_Controls.button_savelabels->isVisible()) {
+        m_Controls.button_savelabels->setVisible(false);
+    } else {
+        m_Controls.button_savelabels->setVisible(true);
+    }
+}
+
+void FourChamberView::ModifyVeins() {
+    // Toggle visibility of buttons
+    if (m_Controls.button_saveveinseeds->isVisible()) {
+        m_Controls.button_saveveinseeds->setVisible(false);
+    } else {
+        m_Controls.button_saveveinseeds->setVisible(true);
+    }
+    if (m_Controls.button_createclipveins->isVisible()) {
+        m_Controls.button_createclipveins->setVisible(false);
+    } else {
+        m_Controls.button_createclipveins->setVisible(true);
+    }
+}
+
+void FourChamberView::CreateMyo() {
+    // Toggle visibility of buttons
+    if (m_Controls.button_dilatelabels->isVisible()) {
+        m_Controls.button_dilatelabels->setVisible(false);
+    } else {
+        m_Controls.button_dilatelabels->setVisible(true);
     }
 }
 

@@ -79,6 +79,9 @@ protected slots:
     void ConvertNII();
 
     void DoImageProcessing();
+    void LabelMasks();
+    void ModifyVeins();
+    void CreateMyo();
 
 protected:
     virtual void CreateQtPartControl(QWidget *parent) override;
