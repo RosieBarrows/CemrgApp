@@ -122,12 +122,12 @@ QString CemrgCommandLine::ExecuteSurf(QString dir, QString segPath, QString morp
     return outAbsolutePath;
 }
 
-QString CemrgCommandLine::ExecuteCreateCGALMesh(QString dir, QString outputName, QString paramsFullPath, QString segmentationName) {
+QString CemrgCommandLine::ExecuteCreateCGALMesh(QString dir, QString outputName, QString paramsFullPath, QString segmentationName, QString outputFolder) {
 
     MITK_INFO << "[ATTENTION] Attempting MeshTools3D libraries.";
 
     QString segmentationDirectory = dir + "/";
-    QString outputDirectory = segmentationDirectory + "CGALMeshDir";
+    QString outputDirectory = segmentationDirectory + outputFolder;
     QString outAbsolutePath = outputDirectory + "/" + outputName + ".vtk"; // many outputs are created with meshtools3d. .vtk is the one used in CemrgApp
 
     MITK_INFO << "Using static MeshTools3D libraries.";

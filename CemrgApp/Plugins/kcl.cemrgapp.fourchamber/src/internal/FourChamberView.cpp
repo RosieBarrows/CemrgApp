@@ -57,6 +57,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mitkDataStorageEditorInput.h>
 #include <mitkImageCast.h>
 #include <mitkITKImageImport.h>
+#include <mitkImagePixelReadAccessor.h>
 
 //VTK
 #include <vtkFieldData.h>
@@ -101,7 +102,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
 
 void FourChamberView::SetFocus(){
-    m_Controls.buttonPerformImageProcessing->setFocus();
+    // m_Controls.buttonPerformImageProcessing->setFocus();
 }
 
 void FourChamberView::CreateQtPartControl(QWidget *parent){
@@ -197,102 +198,79 @@ void FourChamberView::LoadDICOM() {
     }//_if
 }
 
-// void FourChamberView::ProcessIMGS() {
-//     // Toggle visibility of buttons
-//     if (m_Controls.button_convert2nii->isVisible()) {
-//         m_Controls.button_convert2nii->setVisible(false);
-//     } else {
-//         m_Controls.button_convert2nii->setVisible(true);
-//     }
-// }
-
-// void FourChamberView::ConvertNII() {
-//     //Check for selection of images
-//     QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
-//     if (nodes.size() < 1) {
-//         MITK_WARN << "load and select images from the Data Manager before starting this step!";
-//         QMessageBox::warning(NULL, "Attention",
-//             "Please load and select images from the Data Manager before starting this step!");
-//         return;
-//     }//_if
-
-//     if (!RequestProjectDirectoryFromUser()) return; // if the path was chosen incorrectly -> returns.
-
-//     //Order dicoms based on their type
-//     std::vector<int> indexNodes;
-//     std::vector<std::string> seriesDscrps;
-//     foreach (mitk::DataNode::Pointer node, nodes) {
-
-//         std::string seriesDescription;
-//         node->GetData()->GetPropertyList()->GetStringProperty("dicom.series.SeriesDescription", seriesDescription);
-
-//         if (seriesDescription.find("LGE")      != seriesDescription.npos) indexNodes.push_back(0);
-//         else if (seriesDescription.find("MRA") != seriesDescription.npos) indexNodes.push_back(1);
-
-//         //Trim whitespaces
-//         seriesDescription = QString::fromStdString(seriesDescription).replace(")","").toStdString();
-//         seriesDescription = QString::fromStdString(seriesDescription).replace("(","").toStdString();
-//         seriesDescription = QString::fromStdString(seriesDescription).simplified().replace(" ","").toStdString();
-//         seriesDscrps.push_back(seriesDescription);
-//     }//_for
-
-//     //Sort indexes based on comparing values
-//     std::vector<int> index(indexNodes.size());
-//     std::iota(index.begin(), index.end(), 0);
-//     std::sort(index.begin(), index.end(), [&](int i1, int i2) {return indexNodes[i1]<indexNodes[i2];});
-
-//     //Warning for cases when type is not found
-//     size_t length1 = nodes.size();
-//     size_t length2 = indexNodes.size();
-//     bool test = std::adjacent_find(indexNodes.begin(), indexNodes.end(), std::not_equal_to<int>()) == indexNodes.end();
-//     if (length1 != length2 || test) {
-//         std::string msg = "Cannot find the type of images automatically.";
-//         msg += "Revert to user order and selections in the data manager:\n LGE at the top, then CEMRA at the bottom!";
-//         QMessageBox::warning(NULL, "Attention", msg.c_str());
-//         index.resize(nodes.size());
-//         std::iota(index.begin(), index.end(), 0);
-//     }//_if
-
-//     //Convert to Nifti
-//     int ctr = 0;
-//     QString prodPath, type;
-//     bool successfulNitfi, resampleImage, reorientToRAI;
-//     resampleImage = true;
-//     reorientToRAI = true;
-
-//     this->BusyCursorOn();
-//     mitk::ProgressBar::GetInstance()->AddStepsToDo(index.size());
-//     foreach (int idx, index) {
-//         type = (ctr==0) ? "LGE":"MRA";
-//         prodPath = directory + "/" + "dcm-" + type + "-" + seriesDscrps.at(idx).c_str() + ".nii";
-//         successfulNitfi = CemrgCommonUtils::ConvertToNifti(nodes.at(idx)->GetData(), prodPath, resampleImage, reorientToRAI);
-//         if (successfulNitfi) {
-//             this->GetDataStorage()->Remove(nodes.at(idx));
-//             std::string key = "dicom.series.SeriesDescription";
-//             mitk::DataStorage::SetOfObjects::Pointer set = mitk::IOUtil::Load(prodPath.toStdString(), *this->GetDataStorage());
-//             set->Begin().Value()->GetData()->GetPropertyList()->SetStringProperty(key.c_str(), seriesDscrps.at(idx).c_str());
-//             ctr++;
-//         } else {
-//             mitk::ProgressBar::GetInstance()->Progress(index.size());
-//             return;
-//         }//_if
-//         mitk::ProgressBar::GetInstance()->Progress();
-//     }//for
-//     nodes.clear();
-//     this->BusyCursorOff();
-
-//     MITK_INFO << "Loading all items";
-//     mitk::RenderingManager::GetInstance()->InitializeViewsByBoundingObjects(this->GetDataStorage());
-// }
-
 void FourChamberView::Meshing(){
-    int reply = Ask("Question", "Is this the segmentation you would like to use to create a mesh (shows name of smoothed segmention from end of step 1)?");
-    if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK!");
+
+    if (!RequestProjectDirectoryFromUser()) return; 
+
+    QString path = FourChamberView::directory + "/segmentations";
+    QString segname = "seg_final_smooth.nrrd";
+    path += "/" + segname;
+
+    if(QFile::exists(path)){
+        std::string msg = "Load previously smoothed segmentation (" + segname.toStdString() + ")?";
+        int reply = QMessageBox::question(NULL, "Question", msg.c_str());
+        if(reply==QMessageBox::Yes){
+            MITK_INFO << "Loading segmentation from file";
+            // do stuff! 
+        } else {
+            // retrieve the path of the segmentation after user has selected it from the UI
+            path = QFileDialog::getOpenFileName(NULL, "Open Segmentation file",
+                directory.toStdString().c_str(), QmitkIOUtil::GetFileOpenFilterString());
+        }
     }
-    if(reply==QMessageBox::No){
-        QMessageBox::information(NULL, "Answer", "Select the segmentation you would like to use.");
-    }
+
+    QString parpath = QFileDialog::getOpenFileName(NULL, "Open Parameters file (.par)",
+    directory.toStdString().c_str(), QmitkIOUtil::GetFileOpenFilterString());
+
+    // convert segmentation to inr
+    try {
+        // load segmentation 
+        mitk::Image::Pointer image = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
+        int dimensions = image->GetDimension(0) * image->GetDimension(1) * image->GetDimension(2);
+
+        //Convert image to right type
+        // itk::Image<uint8_t, 3>::Pointer itkImage = itk::Image<uint8_t, 3>::New();
+        // mitk::CastToItkImage(image, itkImage);
+        // mitk::CastToMitkImage(itkImage, image);
+
+        //Access image volume
+        mitk::ImagePixelReadAccessor<uint8_t, 3> readAccess(image);
+        uint8_t* pv = (uint8_t*)readAccess.GetData();
+
+        //Prepare header of inr file (BUGS IN RELEASE MODE DUE TO NULL TERMINATOR \0)
+        char header[256] = {};
+        int bitlength = 8;
+        const char* btype = "unsigned fixed";
+        mitk::Vector3D spacing = image->GetGeometry()->GetSpacing();
+        int n = sprintf(header, "#INRIMAGE-4#{\nXDIM=%d\nYDIM=%d\nZDIM=%d\nVDIM=1\nTYPE=%s\nPIXSIZE=%d bits\nCPU=decm\nVX=%6.4f\nVY=%6.4f\nVZ=%6.4f\n", image->GetDimension(0), image->GetDimension(1), image->GetDimension(2), btype, bitlength, spacing.GetElement(0), spacing.GetElement(1), spacing.GetElement(2));
+        for (int i = n; i < 252; i++)
+            header[i] = '\n';
+
+        header[252] = '#';
+        header[253] = '#';
+        header[254] = '}';
+        header[255] = '\n';
+
+        //Write to binary file
+        QString inr_path = directory + "/segmentations/converted.inr";
+        std::string path = inr_path.toStdString();
+        ofstream myFile(path, ios::out | ios::binary);
+        myFile.write((char*)header, 256 * sizeof(char));
+        myFile.write((char*)pv, dimensions * sizeof(uint8_t));
+        myFile.close();
+
+        // create cmd object (CemrgCommandLine) outputs to directory/meshing
+        std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
+        QString meshing_output = cmd_object->ExecuteCreateCGALMesh(directory, "meshname", parpath, inr_path, "meshing");
+
+    } catch (mitk::Exception& e) {
+        //Deal with the situation not to have access
+        qDebug() << e.GetDescription();
+        return;
+    }//_try
+    
+    MITK_INFO << path.toStdString();
+
 
     // int reply = Ask("Question", "Are these the correct labels for your segmentation?");
     // if(reply==QMessageBox::Yes){

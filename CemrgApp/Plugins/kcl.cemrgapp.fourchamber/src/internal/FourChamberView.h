@@ -72,7 +72,7 @@ public:
     void CreateInteractorWithOptions(QStringList opts);
 
     // inline means they're defined here, not in the cpp file
-    inline QString Path(QString fnameExt=""){return (directory+"/"+fnameExt);};
+    inline QString Path(QString fnameExt=""){return (directory+"/"+fnameExt);}; 
     inline std::string StdStringPath(QString fnameExt=""){return (Path(fnameExt).toStdString());};
 
 protected slots:
@@ -106,7 +106,7 @@ protected:
 
 private:
     // put here the things which belong to the class, like working folder name, etc
-    QString fileName, directory;
+    QString fileName, directory, current_seg_name;
 
 };
 
