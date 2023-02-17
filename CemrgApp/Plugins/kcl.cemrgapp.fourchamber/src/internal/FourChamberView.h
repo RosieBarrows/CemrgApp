@@ -74,16 +74,21 @@ public:
 
 protected slots:
     // here you add the functions that willl be linked to buttons
-    void LoadDICOM();
-    void ProcessIMGS();
-    void ConvertNII();
+    void SetWorkingFolder();
+    void PrepareSegmentation();
+    void Meshing();
+    void UVCs();
+    void VentricularFibres();
+    void AtrialFibres();
+    void SimulationSetup();
 
-    void DoImageProcessing();
-    void LabelMasks();
-    void ModifyVeins();
-    void CreateMyo();
+    void LoadDICOM();
+    void ExtractSurfaces();
+    void SelectLARALandmarks();
+    void CalculateUVCs();
 
 protected:
+    // this whole block hardly ever changes 
     virtual void CreateQtPartControl(QWidget *parent) override;
     virtual void SetFocus() override;
 

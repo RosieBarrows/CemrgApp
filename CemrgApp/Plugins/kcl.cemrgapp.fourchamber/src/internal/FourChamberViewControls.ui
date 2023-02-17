@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>232</width>
-    <height>420</height>
+    <width>334</width>
+    <height>494</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -21,44 +21,85 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="labelWarning">
-     <property name="styleSheet">
-      <string notr="true">QLabel { color: rgb(255, 0, 0) }</string>
-     </property>
-     <property name="text">
-      <string>Please select an image!</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="button_loaddicom">
+    <widget class="QPushButton" name="button_setfolder">
      <property name="styleSheet">
       <string notr="true">text-align: left;</string>
      </property>
      <property name="text">
-      <string>   Step1: Load DICOM</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="button_processimg">
-     <property name="styleSheet">
-      <string notr="true">text-align: left;</string>
-     </property>
-     <property name="text">
-      <string>   Step2: Process Images</string>
+      <string>   Step 1: Set Working Folder</string>
      </property>
     </widget>
    </item>
    <item alignment="Qt::AlignHCenter">
-    <widget class="QPushButton" name="button_convert2nii">
+    <widget class="QPushButton" name="button_loaddicom">
      <property name="text">
-      <string>Convert to Nifti</string>
+      <string>Load DICOM</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="buttonPerformImageProcessing">
+     <property name="text">
+      <string>Ask Jose</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="buttonPerformImageProcessing">
+    <widget class="QPushButton" name="button_prepseg">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step 2: Prepare segmentation</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_meshing">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step 3: Meshing</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_uvcs">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step 4: UVCs</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_extractsurfs">
+     <property name="styleSheet">
+      <string notr="true"/>
+     </property>
+     <property name="text">
+      <string>Extract surfaces</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_uvclandmarks">
+     <property name="text">
+      <string>Select LA/RA landmarks</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_calcuvcs">
+     <property name="text">
+      <string>Calculate UVCs</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_ventfibres">
      <property name="toolTip">
       <string>Do image processing</string>
      </property>
@@ -66,93 +107,29 @@
       <string notr="true">text-align: left;</string>
      </property>
      <property name="text">
-      <string>   Step 3: Do Something</string>
+      <string>   Step 5: Ventricular fibres</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="button_splitpulms">
+    <widget class="QPushButton" name="button_atrfibres">
      <property name="styleSheet">
       <string notr="true">text-align: left;</string>
      </property>
      <property name="text">
-      <string>   Step 4: Split pulm veins</string>
+      <string>   Step 6: Atrial fibres</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="button_labelmasks">
+    <widget class="QPushButton" name="button_simset">
      <property name="styleSheet">
       <string notr="true">text-align: left;</string>
      </property>
      <property name="text">
-      <string>   Step 5: Label masks</string>
+      <string>   Step 7: Simulation set-up</string>
      </property>
     </widget>
-   </item>
-   <item alignment="Qt::AlignHCenter">
-    <widget class="QPushButton" name="button_savelabels">
-     <property name="text">
-      <string>Save labels</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="button_modifyveins">
-     <property name="styleSheet">
-      <string notr="true">text-align: left;</string>
-     </property>
-     <property name="text">
-      <string>   Step 6: Modify veins</string>
-     </property>
-    </widget>
-   </item>
-   <item alignment="Qt::AlignHCenter">
-    <widget class="QPushButton" name="button_saveveinseeds">
-     <property name="text">
-      <string>Save seeds</string>
-     </property>
-    </widget>
-   </item>
-   <item alignment="Qt::AlignHCenter">
-    <widget class="QPushButton" name="button_createclipveins">
-     <property name="text">
-      <string>Create/clip veins</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="button_createmyo">
-     <property name="styleSheet">
-      <string notr="true">text-align: left;</string>
-     </property>
-     <property name="text">
-      <string>   Step 7: Create myocardium</string>
-     </property>
-    </widget>
-   </item>
-   <item alignment="Qt::AlignHCenter">
-    <widget class="QPushButton" name="button_dilatelabels">
-     <property name="text">
-      <string>Dilate labels</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <spacer name="spacer1">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeType">
-      <enum>QSizePolicy::Expanding</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>220</height>
-      </size>
-     </property>
-    </spacer>
    </item>
   </layout>
  </widget>

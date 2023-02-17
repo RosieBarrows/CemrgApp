@@ -106,20 +106,21 @@ void FourChamberView::SetFocus(){
 void FourChamberView::CreateQtPartControl(QWidget *parent){
     // Link the slots to the buttons in the GUI here
     m_Controls.setupUi(parent);
-    connect(m_Controls.button_loaddicom, SIGNAL(clicked()), this, SLOT(LoadDICOM()));
-    connect(m_Controls.button_processimg, SIGNAL(clicked()), this, SLOT(ProcessIMGS()));
-    connect(m_Controls.button_convert2nii, SIGNAL(clicked()), this, SLOT(ConvertNII()));
-    connect(m_Controls.buttonPerformImageProcessing, SIGNAL(clicked()), this, SLOT(DoImageProcessing()));
-    connect(m_Controls.button_labelmasks, SIGNAL(clicked()), this, SLOT(LabelMasks()));
-    connect(m_Controls.button_modifyveins, SIGNAL(clicked()), this, SLOT(ModifyVeins()));
-    connect(m_Controls.button_createmyo, SIGNAL(clicked()), this, SLOT(CreateMyo()));
+    connect(m_Controls.button_setfolder, SIGNAL(clicked()), this, SLOT(SetWorkingFolder()));
+    connect(m_Controls.button_prepseg, SIGNAL(clicked()), this, SLOT(PrepareSegmentation()));
+    connect(m_Controls.button_meshing, SIGNAL(clicked()), this, SLOT(Meshing()));
+    connect(m_Controls.button_uvcs, SIGNAL(clicked()), this, SLOT(UVCs()));
+    connect(m_Controls.button_ventfibres, SIGNAL(clicked()), this, SLOT(VentricularFibres()));
+    connect(m_Controls.button_atrfibres, SIGNAL(clicked()), this, SLOT(AtrialFibres()));
+    connect(m_Controls.button_simset, SIGNAL(clicked()), this, SLOT(SimulationSetup()));
+    connect(m_Controls.buttonPerformImageProcessing, SIGNAL(clicked()), this, SLOT(SetFocus()));
+
 
     // Set default variables and initialise objects
-    m_Controls.button_convert2nii->setVisible(false);
-    m_Controls.button_savelabels->setVisible(false);
-    m_Controls.button_saveveinseeds->setVisible(false);
-    m_Controls.button_createclipveins->setVisible(false);
-    m_Controls.button_dilatelabels->setVisible(false);
+    m_Controls.button_loaddicom->setVisible(false);
+    m_Controls.button_extractsurfs->setVisible(false);
+    m_Controls.button_uvclandmarks->setVisible(false);
+    m_Controls.button_calcuvcs->setVisible(false);
 }
 
 void FourChamberView::OnSelectionChanged(
@@ -127,6 +128,12 @@ void FourChamberView::OnSelectionChanged(
 }
 
 // SLOTS
+void FourChamberView::SetWorkingFolder(){
+    if (!RequestProjectDirectoryFromUser()){
+        MITK_WARN << "Folder not set. Check LOGFILE."; 
+    } 
+}
+
 void FourChamberView::LoadDICOM() {
     int reply1 = QMessageBox::No;
 #if defined(__APPLE__)
@@ -187,132 +194,189 @@ void FourChamberView::LoadDICOM() {
     }//_if
 }
 
-void FourChamberView::ProcessIMGS() {
-    // Toggle visibility of buttons
-    if (m_Controls.button_convert2nii->isVisible()) {
-        m_Controls.button_convert2nii->setVisible(false);
-    } else {
-        m_Controls.button_convert2nii->setVisible(true);
-    }
-}
+// void FourChamberView::ProcessIMGS() {
+//     // Toggle visibility of buttons
+//     if (m_Controls.button_convert2nii->isVisible()) {
+//         m_Controls.button_convert2nii->setVisible(false);
+//     } else {
+//         m_Controls.button_convert2nii->setVisible(true);
+//     }
+// }
 
-void FourChamberView::ConvertNII() {
-    //Check for selection of images
-    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
-    if (nodes.size() < 1) {
-        MITK_WARN << "load and select images from the Data Manager before starting this step!";
-        QMessageBox::warning(NULL, "Attention",
-            "Please load and select images from the Data Manager before starting this step!");
-        return;
-    }//_if
+// void FourChamberView::ConvertNII() {
+//     //Check for selection of images
+//     QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+//     if (nodes.size() < 1) {
+//         MITK_WARN << "load and select images from the Data Manager before starting this step!";
+//         QMessageBox::warning(NULL, "Attention",
+//             "Please load and select images from the Data Manager before starting this step!");
+//         return;
+//     }//_if
 
-    if (!RequestProjectDirectoryFromUser()) return; // if the path was chosen incorrectly -> returns.
+//     if (!RequestProjectDirectoryFromUser()) return; // if the path was chosen incorrectly -> returns.
 
-    //Order dicoms based on their type
-    std::vector<int> indexNodes;
-    std::vector<std::string> seriesDscrps;
-    foreach (mitk::DataNode::Pointer node, nodes) {
+//     //Order dicoms based on their type
+//     std::vector<int> indexNodes;
+//     std::vector<std::string> seriesDscrps;
+//     foreach (mitk::DataNode::Pointer node, nodes) {
 
-        std::string seriesDescription;
-        node->GetData()->GetPropertyList()->GetStringProperty("dicom.series.SeriesDescription", seriesDescription);
+//         std::string seriesDescription;
+//         node->GetData()->GetPropertyList()->GetStringProperty("dicom.series.SeriesDescription", seriesDescription);
 
-        if (seriesDescription.find("LGE")      != seriesDescription.npos) indexNodes.push_back(0);
-        else if (seriesDescription.find("MRA") != seriesDescription.npos) indexNodes.push_back(1);
+//         if (seriesDescription.find("LGE")      != seriesDescription.npos) indexNodes.push_back(0);
+//         else if (seriesDescription.find("MRA") != seriesDescription.npos) indexNodes.push_back(1);
 
-        //Trim whitespaces
-        seriesDescription = QString::fromStdString(seriesDescription).replace(")","").toStdString();
-        seriesDescription = QString::fromStdString(seriesDescription).replace("(","").toStdString();
-        seriesDescription = QString::fromStdString(seriesDescription).simplified().replace(" ","").toStdString();
-        seriesDscrps.push_back(seriesDescription);
-    }//_for
+//         //Trim whitespaces
+//         seriesDescription = QString::fromStdString(seriesDescription).replace(")","").toStdString();
+//         seriesDescription = QString::fromStdString(seriesDescription).replace("(","").toStdString();
+//         seriesDescription = QString::fromStdString(seriesDescription).simplified().replace(" ","").toStdString();
+//         seriesDscrps.push_back(seriesDescription);
+//     }//_for
 
-    //Sort indexes based on comparing values
-    std::vector<int> index(indexNodes.size());
-    std::iota(index.begin(), index.end(), 0);
-    std::sort(index.begin(), index.end(), [&](int i1, int i2) {return indexNodes[i1]<indexNodes[i2];});
+//     //Sort indexes based on comparing values
+//     std::vector<int> index(indexNodes.size());
+//     std::iota(index.begin(), index.end(), 0);
+//     std::sort(index.begin(), index.end(), [&](int i1, int i2) {return indexNodes[i1]<indexNodes[i2];});
 
-    //Warning for cases when type is not found
-    size_t length1 = nodes.size();
-    size_t length2 = indexNodes.size();
-    bool test = std::adjacent_find(indexNodes.begin(), indexNodes.end(), std::not_equal_to<int>()) == indexNodes.end();
-    if (length1 != length2 || test) {
-        std::string msg = "Cannot find the type of images automatically.";
-        msg += "Revert to user order and selections in the data manager:\n LGE at the top, then CEMRA at the bottom!";
-        QMessageBox::warning(NULL, "Attention", msg.c_str());
-        index.resize(nodes.size());
-        std::iota(index.begin(), index.end(), 0);
-    }//_if
+//     //Warning for cases when type is not found
+//     size_t length1 = nodes.size();
+//     size_t length2 = indexNodes.size();
+//     bool test = std::adjacent_find(indexNodes.begin(), indexNodes.end(), std::not_equal_to<int>()) == indexNodes.end();
+//     if (length1 != length2 || test) {
+//         std::string msg = "Cannot find the type of images automatically.";
+//         msg += "Revert to user order and selections in the data manager:\n LGE at the top, then CEMRA at the bottom!";
+//         QMessageBox::warning(NULL, "Attention", msg.c_str());
+//         index.resize(nodes.size());
+//         std::iota(index.begin(), index.end(), 0);
+//     }//_if
 
-    //Convert to Nifti
-    int ctr = 0;
-    QString prodPath, type;
-    bool successfulNitfi, resampleImage, reorientToRAI;
-    resampleImage = true;
-    reorientToRAI = true;
+//     //Convert to Nifti
+//     int ctr = 0;
+//     QString prodPath, type;
+//     bool successfulNitfi, resampleImage, reorientToRAI;
+//     resampleImage = true;
+//     reorientToRAI = true;
 
-    this->BusyCursorOn();
-    mitk::ProgressBar::GetInstance()->AddStepsToDo(index.size());
-    foreach (int idx, index) {
-        type = (ctr==0) ? "LGE":"MRA";
-        prodPath = directory + "/" + "dcm-" + type + "-" + seriesDscrps.at(idx).c_str() + ".nii";
-        successfulNitfi = CemrgCommonUtils::ConvertToNifti(nodes.at(idx)->GetData(), prodPath, resampleImage, reorientToRAI);
-        if (successfulNitfi) {
-            this->GetDataStorage()->Remove(nodes.at(idx));
-            std::string key = "dicom.series.SeriesDescription";
-            mitk::DataStorage::SetOfObjects::Pointer set = mitk::IOUtil::Load(prodPath.toStdString(), *this->GetDataStorage());
-            set->Begin().Value()->GetData()->GetPropertyList()->SetStringProperty(key.c_str(), seriesDscrps.at(idx).c_str());
-            ctr++;
-        } else {
-            mitk::ProgressBar::GetInstance()->Progress(index.size());
-            return;
-        }//_if
-        mitk::ProgressBar::GetInstance()->Progress();
-    }//for
-    nodes.clear();
-    this->BusyCursorOff();
+//     this->BusyCursorOn();
+//     mitk::ProgressBar::GetInstance()->AddStepsToDo(index.size());
+//     foreach (int idx, index) {
+//         type = (ctr==0) ? "LGE":"MRA";
+//         prodPath = directory + "/" + "dcm-" + type + "-" + seriesDscrps.at(idx).c_str() + ".nii";
+//         successfulNitfi = CemrgCommonUtils::ConvertToNifti(nodes.at(idx)->GetData(), prodPath, resampleImage, reorientToRAI);
+//         if (successfulNitfi) {
+//             this->GetDataStorage()->Remove(nodes.at(idx));
+//             std::string key = "dicom.series.SeriesDescription";
+//             mitk::DataStorage::SetOfObjects::Pointer set = mitk::IOUtil::Load(prodPath.toStdString(), *this->GetDataStorage());
+//             set->Begin().Value()->GetData()->GetPropertyList()->SetStringProperty(key.c_str(), seriesDscrps.at(idx).c_str());
+//             ctr++;
+//         } else {
+//             mitk::ProgressBar::GetInstance()->Progress(index.size());
+//             return;
+//         }//_if
+//         mitk::ProgressBar::GetInstance()->Progress();
+//     }//for
+//     nodes.clear();
+//     this->BusyCursorOff();
 
-    MITK_INFO << "Loading all items";
-    mitk::RenderingManager::GetInstance()->InitializeViewsByBoundingObjects(this->GetDataStorage());
-}
+//     MITK_INFO << "Loading all items";
+//     mitk::RenderingManager::GetInstance()->InitializeViewsByBoundingObjects(this->GetDataStorage());
+// }
 
-void FourChamberView::DoImageProcessing(){
-    int reply = Ask("Question", "Are you tired today?");
+void FourChamberView::Meshing(){
+    int reply = Ask("Question", "Is this the segmentation you would like to use to create a mesh (shows name of smoothed segmention from end of step 1)?");
     if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "Oh no, get some rest!");
+        QMessageBox::information(NULL, "Answer", "OK!");
+    }
+    if(reply==QMessageBox::No){
+        QMessageBox::information(NULL, "Answer", "Select the segmentation you would like to use.");
+    }
+
+    // int reply = Ask("Question", "Are these the correct labels for your segmentation?");
+    // if(reply==QMessageBox::Yes){
+    //     QMessageBox::information(NULL, "Answer", "OK!");
+    // }
+    // if(reply==QMessageBox::No){
+    //     QMessageBox::information(NULL, "Answer", "Manually change labels from default OR select button to provide a .json file");
+    // }   
+}
+
+void FourChamberView::SelectLARALandmarks(){
+    int reply = Ask("Question", "Placeholder");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK!");
     }
 }
 
-void FourChamberView::LabelMasks() {
-    // Toggle visibility of buttons
-    if (m_Controls.button_savelabels->isVisible()) {
-        m_Controls.button_savelabels->setVisible(false);
-    } else {
-        m_Controls.button_savelabels->setVisible(true);
+void FourChamberView::ExtractSurfaces(){
+    int reply = Ask("Question", "Placeholder");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK!");
     }
 }
 
-void FourChamberView::ModifyVeins() {
-    // Toggle visibility of buttons
-    if (m_Controls.button_saveveinseeds->isVisible()) {
-        m_Controls.button_saveveinseeds->setVisible(false);
-    } else {
-        m_Controls.button_saveveinseeds->setVisible(true);
-    }
-    if (m_Controls.button_createclipveins->isVisible()) {
-        m_Controls.button_createclipveins->setVisible(false);
-    } else {
-        m_Controls.button_createclipveins->setVisible(true);
+void FourChamberView::SimulationSetup(){
+    int reply = Ask("Question", "Placeholder");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK");
     }
 }
 
-void FourChamberView::CreateMyo() {
-    // Toggle visibility of buttons
-    if (m_Controls.button_dilatelabels->isVisible()) {
-        m_Controls.button_dilatelabels->setVisible(false);
-    } else {
-        m_Controls.button_dilatelabels->setVisible(true);
+void FourChamberView::AtrialFibres(){
+    int reply = Ask("Question", "Placeholder");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK");
     }
 }
+
+void FourChamberView::VentricularFibres(){
+    int reply = Ask("Question", "Placeholder");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK");
+    }
+}
+
+void FourChamberView::UVCs(){
+    int reply = Ask("Question", "Is this the mesh for which you would like to calculate UVCs?");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK!");
+    }
+    if(reply==QMessageBox::No){
+        QMessageBox::information(NULL, "Answer", "Choose a different mesh.");
+    }
+
+    if (m_Controls.button_extractsurfs->isVisible()) {
+        m_Controls.button_extractsurfs->setVisible(true);
+    } else {
+        m_Controls.button_extractsurfs->setVisible(true);
+    }
+
+    if (m_Controls.button_uvclandmarks->isVisible()) {
+        m_Controls.button_uvclandmarks->setVisible(true);
+    } else {
+        m_Controls.button_uvclandmarks->setVisible(true);
+    }
+
+    if (m_Controls.button_calcuvcs->isVisible()) {
+        m_Controls.button_calcuvcs->setVisible(true);
+    } else {
+        m_Controls.button_calcuvcs->setVisible(true);
+    }
+}
+
+void FourChamberView::PrepareSegmentation(){
+    int reply = Ask("Question", "Is this the segmentation you would like to use to create your heart model?");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK!");
+    }
+}
+
+void FourChamberView::CalculateUVCs(){
+    int reply = Ask("Question", "Placeholder");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK!");
+    }
+}
+
 
 // helper
 bool FourChamberView::RequestProjectDirectoryFromUser() {
