@@ -67,6 +67,9 @@ public:
     // helper functions
     bool RequestProjectDirectoryFromUser();
     int Ask(std::string title, std::string msg);
+    
+    QStringList GetPointLabelOptions(QString opt);
+    void CreateInteractorWithOptions(QStringList opts);
 
     // inline means they're defined here, not in the cpp file
     inline QString Path(QString fnameExt=""){return (directory+"/"+fnameExt);};
@@ -86,6 +89,9 @@ protected slots:
     void ExtractSurfaces();
     void SelectLARALandmarks();
     void CalculateUVCs();
+
+    void SelectPointsA();
+    void SelectPointsB();
 
 protected:
     // this whole block hardly ever changes 

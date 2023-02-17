@@ -5,15 +5,18 @@ set(SRC_CPP_FILES
 set(INTERNAL_CPP_FILES
   kcl_cemrgapp_fourchamber_Activator.cpp
   FourChamberView.cpp
+  CemrgDataInteractor.cpp
 )
 
 set(UI_FILES
   src/internal/FourChamberViewControls.ui
+  src/internal/FourChamberViewPointLabelSelect.ui
 )
 
 set(MOC_H_FILES
   src/internal/kcl_cemrgapp_fourchamber_Activator.h
   src/internal/FourChamberView.h
+  src/internal/CemrgDataInteractor.h
 )
 
 # list of resource files which can be used by the plug-in

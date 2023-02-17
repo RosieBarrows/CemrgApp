@@ -84,6 +84,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // plugin classes
 #include "kcl_cemrgapp_fourchamber_Activator.h"
 #include "FourChamberView.h"
+#include "CemrgDataInteractor.h"
 
 // Qt
 #include <QMessageBox>
@@ -115,6 +116,8 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_simset, SIGNAL(clicked()), this, SLOT(SimulationSetup()));
     connect(m_Controls.buttonPerformImageProcessing, SIGNAL(clicked()), this, SLOT(SetFocus()));
 
+    connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsA()));
+    connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsB()));
 
     // Set default variables and initialise objects
     m_Controls.button_loaddicom->setVisible(false);
@@ -150,7 +153,7 @@ void FourChamberView::LoadDICOM() {
         if (tmpNiftiFolder.compare("ERROR_IN_PROCESSING") != 0) {
 
             // add results in NIIs folder to Data Manager
-            MITK_INFO << ("Conversion succesful. Intermediate NII folder: " + tmpNiftiFolder).toStdString();
+            MITK_INFO << ("Conversion succesful. Intermediate NII folder: "  tmpNiftiFolder).toStdString();
             QMessageBox::information(NULL, "Information", "Conversion successful, press the Process Images button to continue.");
             QDir niftiFolder(tmpNiftiFolder);
             QStringList niftiFiles = niftiFolder.entryList();
@@ -158,7 +161,7 @@ void FourChamberView::LoadDICOM() {
             if (niftiFiles.size()>0) {
 
                 QString thisFile, path;
-                for(int ix=0; ix<niftiFiles.size(); ix++) {
+                for(int ix=0; ix<niftiFiles.size(); ix+) {
 
                     // load here files
                     thisFile = niftiFiles.at(ix);
@@ -377,6 +380,13 @@ void FourChamberView::CalculateUVCs(){
     }
 }
 
+void FourChamberView::SelectPointsA() {
+    CreateInteractorWithOptions("A");
+}
+
+void FourChamberView::SelectPointsB() {
+    CreateInteractorWithOptions("B");
+}
 
 // helper
 bool FourChamberView::RequestProjectDirectoryFromUser() {
@@ -418,4 +428,55 @@ bool FourChamberView::RequestProjectDirectoryFromUser() {
 
 int FourChamberView::Ask(std::string title, std::string msg){
     return QMessageBox::question(NULL, title.c_str(), msg.c_str(), QMessageBox::Yes, QMessageBox::No);
+}
+
+QStringList FourChamberView::GetPointLabelOptions(QString opt) {
+    QStringList res = QStringList();
+    if (opt == "A") {
+        res  << "SVC_1"  
+             << "SVC_2"  
+             << "SVC_3"  
+             << "IVC_1"  
+             << "IVC_2"  
+             << "IVC_3"  
+             << "Ao_1"  
+             << "Ao_2"  
+             << "Ao_3"  
+             << "PArt_1"  
+             << "PArt_2"  
+             << "PArt_3";
+    }
+    else if (opt == "B") {
+        res << "SVC_slicer_1"
+            << "SVC_slicer_2"
+            << "SVC_slicer_3"
+            << "SVC_tip"
+            << "IVC_slicer_1"
+            << "IVC_slicer_2"
+            << "IVC_slicer_3"
+            << "IVC_tip"
+            << "Ao_tip"
+            << "PArt_tip";
+    }else if (opt == "C") {
+        res << "Ao_WT_tip"
+            << "PArt_WT_tip";
+    }
+    return res;
+}
+
+void FourChamberView::CreateInteractorWithOptions(QString opt) {
+    QStringList opts = GetPointLabelOptions(opt);
+      // Create pointset
+      mitk::PointSet::Pointer pset = mitk::PointSet::New();
+    pset->SetName(opt  "_point_set");
+      // create node
+      mitk::DataNode::Pointer node = mitk::DataNode::New();
+    node->SetData(pset);
+    node->SetName(opt  "_point_set");
+    node->SetVisibility(true);
+     CemrgDataInteractor m_interactor = CemrgDataInteractor::New(opts);
+    m_interactor->LoadStateMachine("PointSet.xml");
+    m_interactor->SetEventConfig("PointSetConfig.xml");
+    m_interactor->SetDataNode(node);
+    
 }

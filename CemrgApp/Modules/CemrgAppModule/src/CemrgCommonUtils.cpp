@@ -93,7 +93,8 @@ PURPOSE.  See the above copyright notices for more information.
 #include <QFileInfo>
 #include <QDir>
 #include <QTextStream>
-
+#include <QJsonParseError>
+#include <QJsonDocument>
 
 #include "CemrgCommonUtils.h"
 
@@ -1019,6 +1020,67 @@ mitk::DataNode::Pointer CemrgCommonUtils::AddToStorage(
         mitk::RenderingManager::GetInstance()->InitializeViewsByBoundingObjects(ds);
 
     return node;
+}
+
+QJsonObject CemrgCommonUtils::ReadJSONFile(QString dir, QString fname) {
+    fname += (!fname.endsWith(".json")) ? ".json" : "";
+    QFile file(dir + "/" + fname);
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning("Failed to open file");
+        return QJsonObject();
+    }
+
+    QByteArray jsonData = file.readAll();
+
+    QJsonParseError error;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonData, &error);
+
+    MITK_WARN((jsonDoc.isNull())) << ("Failed to parse JSON: " + error.errorString()).toStdString();
+
+    QJsonObject jsonObj = jsonDoc.object();
+
+    file.close();
+
+    return jsonObj;
+}
+
+bool CemrgCommonUtils::WriteJSONFile(QJsonObject json, QString dir, QString fname) {
+    // Create the JSON document
+    QJsonDocument jsonDoc(json);
+    bool success = true;
+
+    // Open the file for writing
+    fname += (!fname.endsWith(".json")) ? ".json" : "";
+    QFile file(dir + "/" + fname);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        qWarning("Failed to open file");
+        success = false;
+    }
+
+    file.write(jsonDoc.toJson());
+    file.close();
+
+    return success;
+}
+
+bool CemrgCommonUtils::ModifyJSONFile(QString dir, QString fname, QString key, QVariant &value) {
+    bool success = true;
+    QJsonObject json = ReadJSONFile(dir, fname);
+
+    if (json.empty()) {
+        return false;
+    }
+
+    if (value.isNull()) {
+        json.remove(key);
+    }
+    else {
+        json[key] = QJsonValue::fromVariant(value);
+    }
+
+    success = WriteJSONFile(json, dir, fname);
+    return success;
 }
 
 mitk::Image::Pointer CemrgCommonUtils::ImageFromSurfaceMesh(mitk::Surface::Pointer surf, double origin[3], double spacing[3]){

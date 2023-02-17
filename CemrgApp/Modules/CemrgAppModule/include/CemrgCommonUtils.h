@@ -35,6 +35,7 @@ PURPOSE.  See the above copyright notices for more information.
 #include <mitkDataNode.h>
 #include <mitkDataStorage.h>
 #include <QString>
+#include <QJsonObject>
 
 class MITKCEMRGAPPMODULE_EXPORT CemrgCommonUtils {
 
@@ -89,8 +90,12 @@ public:
 
     //Generic
     static mitk::DataNode::Pointer AddToStorage(mitk::BaseData* data, std::string nodeName, mitk::DataStorage::Pointer ds, bool init = true);
+    static QJsonObject CreateJSONObject(QStringList keys_list, QStringList values_list, QStringList types_list);
+    static QJsonObject ReadJSONFile(QString dir, QString fname);
+    static bool WriteJSONFile(QJsonObject json, QString dir, QString fname);
+    static bool ModifyJSONFile(QString dir, QString fname, QString key, QVariant& value);
 
-    //Carp Utils
+    // Carp Utils
     static void OriginalCoordinates(QString imagePath, QString pointPath, QString outputPath, double scaling = 1000);
     static void CalculateCentreOfGravity(QString pointPath, QString elemPath, QString outputPath);
     static void RegionMapping(QString bpPath, QString pointPath, QString elemPath, QString outputPath);

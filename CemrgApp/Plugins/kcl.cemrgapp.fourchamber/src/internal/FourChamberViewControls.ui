@@ -131,6 +131,20 @@
      </property>
     </widget>
    </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_select_pts_a">
+     <property name="text">
+      <string>Select Points A</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_select_pts_b">
+     <property name="text">
+      <string>Select Points B</string>
+      </property>
+     </widget>
+    </item>
   </layout>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
