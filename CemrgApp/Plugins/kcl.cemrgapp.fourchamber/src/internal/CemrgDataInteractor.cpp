@@ -36,39 +36,43 @@ PURPOSE.  See the above copyright notices for more information.
 #include "mitkDispatcher.h"
 #include <mitkPropertyList.h>
 
-CemrgDataInteractor::CemrgDataInteractor(const QStringList &options) {
-    m_dialog = new QDialog;
-    m_dialog.setWindowTitle("User input");
+
+CemrgDataInteractor::CemrgDataInteractor(){
+
+}
+
+void CemrgDataInteractor::Initialise(QStringList &options) {
+    m_dialog = new QDialog(0,0);
+    m_dialog->setWindowTitle("User input");
 
     m_controls.setupUi(m_dialog);
-
-    m_comboBox = new QComboBox;
-    m_comboBox->addItems(options);
+    m_controls.m_comboBox->addItems(options);
 
     QObject::connect(m_controls.m_ok_cancel_button, SIGNAL(accepted()), m_dialog, SLOT(accept()));
     QObject::connect(m_controls.m_ok_cancel_button, SIGNAL(rejected()), m_dialog, SLOT(reject()));
 }
 
 CemrgDataInteractor::~CemrgDataInteractor() {
-    delete m_dialog;
+    m_dialog->close();
+    m_dialog->deleteLater();
 }
 
-void CemrgDataInteractor::OnAddPoint(StateMachineAction *, InteractionEvent *interactionEvent) override {
-    if (interactionEvent->GetSender()->GetNumberOfSelected() > 0){
-        return; // Only handle events where exactly one point is selected
-    }
-
+void CemrgDataInteractor::AddPoint(mitk::StateMachineAction *, mitk::InteractionEvent *interactionEvent) {
+    
     // Show the dialog box
-    if (m_dialog->exec() == QDialog::Rejected){
+    int dialogCode = m_dialog->exec();
+    if (dialogCode == QDialog::Rejected) {
+        m_dialog->close();
+        m_dialog->deleteLater();
         return; // User clicked cancel, so don't add the point
     }
 
-    QString option = m_comboBox->currentText();
+    QString option = m_controls.m_comboBox->currentText();
 
     // Add the new point with the label and option
-    Superclass::OnAddPoint(nullptr, interactionEvent);
-    auto newPointSet = interactionEvent->GetSender()->GetPointSet();
-    auto newPoint = newPointSet->GetPoint(newPointSet->GetSize() - 1);
-
-    newPoint->SetStringProperty("option", option.toStdString());
+    Superclass::AddPoint(nullptr, interactionEvent);
+    mitk::Point3D new_pt = GetLastPoint();
+    
+    // new_pt->SetStringProperty("option", option.toStdString());
+    std::cout << "LABEL, " << option.toStdString() << "(" << new_pt[0] << "," << new_pt[1] << "," << new_pt[2] << ")" << std::endl;
 }

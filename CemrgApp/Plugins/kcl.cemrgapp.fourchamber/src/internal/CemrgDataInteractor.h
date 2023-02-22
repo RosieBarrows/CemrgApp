@@ -26,22 +26,28 @@ PURPOSE.  See the above copyright notices for more information.
  *
 =========================================================================*/
 
-#include <mitkPointSetInteractor.h>
 #include <mitkPointSet.h>
 #include <mitkDataNode.h>
+#include <mitkDataInteractor.h>
+#include <mitkPointSetDataInteractor.h>
+#include <QInputDialog>
 
 #include "ui_FourChamberViewPointLabelSelect.h"
 
-class CemrgDataInteractor : public mitk::PointSetInteractor {
-
-    Q_OBJECT
+class CemrgDataInteractor : public mitk::PointSetDataInteractor {
 
 public:
-    CemrgDataInteractor(const QStringList& options);
-    ~CemrgDataInteractor() override;
+    mitkClassMacro(CemrgDataInteractor, mitk::PointSetDataInteractor)
+    itkFactorylessNewMacro(Self)
+    CemrgDataInteractor();
+
+    void Initialise(QStringList &options);
+    inline mitk::Point3D GetLastPoint() { return Superclass::m_LastPoint; };
 
 protected:
-    void OnAddPoint(StateMachineAction *, InteractionEvent *interactionEvent) override;
+    virtual ~CemrgDataInteractor();
+
+    void AddPoint(mitk::StateMachineAction *, mitk::InteractionEvent *interactionEvent) override;
 
 private:
     Ui::FourChamberViewPointLabelSelect m_controls;

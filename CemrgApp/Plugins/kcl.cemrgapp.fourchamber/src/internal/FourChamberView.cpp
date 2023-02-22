@@ -154,7 +154,7 @@ void FourChamberView::LoadDICOM() {
         if (tmpNiftiFolder.compare("ERROR_IN_PROCESSING") != 0) {
 
             // add results in NIIs folder to Data Manager
-            MITK_INFO << ("Conversion succesful. Intermediate NII folder: "  tmpNiftiFolder).toStdString();
+            MITK_INFO << ("Conversion succesful. Intermediate NII folder: " + tmpNiftiFolder).toStdString();
             QMessageBox::information(NULL, "Information", "Conversion successful, press the Process Images button to continue.");
             QDir niftiFolder(tmpNiftiFolder);
             QStringList niftiFiles = niftiFolder.entryList();
@@ -162,7 +162,7 @@ void FourChamberView::LoadDICOM() {
             if (niftiFiles.size()>0) {
 
                 QString thisFile, path;
-                for(int ix=0; ix<niftiFiles.size(); ix+) {
+                for(int ix=0; ix<niftiFiles.size(); ix++) {
 
                     // load here files
                     thisFile = niftiFiles.at(ix);
@@ -366,6 +366,10 @@ void FourChamberView::SelectPointsB() {
     CreateInteractorWithOptions("B");
 }
 
+void FourChamberView::SelectPointsC(){
+    CreateInteractorWithOptions("C");
+}
+
 // helper
 bool FourChamberView::RequestProjectDirectoryFromUser() {
 
@@ -444,15 +448,20 @@ QStringList FourChamberView::GetPointLabelOptions(QString opt) {
 
 void FourChamberView::CreateInteractorWithOptions(QString opt) {
     QStringList opts = GetPointLabelOptions(opt);
-      // Create pointset
-      mitk::PointSet::Pointer pset = mitk::PointSet::New();
-    pset->SetName(opt  "_point_set");
-      // create node
-      mitk::DataNode::Pointer node = mitk::DataNode::New();
+    std::string pset_name = (opt + "_point_set").toStdString();
+
+    // Create pointset
+    mitk::PointSet::Pointer pset = mitk::PointSet::New();
+    // pset->SetName(pset_name);
+    
+    // create node
+    mitk::DataNode::Pointer node = mitk::DataNode::New();
     node->SetData(pset);
-    node->SetName(opt  "_point_set");
+    node->SetName(pset_name);
     node->SetVisibility(true);
-     CemrgDataInteractor m_interactor = CemrgDataInteractor::New(opts);
+    
+    CemrgDataInteractor::Pointer m_interactor = CemrgDataInteractor::New();
+    m_interactor->Initialise(opts);
     m_interactor->LoadStateMachine("PointSet.xml");
     m_interactor->SetEventConfig("PointSetConfig.xml");
     m_interactor->SetDataNode(node);
