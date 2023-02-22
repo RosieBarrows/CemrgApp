@@ -93,7 +93,7 @@ public:
     static QJsonObject CreateJSONObject(QStringList keys_list, QStringList values_list, QStringList types_list);
     static QJsonObject ReadJSONFile(QString dir, QString fname);
     static bool WriteJSONFile(QJsonObject json, QString dir, QString fname);
-    static bool ModifyJSONFile(QString dir, QString fname, QString key, QVariant& value);
+    static bool ModifyJSONFile(QString dir, QString fname, QString key, QString value = "", QString type = "");
 
     // Carp Utils
     static void OriginalCoordinates(QString imagePath, QString pointPath, QString outputPath, double scaling = 1000);

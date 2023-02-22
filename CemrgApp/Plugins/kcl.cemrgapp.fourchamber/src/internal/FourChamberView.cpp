@@ -125,6 +125,8 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     m_Controls.button_extractsurfs->setVisible(false);
     m_Controls.button_uvclandmarks->setVisible(false);
     m_Controls.button_calcuvcs->setVisible(false);
+
+    InitialiseJsonObjects();
 }
 
 void FourChamberView::OnSelectionChanged(
@@ -135,7 +137,9 @@ void FourChamberView::OnSelectionChanged(
 void FourChamberView::SetWorkingFolder(){
     if (!RequestProjectDirectoryFromUser()){
         MITK_WARN << "Folder not set. Check LOGFILE."; 
-    } 
+    } else{
+        MITK_INFO << "Looking for existing JSON files.";
+    }
 }
 
 void FourChamberView::LoadDICOM() {
@@ -358,16 +362,16 @@ void FourChamberView::CalculateUVCs(){
     }
 }
 
-void FourChamberView::SelectPointsA() {
-    CreateInteractorWithOptions("A");
+void FourChamberView::SelectPointsInit() {
+    CreateInteractorWithOptions("init");
 }
 
-void FourChamberView::SelectPointsB() {
-    CreateInteractorWithOptions("B");
+void FourChamberView::SelectPointsSlicers() {
+    CreateInteractorWithOptions("slicers");
 }
 
-void FourChamberView::SelectPointsC(){
-    CreateInteractorWithOptions("C");
+void FourChamberView::SelectPointsFinal(){
+    CreateInteractorWithOptions("final");
 }
 
 // helper
@@ -414,7 +418,7 @@ int FourChamberView::Ask(std::string title, std::string msg){
 
 QStringList FourChamberView::GetPointLabelOptions(QString opt) {
     QStringList res = QStringList();
-    if (opt == "A") {
+    if (opt == "init") {
         res  << "SVC_1"  
              << "SVC_2"  
              << "SVC_3"  
@@ -428,7 +432,7 @@ QStringList FourChamberView::GetPointLabelOptions(QString opt) {
              << "PArt_2"  
              << "PArt_3";
     }
-    else if (opt == "B") {
+    else if (opt == "slicers") {
         res << "SVC_slicer_1"
             << "SVC_slicer_2"
             << "SVC_slicer_3"
@@ -439,7 +443,7 @@ QStringList FourChamberView::GetPointLabelOptions(QString opt) {
             << "IVC_tip"
             << "Ao_tip"
             << "PArt_tip";
-    }else if (opt == "C") {
+    }else if (opt == "final") {
         res << "Ao_WT_tip"
             << "PArt_WT_tip";
     }
@@ -466,4 +470,31 @@ void FourChamberView::CreateInteractorWithOptions(QString opt) {
     m_interactor->SetEventConfig("PointSetConfig.xml");
     m_interactor->SetDataNode(node);
     
+}
+
+void FourChamberView::InitialiseJsonObjects() {
+
+    pt_keys_init = GetPointLabelOptions("init");
+    QStringList init_values = QStringList(), init_types = QStringList();
+    InitialiseQStringListsFromSize(pt_keys_init.size(), init_values, init_types);
+    json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_init, init_values, init_types);
+
+    pt_keys_slicers = GetPointLabelOptions("slicers");
+    QStringList slicers_values = QStringList(), slicers_types = QStringList();
+    InitialiseQStringListsFromSize(pt_keys_slicers.size(), slicers_values, slicers_types);
+    json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_init, slicers_values, slicers_types);
+
+    pt_keys_final = GetPointLabelOptions("final");
+    QStringList final_values = QStringList(), final_types = QStringList();
+    InitialiseQStringListsFromSize(pt_keys_final.size(), final_values, final_types);
+    json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_init, final_values, final_types);
+
+
+}
+
+void FourChamberView::InitialiseQStringListsFromSize(int num, QStringList& values, QStringList& types) {
+    for (int ix = 0; ix < num; ix++) {
+        values << "0.0,0.0,0.0";
+        types << "array";
+    }
 }

@@ -67,12 +67,14 @@ public:
     // helper functions
     bool RequestProjectDirectoryFromUser();
     int Ask(std::string title, std::string msg);
-    
+
+    void InitialiseJsonObjects();
     QStringList GetPointLabelOptions(QString opt);
     void CreateInteractorWithOptions(QString opts);
+    void InitialiseQStringListsFromSize(int num, QStringList &values, QStringList &types);
 
     // inline means they're defined here, not in the cpp file
-    inline QString Path(QString fnameExt=""){return (directory+"/"+fnameExt);}; 
+    inline QString Path(QString fnameExt = "") {return (directory + "/" + fnameExt); };
     inline std::string StdStringPath(QString fnameExt=""){return (Path(fnameExt).toStdString());};
 
 protected slots:
@@ -90,9 +92,9 @@ protected slots:
     void SelectLARALandmarks();
     void CalculateUVCs();
 
-    void SelectPointsA();
-    void SelectPointsB();
-    void SelectPointsC();
+    void SelectPointsInit();
+    void SelectPointsSlicers();
+    void SelectPointsFinal();
 
 protected:
     // this whole block hardly ever changes 
@@ -108,7 +110,8 @@ protected:
 private:
     // put here the things which belong to the class, like working folder name, etc
     QString fileName, directory, current_seg_name;
-
+    QStringList pt_keys_init, pt_keys_slicers, pt_keys_final;
+    QJsonObject json_init, json_slicers, json_final;
 };
 
 #endif // FourChamberView_h
