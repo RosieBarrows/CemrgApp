@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>334</width>
-    <height>494</height>
+    <height>533</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -34,13 +34,6 @@
     <widget class="QPushButton" name="button_loaddicom">
      <property name="text">
       <string>Load DICOM</string>
-     </property>
-    </widget>
-   </item>
-   <item alignment="Qt::AlignHCenter">
-    <widget class="QPushButton" name="buttonPerformImageProcessing">
-     <property name="text">
-      <string>Ask Jose</string>
      </property>
     </widget>
    </item>
@@ -142,9 +135,9 @@
     <widget class="QPushButton" name="button_select_pts_b">
      <property name="text">
       <string>Select Points B</string>
-      </property>
-     </widget>
-    </item>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <layoutdefault spacing="6" margin="11"/>

@@ -102,7 +102,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
 
 void FourChamberView::SetFocus(){
-    // m_Controls.buttonPerformImageProcessing->setFocus();
+    // m_Controls.button_setfolder->setFocus();
 }
 
 void FourChamberView::CreateQtPartControl(QWidget *parent){
@@ -115,10 +115,9 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_ventfibres, SIGNAL(clicked()), this, SLOT(VentricularFibres()));
     connect(m_Controls.button_atrfibres, SIGNAL(clicked()), this, SLOT(AtrialFibres()));
     connect(m_Controls.button_simset, SIGNAL(clicked()), this, SLOT(SimulationSetup()));
-    connect(m_Controls.buttonPerformImageProcessing, SIGNAL(clicked()), this, SLOT(SetFocus()));
 
-    connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsA()));
-    connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsB()));
+    connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsInit()));
+    connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsSlicers()));
 
     // Set default variables and initialise objects
     m_Controls.button_loaddicom->setVisible(false);
@@ -477,17 +476,19 @@ void FourChamberView::InitialiseJsonObjects() {
     pt_keys_init = GetPointLabelOptions("init");
     QStringList init_values = QStringList(), init_types = QStringList();
     InitialiseQStringListsFromSize(pt_keys_init.size(), init_values, init_types);
+
     json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_init, init_values, init_types);
 
     pt_keys_slicers = GetPointLabelOptions("slicers");
     QStringList slicers_values = QStringList(), slicers_types = QStringList();
     InitialiseQStringListsFromSize(pt_keys_slicers.size(), slicers_values, slicers_types);
-    json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_init, slicers_values, slicers_types);
+    
+    json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_slicers, slicers_values, slicers_types);
 
     pt_keys_final = GetPointLabelOptions("final");
     QStringList final_values = QStringList(), final_types = QStringList();
     InitialiseQStringListsFromSize(pt_keys_final.size(), final_values, final_types);
-    json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_init, final_values, final_types);
+    json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_final, final_values, final_types);
 
 
 }
