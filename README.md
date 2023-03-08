@@ -1,4 +1,4 @@
-Cardiac Electromechanics Research Group App
+ardiac Electromechanics Research Group App
 -------------------------------------------
 [![Build](https://github.com/CemrgDevelopers/CemrgApp/actions/workflows/build.yml/badge.svg)](https://github.com/CemrgDevelopers/CemrgApp/actions/workflows/build.yml)
 [![Tests](https://github.com/CemrgDevelopers/CemrgApp/actions/workflows/test.yml/badge.svg)](https://github.com/CemrgDevelopers/CemrgApp/actions/workflows/test.yml)

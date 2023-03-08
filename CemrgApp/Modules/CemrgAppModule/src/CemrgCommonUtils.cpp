@@ -1837,3 +1837,65 @@ void CemrgCommonUtils::VtkPointScalarToFile(QString vtkPath, QString outPath, QS
 void CemrgCommonUtils::VtkCellScalarToFile(QString vtkPath, QString outPath, QString fieldName){
     VtkScalarToFile(vtkPath, outPath, fieldName, true);
 }
+
+QString CemrgCommonUtils::ConvertToInr(mitk::Image::Pointer image, bool convert2uint, QString dir, QString output_name){
+    if (!output_name.contains(".inr", Qt::CaseSensitive)){
+        output_name += ".inr";
+    }
+
+    if (image){
+        mitk::Point3D origin = image->GetGeometry()->GetOrigin();
+        int dimensions = image->GetDimension(0) * image->GetDimension(1) * image->GetDimension(2);
+        try {
+            if (convert2uint){
+                MITK_INFO << "Convert image to uint8_t";
+                itk::Image<uint8_t, 3>::Pointer itkImage = itk::Image<uint8_t, 3>::New();
+                mitk::CastToItkImage(image, itkImage);
+                mitk::CastToMitkImage(itkImage, image);
+            }
+
+            MITK_INFO << "Access image volume";
+            mitk::ImagePixelReadAccessor<uint8_t, 3> readAccess(image);
+            uint8_t* pv = (uint8_t*)readAccess.GetData();
+
+            MITK_INFO << "Prepare header for INR file";
+
+            char header[256] = {};
+            int bitlength = 8;
+            const char* btype = "unsigned fixed";
+            mitk::Vector3D spacing = image->GetGeometry()->GetSpacing();
+            int n = sprintf(header, "#INRIMAGE-4#{\nXDIM=%d\nYDIM=%d\nZDIM=%d\nVDIM=1\nTYPE=%s\nPIXSIZE=%d bits\nCPU=decm\nVX=%6.4f\nVY=%6.4f\nVZ=%6.4f\n", image->GetDimension(0), image->GetDimension(1), image->GetDimension(2), btype, bitlength, spacing.GetElement(0), spacing.GetElement(1), spacing.GetElement(2));
+            for (int i = n; i < 252; i++) {
+                header[i] = '\n';
+            }
+
+            header[252] = '#';
+            header[253] = '#';
+            header[254] = '}';
+            header[255] = '\n';
+
+            MITK_INFO << "Write to binary file";
+            std::string path = (dir + "/" + output_name).toStdString();
+            ofstream myFile(path, ios::out | ios::binary);
+            myFile.write((char*)header, 256 * sizeof(char));
+            myFile.write((char*)pv, dimensions * sizeof(uint8_t));
+            myFile.close();
+
+        } catch (mitk::Exception&) {
+            MITK_ERROR << "Problems creating the file";
+            return "";
+        }
+    }
+}
+
+QString CemrgCommonUtils::ConvertToInr(QString dir, QString filename, bool convert2uint, QString output_name){
+    QString path = dir + "/" + filename;
+    QFileInfo fi(path);
+    if(output_name.isEmpty()){
+        output_name = fi.baseName() + ".inr";
+    }
+
+    mitk::Image::Pointer im = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
+
+    return CemrgCommonUtils::ConvertToInr(im, convert2uint, dir, output_name);
+}
