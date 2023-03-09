@@ -1842,9 +1842,10 @@ QString CemrgCommonUtils::ConvertToInr(mitk::Image::Pointer image, bool convert2
     if (!output_name.contains(".inr", Qt::CaseSensitive)){
         output_name += ".inr";
     }
+    QString res = "";
 
     if (image){
-        mitk::Point3D origin = image->GetGeometry()->GetOrigin();
+        // mitk::Point3D origin = image->GetGeometry()->GetOrigin();
         int dimensions = image->GetDimension(0) * image->GetDimension(1) * image->GetDimension(2);
         try {
             if (convert2uint){
@@ -1881,11 +1882,14 @@ QString CemrgCommonUtils::ConvertToInr(mitk::Image::Pointer image, bool convert2
             myFile.write((char*)pv, dimensions * sizeof(uint8_t));
             myFile.close();
 
+	    res = QString::fromStdString(path);
+
         } catch (mitk::Exception&) {
             MITK_ERROR << "Problems creating the file";
             return "";
         }
     }
+    return res;
 }
 
 QString CemrgCommonUtils::ConvertToInr(QString dir, QString filename, bool convert2uint, QString output_name){
