@@ -92,6 +92,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QDirIterator>
+#include <QSignalMapper>
 #include <QDate>
 
 //CemrgAppModule
@@ -100,6 +101,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
+const QString FourChamberView::MESH_SDIR = "meshing";
+const QString FourChamberView::SEG_SDIR = "segmentations";
 
 void FourChamberView::SetFocus(){
     // m_Controls.button_setfolder->setFocus();
@@ -137,7 +140,9 @@ void FourChamberView::SetWorkingFolder(){
     if (!RequestProjectDirectoryFromUser()){
         MITK_WARN << "Folder not set. Check LOGFILE."; 
     } else{
-        MITK_INFO << "Looking for existing JSON files.";
+        MITK_INFO << "Creating folder structure.";
+        MITK_INFO(QDir().mkpath(directory + "/" + FourChamberView::SEG_SDIR)) << "Created segmentations folder";
+        MITK_INFO(QDir().mkpath(directory + "/" + FourChamberView::MESH_SDIR)) << "Created meshing folder";
     }
 }
 
@@ -203,78 +208,37 @@ void FourChamberView::LoadDICOM() {
 
 void FourChamberView::Meshing(){
 
-    if (!RequestProjectDirectoryFromUser()) return; 
+    if (!RequestProjectDirectoryFromUser()) return;
 
-    QString path = FourChamberView::directory + "/segmentations";
+    QString seg_dir = directory + "/" + FourChamberView::SEG_SDIR;
+    QString mesh_dir = directory + "/" + FourChamberView::MESH_SDIR;
     QString segname = "seg_final_smooth.nrrd";
-    path += "/" + segname;
+    QString path = seg_dir + "/" + segname;
 
-    if(QFile::exists(path)){
+    if (!QDir().mkpath(mesh_dir)) {
+        Warn("Problem with subfolder", "Problem with meshign subfolder"); 
+        return;
+    }
+
+    bool ask_to_load = true;
+    if(QFile::exists(path)) {
         std::string msg = "Load previously smoothed segmentation (" + segname.toStdString() + ")?";
         int reply = QMessageBox::question(NULL, "Question", msg.c_str());
         if(reply==QMessageBox::Yes){
             MITK_INFO << "Loading segmentation from file";
-            // do stuff! 
-        } else {
-            // retrieve the path of the segmentation after user has selected it from the UI
-            path = QFileDialog::getOpenFileName(NULL, "Open Segmentation file",
-                directory.toStdString().c_str(), QmitkIOUtil::GetFileOpenFilterString());
-        }
+            ask_to_load = false;
+        } 
+    } 
+
+    if (ask_to_load) { 
+        // retrieve the path of the segmentation after user has selected it from the UI
+        path = QFileDialog::getOpenFileName(NULL, "Open Segmentation file", seg_dir.toStdString().c_str(), QmitkIOUtil::GetFileOpenFilterString());
+        QFileInfo fi(path);
+        seg_dir = fi.absolutePath();
+        segname = fi.fileName();
     }
 
-    QString parpath = QFileDialog::getOpenFileName(NULL, "Open Parameters file (.par)",
-    directory.toStdString().c_str(), QmitkIOUtil::GetFileOpenFilterString());
-
-    // convert segmentation to inr
-    try {
-        // load segmentation 
-        mitk::Image::Pointer image = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
-        int dimensions = image->GetDimension(0) * image->GetDimension(1) * image->GetDimension(2);
-
-        //Convert image to right type
-        // itk::Image<uint8_t, 3>::Pointer itkImage = itk::Image<uint8_t, 3>::New();
-        // mitk::CastToItkImage(image, itkImage);
-        // mitk::CastToMitkImage(itkImage, image);
-
-        //Access image volume
-        mitk::ImagePixelReadAccessor<uint8_t, 3> readAccess(image);
-        uint8_t* pv = (uint8_t*)readAccess.GetData();
-
-        //Prepare header of inr file (BUGS IN RELEASE MODE DUE TO NULL TERMINATOR \0)
-        char header[256] = {};
-        int bitlength = 8;
-        const char* btype = "unsigned fixed";
-        mitk::Vector3D spacing = image->GetGeometry()->GetSpacing();
-        int n = sprintf(header, "#INRIMAGE-4#{\nXDIM=%d\nYDIM=%d\nZDIM=%d\nVDIM=1\nTYPE=%s\nPIXSIZE=%d bits\nCPU=decm\nVX=%6.4f\nVY=%6.4f\nVZ=%6.4f\n", image->GetDimension(0), image->GetDimension(1), image->GetDimension(2), btype, bitlength, spacing.GetElement(0), spacing.GetElement(1), spacing.GetElement(2));
-        for (int i = n; i < 252; i++)
-            header[i] = '\n';
-
-        header[252] = '#';
-        header[253] = '#';
-        header[254] = '}';
-        header[255] = '\n';
-
-        //Write to binary file
-        QString inr_path = directory + "/segmentations/converted.inr";
-        std::string path = inr_path.toStdString();
-        ofstream myFile(path, ios::out | ios::binary);
-        myFile.write((char*)header, 256 * sizeof(char));
-        myFile.write((char*)pv, dimensions * sizeof(uint8_t));
-        myFile.close();
-
-        // create cmd object (CemrgCommandLine) outputs to directory/meshing
-        std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
-        QString meshing_output = cmd_object->ExecuteCreateCGALMesh(directory, "meshname", parpath, inr_path, "meshing");
-
-    } catch (mitk::Exception& e) {
-        //Deal with the situation not to have access
-        qDebug() << e.GetDescription();
-        return;
-    }//_try
-    
-    MITK_INFO << path.toStdString();
-
-
+    // Possible checking of segmentation labels
     // int reply = Ask("Question", "Are these the correct labels for your segmentation?");
     // if(reply==QMessageBox::Yes){
     //     QMessageBox::information(NULL, "Answer", "OK!");
@@ -282,6 +246,37 @@ void FourChamberView::Meshing(){
     // if(reply==QMessageBox::No){
     //     QMessageBox::information(NULL, "Answer", "Manually change labels from default OR select button to provide a .json file");
     // }   
+
+    QString inr_path = CemrgCommonUtils::ConvertToInr(seg_dir, segname, true, "converted.inr");
+    if (inr_path.isEmpty()) {
+        Warn("Failed to convert segmentation", "Error converting segmentation to INR format");
+        return; 
+    }
+
+    QString parpath;
+    bool success = false;
+    int reply_par_file = Ask("Meshing", "Do you have a parameter file (.par) to load?");
+    if (reply_par_file == QMessageBox::Yes) {
+        parpath = QFileDialog::getOpenFileName(NULL, "Open parameter file (.par)",
+                directory.toStdString().c_str(), tr("Parameter file (*.par)"));
+        QFileInfo fpar(parpath);
+        if(QFile::exists(fpar.absolutePath()+"/"+fpar.baseName()+".json")){
+            LoadMeshingParametersFromJson(fpar.absolutePath(), fpar.baseName() + ".json");
+            success = true;
+        }
+    } else {
+        parpath = mesh_dir + "/heart_mesh_data.par";
+        success = UserSelectMeshtools3DParameters(inr_path);
+        PrintMeshingParameters(parpath);
+    }
+    
+    if (success) {
+        QFileInfo finr(inr_path);
+        // create cmd object (CemrgCommandLine) outputs to directory/meshing
+        std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
+        QMessageBox::information(NULL, "Attention", "This operation takes a few minutes");
+        QString meshing_output = cmd_object->ExecuteCreateCGALMesh(directory, meshing_parameters.out_name, parpath, FourChamberView::SEG_SDIR + "/" + finr.fileName(), FourChamberView::MESH_SDIR);
+    } 
 }
 
 void FourChamberView::SelectLARALandmarks(){
@@ -412,7 +407,13 @@ bool FourChamberView::RequestProjectDirectoryFromUser() {
 }
 
 int FourChamberView::Ask(std::string title, std::string msg){
+    MITK_INFO << "[USER_INPUT]" + msg;
     return QMessageBox::question(NULL, title.c_str(), msg.c_str(), QMessageBox::Yes, QMessageBox::No);
+}
+
+void FourChamberView::Warn(std::string title, std::string msg){
+    MITK_WARN << msg;
+    QMessageBox::warning(NULL, title.c_str(), msg.c_str());
 }
 
 QStringList FourChamberView::GetPointLabelOptions(QString opt) {
@@ -498,4 +499,177 @@ void FourChamberView::InitialiseQStringListsFromSize(int num, QStringList& value
         values << "0.0,0.0,0.0";
         types << "array";
     }
+}
+
+void FourChamberView::PrintMeshingParameters(QString path_to_par){
+    std::ofstream fo(path_to_par.toStdString());
+    fo << "#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -" << std::endl;
+    fo << "#Data file for meshtools3d utility"<< std::endl;
+    fo << "#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -"<< std::endl;
+    fo << "[segmentation]"<< std::endl;
+    fo << "seg_dir = " << meshing_parameters.seg_dir.toStdString() << std::endl;
+    fo << "seg_name = " << meshing_parameters.seg_name.toStdString() << std::endl;
+    fo << "mesh_from_segmentation = " << meshing_parameters.mesh_from_segmentation << std::endl;
+    fo << "boundary_relabelling = " << meshing_parameters.boundary_relabelling << std::endl;
+    fo << "[meshing]"<< std::endl;
+    fo << "facet_angle         = "<< meshing_parameters.facet_angle << std::endl;
+    fo << "facet_size          = "<< meshing_parameters.facet_size << std::endl;
+    fo << "facet_distance      = "<< meshing_parameters.facet_distance << std::endl;
+    fo << "cell_rad_edge_ratio = "<< meshing_parameters.cell_rad_edge_ratio << std::endl;
+    fo << "cell_size           = "<< meshing_parameters.cell_size << std::endl;
+    fo << "rescaleFactor       = "<< meshing_parameters.rescaleFactor << std::endl;
+    fo << "[laplacesolver]" << std::endl;
+    fo << "abs_toll        = " << meshing_parameters.abs_tol << std::endl;
+    fo << "rel_toll        = " << meshing_parameters.rel_tol << std::endl;
+    fo << "itr_max         = " << meshing_parameters.itr_max << std::endl;
+    fo << "dimKrilovSp     = " << meshing_parameters.dimKrilovSp << std::endl;
+    fo << "verbose         = " << meshing_parameters.verbose << std::endl;
+    fo << "[others]"<< std::endl;
+    fo << "eval_thickness  = " << meshing_parameters.eval_thickness << std::endl;
+    fo << "[output]"<< std::endl;
+    fo << "outdir          = " << meshing_parameters.out_dir.toStdString() << std::endl;
+    fo << "name            = " << meshing_parameters.out_name.toStdString() << std::endl;
+    fo << "out_medit       = " << meshing_parameters.out_medit << std::endl;
+    fo << "out_carp        = " << meshing_parameters.out_carp << std::endl;
+    fo << "out_carp_binary = " << meshing_parameters.out_carp_binary << std::endl;
+    fo << "out_vtk         = " << meshing_parameters.out_vtk << std::endl;
+    fo << "out_vtk_binary  = " << meshing_parameters.out_vtk_binary << std::endl;
+    fo << "out_potential   = " << meshing_parameters.out_potential << std::endl;
+    fo.close();
+
+    QStringList keys = QStringList();
+    QStringList values = QStringList();
+    QStringList types = QStringList();
+
+    QFileInfo fi(path_to_par);
+    meshing_parameters.KeysAndValues(keys, values, types);
+    QJsonObject json = CemrgCommonUtils::CreateJSONObject(keys, values, types);
+    MITK_INFO(CemrgCommonUtils::WriteJSONFile(json, fi.absolutePath(), fi.baseName() + ".json"));
+}
+
+void FourChamberView::LoadMeshingParametersFromJson(QString dir, QString json_file){
+    QJsonObject json = CemrgCommonUtils::ReadJSONFile(dir, json_file);
+    meshing_parameters.seg_dir = json["seg_dir"].toString();
+    meshing_parameters.seg_name = json["seg_name"].toString();
+    meshing_parameters.mesh_from_segmentation = json["mesh_from_segmentation"].toBool();
+    meshing_parameters.boundary_relabelling = json["boundary_relabelling"].toBool();
+    meshing_parameters.facet_angle = json["facet_angle"].toDouble();
+    meshing_parameters.facet_size = json["facet_size"].toDouble();
+    meshing_parameters.facet_distance = json["facet_distance"].toDouble();
+    meshing_parameters.cell_rad_edge_ratio = json["cell_rad_edge_ratio"].toDouble();
+    meshing_parameters.cell_size = json["cell_size"].toDouble();
+    meshing_parameters.rescaleFactor = json["rescaleFactor"].toDouble();
+    meshing_parameters.abs_tol = json["abs_tol"].toDouble();
+    meshing_parameters.rel_tol = json["rel_tol"].toDouble();
+    meshing_parameters.itr_max = json["itr_max"].toInt();
+    meshing_parameters.dimKrilovSp = json["dimKrilovSp"].toInt();
+    meshing_parameters.verbose = json["verbose"].toBool();
+    meshing_parameters.eval_thickness = json["eval_thickness"].toBool();
+    meshing_parameters.out_dir = json["out_dir"].toString();
+    meshing_parameters.out_name = json["out_name"].toString();
+    meshing_parameters.out_medit = json["out_medit"].toBool();
+    meshing_parameters.out_carp = json["out_carp"].toBool();
+    meshing_parameters.out_carp_binary = json["out_carp_binary"].toBool();
+    meshing_parameters.out_vtk = json["out_vtk"].toBool();
+    meshing_parameters.out_vtk_binary = json["out_vtk_binary"].toBool();
+    meshing_parameters.out_potential = json["out_potential"].toBool();
+}
+
+// User Select Functions 
+bool FourChamberView::UserSelectMeshtools3DParameters(QString pre_input_path){
+    bool userAccepted = false;
+    QDialog* inputs = new QDialog(0, 0);
+    QSignalMapper* signalMapper = new QSignalMapper(this);
+
+    m_m3d.setupUi(inputs);
+    connect(m_m3d.dialog_button, SIGNAL(accepted()), inputs, SLOT(accept()));
+    connect(m_m3d.dialog_button, SIGNAL(rejected()), inputs, SLOT(reject()));
+
+    connect(m_m3d.button_load_image, SIGNAL(clicked()), signalMapper, SLOT(map()));
+    signalMapper->setMapping(m_m3d.button_load_image, directory);
+    connect(signalMapper, SIGNAL(mapped(QString)), this, SLOT(M3dBrowseFile(const QString&)));
+
+    QFileInfo fi(pre_input_path);
+    m_m3d.lineEdit_input_path->setPlaceholderText(pre_input_path);
+    m_m3d.lineEdit_out_dir->setText(directory + "/" + FourChamberView::MESH_SDIR);
+
+    int dialogCode = inputs->exec();
+
+    // Act on dialog return code
+    if (dialogCode == QDialog::Accepted) {
+
+        // parse all booleans
+        meshing_parameters.eval_thickness = m_m3d.checkBox_eval_thickness->isChecked();
+
+        meshing_parameters.out_medit = m_m3d.checkBox_out_medit->isChecked();
+        meshing_parameters.out_carp = m_m3d.checkBox_out_carp->isChecked();
+        meshing_parameters.out_vtk = m_m3d.checkBox_out_vtk->isChecked();
+    
+        if (meshing_parameters.CheckFormats()){
+            QMessageBox::information(NULL, "Attention", "No output format selected.");
+            return false;
+        }
+
+        if (m_m3d.checkBox_out_binary->isChecked()) {
+            meshing_parameters.SetBinaryFormats();
+        }
+
+        // parse all strings
+        if (!m_m3d.lineEdit_input_path->text().isEmpty()) {
+            fi.setFile(m_m3d.lineEdit_input_path->text());
+        }
+        meshing_parameters.seg_dir = fi.absolutePath();
+        meshing_parameters.seg_name = fi.fileName();
+
+        meshing_parameters.out_dir = m_m3d.lineEdit_out_dir->text();
+        if (m_m3d.lineEdit_out_name->text().isEmpty()) {
+            meshing_parameters.out_name = "myocardium";
+        } else {
+            meshing_parameters.out_name = m_m3d.lineEdit_out_name->text();
+        }
+
+        // parse all numbers
+        bool ok1, ok2, ok3, ok4, ok5, ok6, ok7, ok8, ok9, ok10;
+        meshing_parameters.facet_angle = m_m3d.lineEdit_facet_angle->text().toDouble(&ok1);
+        meshing_parameters.facet_size = m_m3d.lineEdit_facet_size->text().toDouble(&ok3);
+        meshing_parameters.facet_distance = m_m3d.lineEdit_facet_dist->text().toDouble(&ok2);
+        meshing_parameters.cell_rad_edge_ratio = m_m3d.lineEdit_cell_rad_edge_ratio->text().toDouble(&ok4);
+
+        meshing_parameters.cell_size = m_m3d.lineEdit_cell_size->text().toDouble(&ok5);
+        meshing_parameters.rescaleFactor = m_m3d.lineEdit_rescaleFactor->text().toDouble(&ok6);
+
+        meshing_parameters.itr_max = m_m3d.lineEdit_itr_max->text().toInt(&ok9);
+        meshing_parameters.abs_tol = m_m3d.lineEdit_abs_tol->text().toDouble(&ok7);
+        meshing_parameters.rel_tol = m_m3d.lineEdit_rel_tol->text().toDouble(&ok8);
+        meshing_parameters.dimKrilovSp = m_m3d.lineEdit_dimKrilovSp->text().toInt(&ok10);
+
+        if (!ok1) meshing_parameters.facet_angle = 30.0;
+        if (!ok3) meshing_parameters.facet_size = 0.8;
+        if (!ok2) meshing_parameters.facet_distance = 4;
+        if (!ok4) meshing_parameters.cell_rad_edge_ratio = 2.0;
+        if (!ok5) meshing_parameters.cell_size = 0.8;
+        if (!ok6) meshing_parameters.rescaleFactor = 1000;
+        if (!ok9) meshing_parameters.itr_max = 700;
+        if (!ok7) meshing_parameters.abs_tol = 1e-6;
+        if (!ok8) meshing_parameters.rel_tol = 1e-6;
+        if (!ok10) meshing_parameters.dimKrilovSp = 500;
+
+        userAccepted = true;
+    }
+
+    return userAccepted;
+}
+
+void FourChamberView::M3dBrowseFile(const QString& dir){
+    QString titlelabel, input = "";
+    std::string msg;
+
+    msg = "Select segmentation image for meshing";
+
+    QMessageBox::information(NULL, "Attention", msg.c_str());
+    input = QFileDialog::getOpenFileName(NULL, msg.c_str(), dir, QmitkIOUtil::GetFileOpenFilterString());
+
+    QFileInfo fi(input);
+    m_m3d.lineEdit_input_path->setText(input);
+
 }

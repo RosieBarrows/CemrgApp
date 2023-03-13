@@ -140,7 +140,7 @@ QString CemrgCommandLine::ExecuteCreateCGALMesh(QString dir, QString outputName,
 
         process->setWorkingDirectory(executablePath);
         arguments << "-f" << paramsFullPath;
-        arguments << "-seg_dir" << segmentationDirectory;;
+        arguments << "-seg_dir" << segmentationDirectory;
         arguments << "-seg_name" << segmentationName;
         arguments << "-out_dir" << outputDirectory;
         arguments << "-out_name" << outputName;

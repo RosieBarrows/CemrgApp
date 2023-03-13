@@ -168,59 +168,6 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
 
-
-
-        // mitk::Point3D origin;
-
-        // MITK_INFO << ("INPUT: " + inputPath).toStdString();
-        // MITK_INFO << ("OUTPUT: " + outputPath).toStdString();
-
-        // MITK_INFO(verbose) << "Loading Image.";
-        // mitk::Image::Pointer image = mitk::IOUtil::Load<mitk::Image>(inputPath.toStdString());
-        // if (image) {
-        //     origin = image->GetGeometry()->GetOrigin();
-        //     int dimensions = image->GetDimension(0) * image->GetDimension(1) * image->GetDimension(2);
-        //     try {
-        //         if (convert2uint) {
-        //             MITK_INFO(verbose) << "Convert image to right type";
-        //             itk::Image<uint8_t, 3>::Pointer itkImage = itk::Image<uint8_t, 3>::New();
-        //             mitk::CastToItkImage(image, itkImage);
-        //             mitk::CastToMitkImage(itkImage, image);
-        //         }
-
-        //         MITK_INFO(verbose) << "Access image volume";
-        //         mitk::ImagePixelReadAccessor<uint8_t, 3> readAccess(image);
-        //         uint8_t* pv = (uint8_t*)readAccess.GetData();
-
-        //         MITK_INFO(verbose) << "Prepare header of inr file (BUGS IN RELEASE MODE DUE TO NULL TERMINATOR \0)";
-        //         char header[256] = {};
-        //         int bitlength = 8;
-        //         const char* btype = "unsigned fixed";
-        //         mitk::Vector3D spacing = image->GetGeometry()->GetSpacing();
-        //         int n = sprintf(header, "#INRIMAGE-4#{\nXDIM=%d\nYDIM=%d\nZDIM=%d\nVDIM=1\nTYPE=%s\nPIXSIZE=%d bits\nCPU=decm\nVX=%6.4f\nVY=%6.4f\nVZ=%6.4f\n", image->GetDimension(0), image->GetDimension(1), image->GetDimension(2), btype, bitlength, spacing.GetElement(0), spacing.GetElement(1), spacing.GetElement(2));
-        //         for (int i = n; i < 252; i++)
-        //             header[i] = '\n';
-
-        //         header[252] = '#';
-        //         header[253] = '#';
-        //         header[254] = '}';
-        //         header[255] = '\n';
-
-        //         MITK_INFO(verbose) << "Write to binary file";
-        //         std::string path = outputPath.toStdString();
-        //         ofstream myFile(path, ios::out | ios::binary);
-        //         myFile.write((char*)header, 256 * sizeof(char));
-        //         myFile.write((char*)pv, dimensions * sizeof(uint8_t));
-        //         myFile.close();
-
-        //     } catch (mitk::Exception&) {
-        //         MITK_ERROR << "Problems creating the file";
-        //         return EXIT_FAILURE;
-        //     }
-        // } else {
-        //     MITK_INFO << "Problem loading image.";
-        // }
-
         MITK_INFO(verbose) << "Goodbye!";
     } catch (const std::exception &e) {
         MITK_ERROR << e.what();
