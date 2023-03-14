@@ -30,18 +30,23 @@ PURPOSE.  See the above copyright notices for more information.
 #include "mitkInternalEvent.h"
 #include "mitkMouseMoveEvent.h"
 #include "mitkRenderingManager.h"
+#include "mitkInteractionPositionEvent.h"
 #include <mitkPointOperation.h>
 //
 #include "mitkBaseRenderer.h"
 #include "mitkDispatcher.h"
 #include <mitkPropertyList.h>
 
+#include <QFileInfo>
+#include <QString>
+
+#include "CemrgCommonUtils.h"
 
 CemrgDataInteractor::CemrgDataInteractor(){
 
 }
 
-void CemrgDataInteractor::Initialise(QStringList &options) {
+void CemrgDataInteractor::Initialise(QStringList &options, QString path_to_file) {
     m_dialog = new QDialog(0,0);
     m_dialog->setWindowTitle("User input");
 
@@ -50,6 +55,8 @@ void CemrgDataInteractor::Initialise(QStringList &options) {
 
     QObject::connect(m_controls.m_ok_cancel_button, SIGNAL(accepted()), m_dialog, SLOT(accept()));
     QObject::connect(m_controls.m_ok_cancel_button, SIGNAL(rejected()), m_dialog, SLOT(reject()));
+
+    path_to_json = path_to_file;
 }
 
 CemrgDataInteractor::~CemrgDataInteractor() {
@@ -68,11 +75,31 @@ void CemrgDataInteractor::AddPoint(mitk::StateMachineAction *, mitk::Interaction
     }
 
     QString option = m_controls.m_comboBox->currentText();
+    m_controls.m_comboBox->removeItem(m_controls.m_comboBox->currentIndex());
 
     // Add the new point with the label and option
     Superclass::AddPoint(nullptr, interactionEvent);
-    mitk::Point3D new_pt = GetLastPoint();
-    
-    // new_pt->SetStringProperty("option", option.toStdString());
-    std::cout << "LABEL, " << option.toStdString() << "(" << new_pt[0] << "," << new_pt[1] << "," << new_pt[2] << ")" << std::endl;
+    mitk::Point3D new_pt = GetLastPoint(interactionEvent);
+
+    QFileInfo fi(path_to_json);
+    bool fileExists = fi.exists();
+
+    QString pt_str = QString::number(new_pt[0]) + "," + QString::number(new_pt[1]) + "," + QString::number(new_pt[2]);
+    MITK_INFO << ("POINT: " + pt_str).toStdString();
+
+    if (fileExists) {
+        MITK_INFO(CemrgCommonUtils::ModifyJSONFile(fi.absolutePath(), fi.fileName(), option, pt_str, "array")) << "Added point to file";
+    }
+}
+
+mitk::Point3D CemrgDataInteractor::GetLastPoint(mitk::InteractionEvent *interactionEvent) {
+    mitk::InteractionPositionEvent *positionEvent = dynamic_cast<mitk::InteractionPositionEvent*>(interactionEvent);
+    mitk::Point3D res;
+    if(positionEvent == nullptr){
+        std::cout << "position event not captured" << std::endl;
+        res.Fill(0.0);
+    } else {
+        res = positionEvent->GetPositionInWorld();
+    }
+    return res;
 }

@@ -101,6 +101,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
+const QString FourChamberView::POINTS_FILE = "points.json";
 const QString FourChamberView::MESH_SDIR = "meshing";
 const QString FourChamberView::SEG_SDIR = "segmentations";
 
@@ -119,14 +120,19 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_atrfibres, SIGNAL(clicked()), this, SLOT(AtrialFibres()));
     connect(m_Controls.button_simset, SIGNAL(clicked()), this, SLOT(SimulationSetup()));
 
-    connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsInit()));
+    connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsCylinders()));
     connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsSlicers()));
+    connect(m_Controls.button_select_pts_c, SIGNAL(clicked()), this, SLOT(SelectPointsValvePlains()));
 
     // Set default variables and initialise objects
     m_Controls.button_loaddicom->setVisible(false);
     m_Controls.button_extractsurfs->setVisible(false);
     m_Controls.button_uvclandmarks->setVisible(false);
     m_Controls.button_calcuvcs->setVisible(false);
+
+    m_Controls.button_select_pts_a->setVisible(false);
+    m_Controls.button_select_pts_b->setVisible(false);
+    m_Controls.button_select_pts_c->setVisible(false);
 
     InitialiseJsonObjects();
 }
@@ -139,10 +145,26 @@ void FourChamberView::OnSelectionChanged(
 void FourChamberView::SetWorkingFolder(){
     if (!RequestProjectDirectoryFromUser()){
         MITK_WARN << "Folder not set. Check LOGFILE."; 
-    } else{
+    } else{ // folder set successfully
+
         MITK_INFO << "Creating folder structure.";
         MITK_INFO(QDir().mkpath(directory + "/" + FourChamberView::SEG_SDIR)) << "Created segmentations folder";
         MITK_INFO(QDir().mkpath(directory + "/" + FourChamberView::MESH_SDIR)) << "Created meshing folder";
+
+        MITK_INFO << "Checking for existing points.json file";
+        QFileInfo fi(directory + "/" + FourChamberView::POINTS_FILE);
+
+        if (fi.exists()){
+            int reply_load_json = Ask( "Attention" ,"Load previously found points file?");
+            if (reply_load_json == QMessageBox::Yes){
+                json_points = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
+            } else {
+                QMessageBox::information(NULL, "Attention", "Overwriting points.json file");
+            }
+        }
+
+        points_file_loaded = CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);
+        
     }
 }
 
@@ -206,6 +228,27 @@ void FourChamberView::LoadDICOM() {
     }//_if
 }
 
+void FourChamberView::PrepareSegmentation() {
+    int reply = Ask("Question", "Is this the segmentation you would like to use to create your heart model?");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK!");
+    }
+
+    if (m_Controls.button_select_pts_a->isVisible()){
+
+        m_Controls.button_select_pts_a->setVisible(false);
+        m_Controls.button_select_pts_b->setVisible(false);
+        m_Controls.button_select_pts_c->setVisible(false);
+
+    } else {
+        m_Controls.button_select_pts_a->setVisible(true);
+        m_Controls.button_select_pts_b->setVisible(true);
+        m_Controls.button_select_pts_c->setVisible(true);
+    }
+
+}
+
+
 void FourChamberView::Meshing(){
 
     if (!RequestProjectDirectoryFromUser()) return;
@@ -237,15 +280,6 @@ void FourChamberView::Meshing(){
         seg_dir = fi.absolutePath();
         segname = fi.fileName();
     }
-
-    // Possible checking of segmentation labels
-    // int reply = Ask("Question", "Are these the correct labels for your segmentation?");
-    // if(reply==QMessageBox::Yes){
-    //     QMessageBox::information(NULL, "Answer", "OK!");
-    // }
-    // if(reply==QMessageBox::No){
-    //     QMessageBox::information(NULL, "Answer", "Manually change labels from default OR select button to provide a .json file");
-    // }   
 
     QString inr_path = CemrgCommonUtils::ConvertToInr(seg_dir, segname, true, "converted.inr");
     if (inr_path.isEmpty()) {
@@ -342,13 +376,6 @@ void FourChamberView::UVCs(){
     }
 }
 
-void FourChamberView::PrepareSegmentation(){
-    int reply = Ask("Question", "Is this the segmentation you would like to use to create your heart model?");
-    if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK!");
-    }
-}
-
 void FourChamberView::CalculateUVCs(){
     int reply = Ask("Question", "Placeholder");
     if(reply==QMessageBox::Yes){
@@ -356,16 +383,40 @@ void FourChamberView::CalculateUVCs(){
     }
 }
 
-void FourChamberView::SelectPointsInit() {
-    CreateInteractorWithOptions("init");
+void FourChamberView::SelectPointsCylinders() {
+    if (m_Controls.button_select_pts_a->text() == "Points for Cylinders") {
+        CreateInteractorWithOptions(ManualPointsType::CYLINDERS);
+        m_Controls.button_select_pts_a->setText("Run Scripts for Cylinders");
+    }
+    else {
+        // Run cylinders script
+        QMessageBox::information(NULL, "Attention", "Running Scripts for Cylinders");
+        m_Controls.button_select_pts_a->setEnabled(false);
+    }
 }
 
 void FourChamberView::SelectPointsSlicers() {
-    CreateInteractorWithOptions("slicers");
+    if (m_Controls.button_select_pts_b->text() == "Points for Slicers") {
+        CreateInteractorWithOptions(ManualPointsType::SLICERS);
+        m_Controls.button_select_pts_b->setText("Run Scripts for Slicers");
+    }
+    else {
+        // Run Slicers script
+        QMessageBox::information(NULL, "Attention", "Running Scripts for Slicers");
+        m_Controls.button_select_pts_b->setEnabled(false);
+    }
 }
 
-void FourChamberView::SelectPointsFinal(){
-    CreateInteractorWithOptions("final");
+void FourChamberView::SelectPointsValvePlains(){
+    if (m_Controls.button_select_pts_c->text() == "Points for Valve Plains") {
+        CreateInteractorWithOptions(ManualPointsType::VALVE_PLAINS);
+        m_Controls.button_select_pts_c->setText("Run Scripts for Valve Plains");
+    }
+    else {
+        // Run Valve Plains script
+        QMessageBox::information(NULL, "Attention", "Running Scripts for Valve Plains");
+        m_Controls.button_select_pts_c->setEnabled(false);
+    }
 }
 
 // helper
@@ -416,82 +467,67 @@ void FourChamberView::Warn(std::string title, std::string msg){
     QMessageBox::warning(NULL, title.c_str(), msg.c_str());
 }
 
-QStringList FourChamberView::GetPointLabelOptions(QString opt) {
+QStringList FourChamberView::GetPointLabelOptions(ManualPointsType mpt) {
     QStringList res = QStringList();
-    if (opt == "init") {
-        res  << "SVC_1"  
-             << "SVC_2"  
-             << "SVC_3"  
-             << "IVC_1"  
-             << "IVC_2"  
-             << "IVC_3"  
-             << "Ao_1"  
-             << "Ao_2"  
-             << "Ao_3"  
-             << "PArt_1"  
-             << "PArt_2"  
-             << "PArt_3";
+
+    switch (mpt) {
+        case ManualPointsType::CYLINDERS :
+            res  << "SVC_1" << "SVC_2" << "SVC_3"  
+                 << "IVC_1" << "IVC_2" << "IVC_3"  
+                 << "Ao_1"  << "Ao_2"  << "Ao_3"  
+                 << "PArt_1" << "PArt_2" << "PArt_3";
+            break;
+
+        case ManualPointsType::SLICERS : 
+            res << "SVC_slicer_1" << "SVC_slicer_2" << "SVC_slicer_3" << "SVC_tip"
+                << "IVC_slicer_1" << "IVC_slicer_2" << "IVC_slicer_3" << "IVC_tip"
+                << "Ao_tip" << "PArt_tip";
+            break;
+
+        case ManualPointsType::VALVE_PLAINS :
+            res << "Ao_WT_tip" << "PArt_WT_tip";
+            break;
+        default:
+            break;
+        return res;
     }
-    else if (opt == "slicers") {
-        res << "SVC_slicer_1"
-            << "SVC_slicer_2"
-            << "SVC_slicer_3"
-            << "SVC_tip"
-            << "IVC_slicer_1"
-            << "IVC_slicer_2"
-            << "IVC_slicer_3"
-            << "IVC_tip"
-            << "Ao_tip"
-            << "PArt_tip";
-    }else if (opt == "final") {
-        res << "Ao_WT_tip"
-            << "PArt_WT_tip";
-    }
+
     return res;
 }
 
-void FourChamberView::CreateInteractorWithOptions(QString opt) {
-    QStringList opts = GetPointLabelOptions(opt);
+void FourChamberView::CreateInteractorWithOptions(ManualPointsType mpt) {
+
+    if (!RequestProjectDirectoryFromUser()) return;
+
+    QStringList opts = GetPointLabelOptions(mpt);
+    QString opt = GetPointTypeString(mpt);
+
     std::string pset_name = (opt + "_point_set").toStdString();
 
     // Create pointset
     mitk::PointSet::Pointer pset = mitk::PointSet::New();
-    // pset->SetName(pset_name);
-    
-    // create node
-    mitk::DataNode::Pointer node = mitk::DataNode::New();
-    node->SetData(pset);
-    node->SetName(pset_name);
-    node->SetVisibility(true);
-    
+    CemrgCommonUtils::AddToStorage(pset, pset_name, this->GetDataStorage(), false);
+
+    QMessageBox::information(NULL, "Controls", "SHIFT + Left Click to add points");
+
     CemrgDataInteractor::Pointer m_interactor = CemrgDataInteractor::New();
-    m_interactor->Initialise(opts);
+    m_interactor->Initialise(opts, directory + "/" + FourChamberView::POINTS_FILE);
     m_interactor->LoadStateMachine("PointSet.xml");
     m_interactor->SetEventConfig("PointSetConfig.xml");
-    m_interactor->SetDataNode(node);
-    
+    m_interactor->SetDataNode(this->GetDataStorage()->GetNamedNode(pset_name.c_str()));
 }
 
 void FourChamberView::InitialiseJsonObjects() {
 
-    pt_keys_init = GetPointLabelOptions("init");
-    QStringList init_values = QStringList(), init_types = QStringList();
-    InitialiseQStringListsFromSize(pt_keys_init.size(), init_values, init_types);
+    QStringList pt_keys = GetPointLabelOptions(ManualPointsType::CYLINDERS);
+    pt_keys.append(GetPointLabelOptions(ManualPointsType::SLICERS));
+    pt_keys.append(GetPointLabelOptions(ManualPointsType::VALVE_PLAINS));
 
-    json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_init, init_values, init_types);
+    QStringList values = QStringList(), types = QStringList();
+    InitialiseQStringListsFromSize(pt_keys.size(), values, types);
 
-    pt_keys_slicers = GetPointLabelOptions("slicers");
-    QStringList slicers_values = QStringList(), slicers_types = QStringList();
-    InitialiseQStringListsFromSize(pt_keys_slicers.size(), slicers_values, slicers_types);
+    json_points = CemrgCommonUtils::CreateJSONObject(pt_keys, values, types);
     
-    json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_slicers, slicers_values, slicers_types);
-
-    pt_keys_final = GetPointLabelOptions("final");
-    QStringList final_values = QStringList(), final_types = QStringList();
-    InitialiseQStringListsFromSize(pt_keys_final.size(), final_values, final_types);
-    json_init = CemrgCommonUtils::CreateJSONObject(pt_keys_final, final_values, final_types);
-
-
 }
 
 void FourChamberView::InitialiseQStringListsFromSize(int num, QStringList& values, QStringList& types) {
@@ -573,6 +609,26 @@ void FourChamberView::LoadMeshingParametersFromJson(QString dir, QString json_fi
     meshing_parameters.out_vtk = json["out_vtk"].toBool();
     meshing_parameters.out_vtk_binary = json["out_vtk_binary"].toBool();
     meshing_parameters.out_potential = json["out_potential"].toBool();
+}
+
+QString FourChamberView::GetPointTypeString(ManualPointsType mpt) {
+    QString res;
+    switch (mpt) {
+        case ManualPointsType::CYLINDERS :
+            res = "Cylinders";
+            break;
+        case ManualPointsType::SLICERS :
+            res = "Slicers";
+            break;
+        case ManualPointsType::VALVE_PLAINS :
+            res = "ValvePlains";
+            break;
+        default:
+            res = "";
+            break;
+    }
+
+    return res;
 }
 
 // User Select Functions 

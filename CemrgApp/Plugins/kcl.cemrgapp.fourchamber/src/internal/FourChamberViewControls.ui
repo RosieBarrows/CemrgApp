@@ -57,6 +57,27 @@
      </property>
     </widget>
    </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_select_pts_a">
+     <property name="text">
+      <string>Points for Cylinders</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_select_pts_b">
+     <property name="text">
+      <string>Points to Crop</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_select_pts_c">
+     <property name="text">
+      <string>Points for Valve Plains</string>
+     </property>
+    </widget>
+   </item>
    <item>
     <widget class="QPushButton" name="button_meshing">
      <property name="styleSheet">
@@ -131,20 +152,6 @@
      </property>
      <property name="text">
       <string>   Step 7: Simulation set-up</string>
-     </property>
-    </widget>
-   </item>
-   <item alignment="Qt::AlignHCenter">
-    <widget class="QPushButton" name="button_select_pts_a">
-     <property name="text">
-      <string>Select Points A</string>
-     </property>
-    </widget>
-   </item>
-   <item alignment="Qt::AlignHCenter">
-    <widget class="QPushButton" name="button_select_pts_b">
-     <property name="text">
-      <string>Select Points B</string>
      </property>
     </widget>
    </item>

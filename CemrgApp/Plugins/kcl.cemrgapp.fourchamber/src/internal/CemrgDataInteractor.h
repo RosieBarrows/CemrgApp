@@ -41,8 +41,8 @@ public:
     itkFactorylessNewMacro(Self)
     CemrgDataInteractor();
 
-    void Initialise(QStringList &options);
-    inline mitk::Point3D GetLastPoint() { return Superclass::m_LastPoint; };
+    void Initialise(QStringList &options, QString path_to_file="");
+    mitk::Point3D GetLastPoint(mitk::InteractionEvent *interactionEvent);
 
 protected:
     virtual ~CemrgDataInteractor();
@@ -52,4 +52,5 @@ protected:
 private:
     Ui::FourChamberViewPointLabelSelect m_controls;
     QDialog *m_dialog;
+    QString path_to_json;
 };

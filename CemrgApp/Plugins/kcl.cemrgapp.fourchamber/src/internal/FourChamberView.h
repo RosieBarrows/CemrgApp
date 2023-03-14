@@ -136,6 +136,8 @@ struct M3DParameters {
 
 };
 
+
+enum ManualPointsType { CYLINDERS, SLICERS, VALVE_PLAINS };
 /**
   \brief FourChamberView
 
@@ -151,6 +153,7 @@ class FourChamberView : public QmitkAbstractView {
 
 public:
     static const std::string VIEW_ID;
+    static const QString POINTS_FILE;
     static const QString MESH_SDIR;
     static const QString SEG_SDIR;
     // helper functions
@@ -159,10 +162,11 @@ public:
     void Warn(std::string title, std::string msg);
     void PrintMeshingParameters(QString path_to_par);
     void LoadMeshingParametersFromJson(QString dir, QString json_file);
+    QString GetPointTypeString(ManualPointsType mpt);
 
     void InitialiseJsonObjects();
-    QStringList GetPointLabelOptions(QString opt);
-    void CreateInteractorWithOptions(QString opts);
+    QStringList GetPointLabelOptions(ManualPointsType mpt);
+    void CreateInteractorWithOptions(ManualPointsType mpt);
     void InitialiseQStringListsFromSize(int num, QStringList &values, QStringList &types);
 
     // User Select Functions
@@ -171,6 +175,7 @@ public:
     // inline means they're defined here, not in the cpp file
     inline QString Path(QString fnameExt = "") {return (directory + "/" + fnameExt); };
     inline std::string StdStringPath(QString fnameExt=""){return (Path(fnameExt).toStdString());};
+    
 
 protected slots:
     // here you add the functions that willl be linked to buttons
@@ -187,9 +192,9 @@ protected slots:
     void SelectLARALandmarks();
     void CalculateUVCs();
 
-    void SelectPointsInit();
+    void SelectPointsCylinders();
     void SelectPointsSlicers();
-    void SelectPointsFinal();
+    void SelectPointsValvePlains();
 
     void M3dBrowseFile(const QString &dir);
 
@@ -209,7 +214,8 @@ private:
     // put here the things which belong to the class, like working folder name, etc
     QString fileName, directory, current_seg_name;
     QStringList pt_keys_init, pt_keys_slicers, pt_keys_final;
-    QJsonObject json_init, json_slicers, json_final;
+    QJsonObject json_points; // keeps all the points available
+    bool points_file_loaded; // keeps track if points.json has been loaded
 
     M3DParameters meshing_parameters;
 };
