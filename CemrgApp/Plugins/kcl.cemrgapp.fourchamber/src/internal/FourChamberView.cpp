@@ -102,6 +102,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
 const QString FourChamberView::POINTS_FILE = "points.json";
+const QString FourChamberView::GEOMETRY_FILE = "geometry.json";
 const QString FourChamberView::MESH_SDIR = "meshing";
 const QString FourChamberView::SEG_SDIR = "segmentations";
 
@@ -120,19 +121,24 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_atrfibres, SIGNAL(clicked()), this, SLOT(AtrialFibres()));
     connect(m_Controls.button_simset, SIGNAL(clicked()), this, SLOT(SimulationSetup()));
 
+    connect(m_Controls.button_loaddicom, SIGNAL(clicked()), this, SLOT(LoadDICOM()));
+    connect(m_Controls.button_origin_spacing, SIGNAL(clicked()), this, SLOT((GetOriginSpacing())));
     connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsCylinders()));
     connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsSlicers()));
     connect(m_Controls.button_select_pts_c, SIGNAL(clicked()), this, SLOT(SelectPointsValvePlains()));
 
     // Set default variables and initialise objects
     m_Controls.button_loaddicom->setVisible(false);
-    m_Controls.button_extractsurfs->setVisible(false);
-    m_Controls.button_uvclandmarks->setVisible(false);
-    m_Controls.button_calcuvcs->setVisible(false);
+    m_Controls.button_origin_spacing->setVisible(false);
 
     m_Controls.button_select_pts_a->setVisible(false);
     m_Controls.button_select_pts_b->setVisible(false);
     m_Controls.button_select_pts_c->setVisible(false);
+
+    m_Controls.button_extractsurfs->setVisible(false);
+    m_Controls.button_uvclandmarks->setVisible(false);
+    m_Controls.button_calcuvcs->setVisible(false);
+
 
     InitialiseJsonObjects();
 }
@@ -164,7 +170,8 @@ void FourChamberView::SetWorkingFolder(){
         }
 
         points_file_loaded = CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);
-        
+        m_Controls.button_loaddicom->setVisible(true);
+        m_Controls.button_origin_spacing->setVisible(true);
     }
 }
 
@@ -226,6 +233,35 @@ void FourChamberView::LoadDICOM() {
         this->GetSite()->GetPage()->OpenEditor(input, editor_id);
 
     }//_if
+}
+
+void FourChamberView::GetOriginSpacing() {
+//Check for selection of images
+    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+    if (nodes.size() != 1) {
+        Warn("Attention", "Please load and select only the DICOM image from the Data Manager to convert!");
+        return;
+    }//_if
+
+    if (!RequestProjectDirectoryFromUser()) return; // if the path was chosen incorrectly -> returns.
+
+    mitk::BaseData::Pointer data = nodes[0]->GetData();
+    if (data) {
+        mitk::Image::Pointer image = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (image) {
+            image->GetGeometry()->GetOrigin().ToArray(origin);
+            image->GetGeometry()->GetSpacing().ToArray(spacing);
+
+            QString origin_str = QString::number(origin[0]) + "," + QString::number(origin[1]) + "," + QString::number(origin[2]);
+            QString spacing_str = QString::number(spacing[0]) + "," + QString::number(spacing[1]) + "," + QString::number(spacing[2]);
+
+            QJsonObject geom_json = CemrgCommonUtils::CreateJSONObject({"origin", "spacing"}, {origin_str, spacing_str}, {"array", "array"});
+            CemrgCommonUtils::WriteJSONFile(geom_json, directory, FourChamberView::GEOMETRY_FILE);
+
+            MITK_INFO << ("Origin: (" + origin_str + ")").toStdString();
+            MITK_INFO << ("Spacing: (" + spacing_str + ")").toStdString();
+        }
+    }
 }
 
 void FourChamberView::PrepareSegmentation() {

@@ -154,6 +154,7 @@ class FourChamberView : public QmitkAbstractView {
 public:
     static const std::string VIEW_ID;
     static const QString POINTS_FILE;
+    static const QString GEOMETRY_FILE;
     static const QString MESH_SDIR;
     static const QString SEG_SDIR;
     // helper functions
@@ -188,6 +189,7 @@ protected slots:
     void SimulationSetup();
 
     void LoadDICOM();
+    void GetOriginSpacing();
     void ExtractSurfaces();
     void SelectLARALandmarks();
     void CalculateUVCs();
@@ -218,6 +220,7 @@ private:
     bool points_file_loaded; // keeps track if points.json has been loaded
 
     M3DParameters meshing_parameters;
+    double origin[3], spacing[3];
 };
 
 #endif // FourChamberView_h
