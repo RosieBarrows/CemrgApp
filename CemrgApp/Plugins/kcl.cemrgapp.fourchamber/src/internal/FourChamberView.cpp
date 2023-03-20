@@ -122,18 +122,22 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_simset, SIGNAL(clicked()), this, SLOT(SimulationSetup()));
 
     connect(m_Controls.button_loaddicom, SIGNAL(clicked()), this, SLOT(LoadDICOM()));
-    connect(m_Controls.button_origin_spacing, SIGNAL(clicked()), this, SLOT((GetOriginSpacing())));
+    connect(m_Controls.button_origin_spacing, SIGNAL(clicked()), this, SLOT(GetOriginSpacing()));
+    connect(m_Controls.button_splitpulms, SIGNAL(clicked()), this, SLOT(SplitPulmVeins()));
     connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsCylinders()));
     connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsSlicers()));
     connect(m_Controls.button_select_pts_c, SIGNAL(clicked()), this, SLOT(SelectPointsValvePlains()));
+    connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
 
     // Set default variables and initialise objects
     m_Controls.button_loaddicom->setVisible(false);
     m_Controls.button_origin_spacing->setVisible(false);
+    m_Controls.button_splitpulms->setVisible(false);
 
     m_Controls.button_select_pts_a->setVisible(false);
     m_Controls.button_select_pts_b->setVisible(false);
     m_Controls.button_select_pts_c->setVisible(false);
+    m_Controls.button_corrections->setVisible(false);
 
     m_Controls.button_extractsurfs->setVisible(false);
     m_Controls.button_uvclandmarks->setVisible(false);
@@ -277,9 +281,11 @@ void FourChamberView::PrepareSegmentation() {
         m_Controls.button_select_pts_c->setVisible(false);
 
     } else {
+        m_Controls.button_splitpulms->setVisible(true);
         m_Controls.button_select_pts_a->setVisible(true);
         m_Controls.button_select_pts_b->setVisible(true);
         m_Controls.button_select_pts_c->setVisible(true);
+        m_Controls.button_corrections->setVisible(true);
     }
 
 }
@@ -416,6 +422,20 @@ void FourChamberView::CalculateUVCs(){
     int reply = Ask("Question", "Placeholder");
     if(reply==QMessageBox::Yes){
         QMessageBox::information(NULL, "Answer", "OK!");
+    }
+}
+
+void FourChamberView::SplitPulmVeins(){
+    int reply = Ask("Question", "Placeholder");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK!");
+    }
+}
+
+void FourChamberView::Corrections(){
+    int reply = Ask("Question", "Does your segmentation require any of the following corrections? List options here.");
+    if(reply==QMessageBox::Yes){
+        QMessageBox::information(NULL, "Answer", "OK, thanks!");
     }
 }
 

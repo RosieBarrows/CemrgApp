@@ -194,9 +194,11 @@ protected slots:
     void SelectLARALandmarks();
     void CalculateUVCs();
 
+    void SplitPulmVeins();
     void SelectPointsCylinders();
     void SelectPointsSlicers();
     void SelectPointsValvePlains();
+    void Corrections();
 
     void M3dBrowseFile(const QString &dir);
 
