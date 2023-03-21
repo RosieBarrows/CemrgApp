@@ -150,12 +150,10 @@ QString CemrgCommandLine::ExecuteCreateCGALMesh(QString dir, QString outputName,
         MITK_WARN << "MeshTools3D libraries not found. Please make sure the M3DLib folder is inside the directory:\n\t" + mitk::IOUtil::GetProgramPath();
     }//_if
 
-    //Setup EnVariable - in windows TBB_NUM_THREADS should be set in the system environment variables
-#ifndef _WIN32
+    //Setup EnVariable - TBB_NUM_THREADS should be set in the system environment variables
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert("TBB_NUM_THREADS","12");
     process->setProcessEnvironment(env);
-#endif
 
     bool successful = ExecuteCommand(executableName, arguments, outAbsolutePath);
     if (!successful) {
@@ -1089,6 +1087,40 @@ void CemrgCommandLine::DockerCleanMeshQuality(QString dir, QString meshname, QSt
     // return outAbsolutePath;
 }
 
+QString CemrgCommandLine::DockerCctaMultilabelSegmentation(QString dir, QString path_to_f, bool saveas_nifti) {
+    SetDockerImage("cemrg/ccta:latest");
+    QString executablePath = "";
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+    QString executableName = executablePath + "docker";
+
+    QDir home(dir);
+    QFileInfo fi(path_to_f);
+    QString outname = fi.baseName();
+    outname += "_label_maps.nii.gz";
+
+    QStringList arguments = GetDockerArguments(home.absolutePath());
+    arguments << "--filename" << home.relativeFilePath(path_to_f);
+    arguments << "--device" << "cpu";
+    if (saveas_nifti) {
+        arguments << "--saveas-nifti";
+    }
+
+    QString outPath = home.absolutePath() + "/" + outname;
+
+    bool successful = ExecuteCommand(executableName, arguments, outPath);
+
+    QString res="";
+    if (successful) {
+        MITK_INFO << "Successful mutilabel segmentation";
+        res = outPath;
+    } else {
+        MITK_WARN << "Unsuccessful multilabel segmentation";
+    }
+
+    return res;
+}
 
 /***************************************************************************
  *********************** Docker Helper Functions ***************************

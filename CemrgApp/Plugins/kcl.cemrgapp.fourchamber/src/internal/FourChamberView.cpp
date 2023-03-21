@@ -52,12 +52,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QmitkIOUtil.h>
 #include <mitkProgressBar.h>
 #include <mitkIDataStorageService.h>
-#include <mitkNodePredicateNot.h>
-#include <mitkNodePredicateProperty.h>
+// #include <mitkNodePredicateNot.h>
+// #include <mitkNodePredicateProperty.h>
 #include <mitkDataStorageEditorInput.h>
 #include <mitkImageCast.h>
 #include <mitkITKImageImport.h>
 #include <mitkImagePixelReadAccessor.h>
+#include <mitkLabelSetImage.h>
 
 //VTK
 #include <vtkFieldData.h>
@@ -101,10 +102,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
+// JSON pre-determined filenames
 const QString FourChamberView::POINTS_FILE = "points.json";
 const QString FourChamberView::GEOMETRY_FILE = "geometry.json";
-const QString FourChamberView::MESH_SDIR = "meshing";
-const QString FourChamberView::SEG_SDIR = "segmentations";
 
 void FourChamberView::SetFocus(){
     // m_Controls.button_setfolder->setFocus();
@@ -123,6 +123,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
 
     connect(m_Controls.button_loaddicom, SIGNAL(clicked()), this, SLOT(LoadDICOM()));
     connect(m_Controls.button_origin_spacing, SIGNAL(clicked()), this, SLOT(GetOriginSpacing()));
+    connect(m_Controls.button_segment_image, SIGNAL(clicked()), this, SLOT(SegmentImgs()));
     connect(m_Controls.button_splitpulms, SIGNAL(clicked()), this, SLOT(SplitPulmVeins()));
     connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsCylinders()));
     connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsSlicers()));
@@ -132,8 +133,9 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     // Set default variables and initialise objects
     m_Controls.button_loaddicom->setVisible(false);
     m_Controls.button_origin_spacing->setVisible(false);
-    m_Controls.button_splitpulms->setVisible(false);
+    m_Controls.button_segment_image->setVisible(false);
 
+    m_Controls.button_splitpulms->setVisible(false);
     m_Controls.button_select_pts_a->setVisible(false);
     m_Controls.button_select_pts_b->setVisible(false);
     m_Controls.button_select_pts_c->setVisible(false);
@@ -158,8 +160,10 @@ void FourChamberView::SetWorkingFolder(){
     } else{ // folder set successfully
 
         MITK_INFO << "Creating folder structure.";
-        MITK_INFO(QDir().mkpath(directory + "/" + FourChamberView::SEG_SDIR)) << "Created segmentations folder";
-        MITK_INFO(QDir().mkpath(directory + "/" + FourChamberView::MESH_SDIR)) << "Created meshing folder";
+        QStringList qsl = SDIR.Subdirectories();
+        for (int ix=0; ix < qsl.size(); ix++) {
+            MITK_INFO(QDir().mkpath(directory + "/" + qsl.at(ix))) << ("Folder created: [" + qsl.at(ix) + "]");
+        }
 
         MITK_INFO << "Checking for existing points.json file";
         QFileInfo fi(directory + "/" + FourChamberView::POINTS_FILE);
@@ -176,6 +180,7 @@ void FourChamberView::SetWorkingFolder(){
         points_file_loaded = CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);
         m_Controls.button_loaddicom->setVisible(true);
         m_Controls.button_origin_spacing->setVisible(true);
+        m_Controls.button_segment_image->setVisible(true);
     }
 }
 
@@ -268,11 +273,44 @@ void FourChamberView::GetOriginSpacing() {
     }
 }
 
+void FourChamberView::SegmentImgs() {
+   int reply_load = Ask("Question", "Do you have a segmentation to load?");
+   QString path = "";
+   if (reply_load == QMessageBox::Yes) {
+       path = QFileDialog::getOpenFileName(NULL, "Open Segmentation File", StdStringPath(SDIR.SEG).c_str(), QmitkIOUtil::GetFileOpenFilterString());
+
+   } else if (reply_load == QMessageBox::No) {
+       QMessageBox::information(NULL, "Attention", "Creating Multilabel Segmentation From CT data.\nSelect DICOM folder");
+       QString dicom_folder = QFileDialog::getExistingDirectory(NULL, "Open DICOM folder",
+            StdStringPath().c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
+
+       if (dicom_folder.isEmpty()) return;
+
+       int reply_saveas = Ask("Question", "Do you want to save the DICOM as NIFTI?");
+       std::unique_ptr<CemrgCommandLine> cmd(new CemrgCommandLine());
+       cmd->SetUseDockerContainers(true);
+       path = cmd->DockerCctaMultilabelSegmentation(Path(SDIR.SEG), dicom_folder, (reply_saveas==QMessageBox::Yes));
+   }
+
+   if (path.isEmpty()) return;
+
+   QFileInfo fi(path);
+   mitk::Image::Pointer im = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
+   try {
+       mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
+       mlseg->InitializeByLabeledImage(im);
+       CemrgCommonUtils::AddToStorage(mlseg, fi.baseName().toStdString(), this->GetDataStorage());
+       mlseg->Modified();
+   } catch (mitk::Exception &e) {
+       MITK_ERROR << "Exception caught: " << e.GetDescription();
+       CemrgCommonUtils::AddToStorage(im, fi.baseName().toStdString(), this->GetDataStorage());
+   }
+
+}
+
 void FourChamberView::PrepareSegmentation() {
-    int reply = Ask("Question", "Is this the segmentation you would like to use to create your heart model?");
-    if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK!");
-    }
+
+    if (!RequestProjectDirectoryFromUser()) return;
 
     if (m_Controls.button_select_pts_a->isVisible()){
 
@@ -295,8 +333,8 @@ void FourChamberView::Meshing(){
 
     if (!RequestProjectDirectoryFromUser()) return;
 
-    QString seg_dir = directory + "/" + FourChamberView::SEG_SDIR;
-    QString mesh_dir = directory + "/" + FourChamberView::MESH_SDIR;
+    QString seg_dir = Path(SDIR.SEG);
+    QString mesh_dir = Path(SDIR.MESH);
     QString segname = "seg_final_smooth.nrrd";
     QString path = seg_dir + "/" + segname;
 
@@ -351,7 +389,7 @@ void FourChamberView::Meshing(){
         // create cmd object (CemrgCommandLine) outputs to directory/meshing
         std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
         QMessageBox::information(NULL, "Attention", "This operation takes a few minutes");
-        QString meshing_output = cmd_object->ExecuteCreateCGALMesh(directory, meshing_parameters.out_name, parpath, FourChamberView::SEG_SDIR + "/" + finr.fileName(), FourChamberView::MESH_SDIR);
+        QString meshing_output = cmd_object->ExecuteCreateCGALMesh(directory, meshing_parameters.out_name, parpath, SDIR.SEG + "/" + finr.fileName(), SDIR.MESH);
     } 
 }
 
@@ -703,7 +741,7 @@ bool FourChamberView::UserSelectMeshtools3DParameters(QString pre_input_path){
 
     QFileInfo fi(pre_input_path);
     m_m3d.lineEdit_input_path->setPlaceholderText(pre_input_path);
-    m_m3d.lineEdit_out_dir->setText(directory + "/" + FourChamberView::MESH_SDIR);
+    m_m3d.lineEdit_out_dir->setText(directory + "/" + SDIR.MESH);
 
     int dialogCode = inputs->exec();
 

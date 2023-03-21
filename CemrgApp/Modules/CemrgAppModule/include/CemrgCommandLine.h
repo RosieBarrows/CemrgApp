@@ -71,6 +71,7 @@ public:
     QString DockerUacFibreMapping(QString dir, QString uaccmd, QStringList fibreAtlas, QString meshname, QStringList cmdargs, QString landmarks, QString outnameext);
     QString DockerUacMainMode(QString dir, QString stage, QString atrium, QString layer, QString fibre, QString meshname, QStringList tags, QStringList landmarks, bool fourch=false, bool noraa=false, int scale=1000);
     QString DockerUacFibreMappingMode(QString dir, QString atrium, QString layer, QString fibre, QString meshname, bool msh_endo_epi, QString output, bool fourch=false, QString tags="11", QString biproj="100");
+    QString DockerCctaMultilabelSegmentation(QString dir, QString path_to_f, bool saveas_nifti);
 
     // openCARP docker
     QString OpenCarpDockerLaplaceSolves(QString dir, QString meshName, QString outName, QStringList zeroNames, QStringList oneNames, QStringList regionLabels);

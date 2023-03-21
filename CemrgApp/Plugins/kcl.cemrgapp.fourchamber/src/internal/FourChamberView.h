@@ -49,6 +49,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkRenderer.h"
 #include "vtkTextActor.h"
 
+struct FourChamberSubfolders {
+    QString SEG, MESH, UVC, UVC_LA, UVC_RA, AFIB, PRESIM, SIMS;
+    FourChamberSubfolders()
+    :SEG("segmentations"),
+     MESH("meshing"),
+     UVC("surfaces_uvc"),
+     UVC_LA("surfaces_uvc_LA"),
+     UVC_RA("surfaces_uvc_RA"),
+     AFIB("atrial_fibres"),
+     PRESIM("pre_simulation"),
+     SIMS("sims_folder")
+    {}
+
+    QStringList Subdirectories(){
+         return (QStringList() << SEG << MESH << UVC << UVC_LA << UVC_RA << AFIB << PRESIM << SIMS);
+    }
+};
+
 /// @brief Meshtool3D static libraries parameters structures
 struct M3DParameters {
     QString seg_dir;
@@ -153,10 +171,9 @@ class FourChamberView : public QmitkAbstractView {
 
 public:
     static const std::string VIEW_ID;
-    static const QString POINTS_FILE;
-    static const QString GEOMETRY_FILE;
-    static const QString MESH_SDIR;
-    static const QString SEG_SDIR;
+    static const QString POINTS_FILE; // all the user-selected points
+    static const QString GEOMETRY_FILE; // origin and spacing
+
     // helper functions
     bool RequestProjectDirectoryFromUser();
     int Ask(std::string title, std::string msg);
@@ -190,6 +207,7 @@ protected slots:
 
     void LoadDICOM();
     void GetOriginSpacing();
+    void SegmentImgs();
     void ExtractSurfaces();
     void SelectLARALandmarks();
     void CalculateUVCs();
@@ -222,6 +240,7 @@ private:
     bool points_file_loaded; // keeps track if points.json has been loaded
 
     M3DParameters meshing_parameters;
+    FourChamberSubfolders SDIR; // helps set access subfolders in working directory
     double origin[3], spacing[3];
 };
 

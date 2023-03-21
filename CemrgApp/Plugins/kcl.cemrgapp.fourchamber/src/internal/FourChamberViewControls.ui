@@ -40,17 +40,33 @@
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_loaddicom">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; </string>
+     </property>
      <property name="text">
-      <string>Load DICOM</string>
+      <string>        1.1: Load DICOM</string>
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_origin_spacing">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; </string>
+     </property>
      <property name="text">
-      <string>Save Origin / Spacing</string>
+      <string>        1.2: Save Origin / Spacing</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_segment_image">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; </string>
+     </property>
+     <property name="text">
+      <string>        1.3: Segment CT</string>
      </property>
     </widget>
    </item>
@@ -60,42 +76,57 @@
       <string notr="true">text-align: left;</string>
      </property>
      <property name="text">
-      <string>   Step 2: Prepare segmentation</string>
+      <string>   Step 2: Post-process Segmentation</string>
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_splitpulms">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; </string>
+     </property>
      <property name="text">
-      <string>Split/Relabel pulm veins</string>
+      <string>        2.1: Split/Relabel PVs</string>
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_select_pts_a">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; </string>
+     </property>
      <property name="text">
-      <string>Points for Cylinders</string>
+      <string>        2.2: Select Points for Cylinders</string>
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_select_pts_b">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; </string>
+     </property>
      <property name="text">
-      <string>Points to Crop</string>
+      <string>        2.3: Select Points for Slicers</string>
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_select_pts_c">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; </string>
+     </property>
      <property name="text">
-      <string>Points for Valve Plains</string>
+      <string>        2.4: Points for Valve Plains</string>
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_corrections">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
+     </property>
      <property name="text">
-      <string>Corrections</string>
+      <string>        2.5: Manual Corrections</string>
      </property>
     </widget>
    </item>
@@ -119,27 +150,33 @@
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_extractsurfs">
      <property name="styleSheet">
-      <string notr="true"/>
+      <string notr="true">text-align: left; </string>
      </property>
      <property name="text">
-      <string>Extract surfaces</string>
+      <string>        4.1: Extract surfaces</string>
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_uvclandmarks">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; </string>
+     </property>
      <property name="text">
-      <string>Select LA/RA landmarks</string>
+      <string>        4.2: Select LA/RA landmarks</string>
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_calcuvcs">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; </string>
+     </property>
      <property name="text">
-      <string>Calculate UVCs</string>
+      <string>        4.3: Calculate UVCs</string>
      </property>
     </widget>
    </item>
