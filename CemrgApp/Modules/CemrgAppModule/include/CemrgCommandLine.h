@@ -50,7 +50,7 @@ public:
 
     //Execute Plugin Specific Functions
     QString ExecuteSurf(QString dir, QString segPath, QString morphOperation = "close", int iter = 1, float th = 0.5, int blur = 0, int smth = 10);
-    QString ExecuteCreateCGALMesh(QString dir, QString outputName, QString paramsFullPath, QString segmentationName = "converted.inr", QString outputFolder="CGALMeshDir");
+    QString ExecuteCreateCGALMesh(QString dir, QString outputName, QString paramsFullPath, QString segmentationName = "converted.inr", QString outputFolder="CGALMeshDir", QString outputExtension="vtk");
     void ExecuteTracking(QString dir, QString imgTimes, QString param, QString output = "tsffd.dof");
     void ExecuteApplying(QString dir, QString inputMesh, double iniTime, QString dofin, int noFrames, int smooth);
     void ExecuteRegistration(QString dir, QString fixed, QString moving, QString transformFileName = "rigid.dof", QString modelname = "Rigid");
@@ -84,6 +84,8 @@ public:
     QString DockerConvertMeshFormat(QString dir, QString imsh, QString ifmt, QString omsh, QString ofmt, double scale=-1);
     QString DockerInterpolateData(QString dir, QString meshname, QString outmesh, QString idatExt, QString odatExt, QString dataType);
     void DockerCleanMeshQuality(QString dir, QString meshname, QString outMesh, double qualityThres, QString ifmt="vtk", QString ofmt="vtk_polydata");
+
+    QString ExecuteCustomDocker(QString dir, QString dockerName, QString cmd, QStringList arguments, QString outname);
 
     inline QString DockerInterpolatePoint(QString dir, QString meshname, QString outmesh, QString idatExt, QString odatExt){return DockerInterpolateData(dir, meshname, outmesh, idatExt, odatExt,"nodedata");}; // meshtool interpolate nodedata
     inline QString DockerInterpolateCell(QString dir, QString meshname, QString outmesh, QString idatExt, QString odatExt){return DockerInterpolateData(dir, meshname, outmesh, idatExt, odatExt,"elemdata");}; // meshtool interpolate elemdata

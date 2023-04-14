@@ -71,6 +71,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkTimerLog.h>
 #include <vtkClipPolyData.h>
 #include <vtkDecimatePro.h>
+#include <vtkTransform.h>
+#include <vtkTransformPolyDataFilter.h>
 
 //ITK
 #include <itkAddImageFilter.h>
@@ -274,37 +276,50 @@ void FourChamberView::GetOriginSpacing() {
 }
 
 void FourChamberView::SegmentImgs() {
-   int reply_load = Ask("Question", "Do you have a segmentation to load?");
-   QString path = "";
-   if (reply_load == QMessageBox::Yes) {
-       path = QFileDialog::getOpenFileName(NULL, "Open Segmentation File", StdStringPath(SDIR.SEG).c_str(), QmitkIOUtil::GetFileOpenFilterString());
+    int reply_load = Ask("Question", "Do you have a segmentation to load?");
+    QString path = "";
+    if (reply_load == QMessageBox::Yes) {
+        path = QFileDialog::getOpenFileName(NULL, "Open Segmentation File", StdStringPath(SDIR.SEG).c_str(), QmitkIOUtil::GetFileOpenFilterString());
 
-   } else if (reply_load == QMessageBox::No) {
-       QMessageBox::information(NULL, "Attention", "Creating Multilabel Segmentation From CT data.\nSelect DICOM folder");
-       QString dicom_folder = QFileDialog::getExistingDirectory(NULL, "Open DICOM folder",
-            StdStringPath().c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
+    } else if (reply_load == QMessageBox::No) {
+        QMessageBox::information(NULL, "Attention", "Creating Multilabel Segmentation From CT data.\nSelect DICOM folder");
+        QString dicom_folder = QFileDialog::getExistingDirectory(NULL, "Open DICOM folder",
+             StdStringPath().c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
 
-       if (dicom_folder.isEmpty()) return;
+        if (dicom_folder.isEmpty()) return;
 
-       int reply_saveas = Ask("Question", "Do you want to save the DICOM as NIFTI?");
-       std::unique_ptr<CemrgCommandLine> cmd(new CemrgCommandLine());
-       cmd->SetUseDockerContainers(true);
-       path = cmd->DockerCctaMultilabelSegmentation(Path(SDIR.SEG), dicom_folder, (reply_saveas==QMessageBox::Yes));
-   }
+        int reply_saveas = Ask("Question", "Do you want to save the DICOM as NIFTI?");
+        std::unique_ptr<CemrgCommandLine> cmd(new CemrgCommandLine());
+        cmd->SetUseDockerContainers(true);
+        path = cmd->DockerCctaMultilabelSegmentation(Path(SDIR.SEG), dicom_folder, (reply_saveas==QMessageBox::Yes));
+    }
 
-   if (path.isEmpty()) return;
+    if (path.isEmpty()) return;
 
-   QFileInfo fi(path);
-   mitk::Image::Pointer im = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
-   try {
-       mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
-       mlseg->InitializeByLabeledImage(im);
-       CemrgCommonUtils::AddToStorage(mlseg, fi.baseName().toStdString(), this->GetDataStorage());
-       mlseg->Modified();
-   } catch (mitk::Exception &e) {
-       MITK_ERROR << "Exception caught: " << e.GetDescription();
-       CemrgCommonUtils::AddToStorage(im, fi.baseName().toStdString(), this->GetDataStorage());
-   }
+    QFileInfo fi(path);
+    double seg_origin[3], seg_spacing[3];
+    mitk::Image::Pointer im = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
+    im->GetVtkImageData()->GetSpacing(seg_spacing);
+    im->GetGeometry()->GetOrigin().ToArray(seg_origin);
+
+    std::cout << "Spacing: [" << spacing[0] << ", " << spacing[1] << ", " << spacing[2] << "]\n";
+    std::cout << "Origin: [" << origin[0] << ", " << origin[1] << ", " << origin[2] << "]\n";
+
+    std::cout << "SEG Spacing: [" << seg_spacing[0] << ", " << seg_spacing[1] << ", " << seg_spacing[2] << "]\n";
+    std::cout << "SEG Origin: [" << seg_origin[0] << ", " << seg_origin[1] << ", " << seg_origin[2] << "]\n";
+
+    im->GetGeometry()->SetSpacing(spacing);
+    im->GetGeometry()->SetOrigin(origin);
+
+    try {
+        mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
+        mlseg->InitializeByLabeledImage(im);
+        CemrgCommonUtils::AddToStorage(mlseg, fi.baseName().toStdString(), this->GetDataStorage());
+        mlseg->Modified();
+    } catch (mitk::Exception &e) {
+        MITK_ERROR << "Exception caught: " << e.GetDescription();
+        CemrgCommonUtils::AddToStorage(im, fi.baseName().toStdString(), this->GetDataStorage());
+    }
 
 }
 
@@ -336,61 +351,95 @@ void FourChamberView::Meshing(){
     QString seg_dir = Path(SDIR.SEG);
     QString mesh_dir = Path(SDIR.MESH);
     QString segname = "seg_final_smooth.nrrd";
-    QString path = seg_dir + "/" + segname;
 
     if (!QDir().mkpath(mesh_dir)) {
-        Warn("Problem with subfolder", "Problem with meshign subfolder"); 
+        Warn("Problem with subfolder", "Problem with meshing subfolder"); 
         return;
     }
 
-    bool ask_to_load = true;
-    if(QFile::exists(path)) {
-        std::string msg = "Load previously smoothed segmentation (" + segname.toStdString() + ")?";
-        int reply = QMessageBox::question(NULL, "Question", msg.c_str());
-        if(reply==QMessageBox::Yes){
-            MITK_INFO << "Loading segmentation from file";
-            ask_to_load = false;
-        } 
-    } 
+    int reply_load = Ask("Question", "Do you have a mesh to load?");
+    QString mesh_path = "";
 
-    if (ask_to_load) { 
-        // retrieve the path of the segmentation after user has selected it from the UI
-        path = QFileDialog::getOpenFileName(NULL, "Open Segmentation file", seg_dir.toStdString().c_str(), QmitkIOUtil::GetFileOpenFilterString());
-        QFileInfo fi(path);
-        seg_dir = fi.absolutePath();
-        segname = fi.fileName();
-    }
-
-    QString inr_path = CemrgCommonUtils::ConvertToInr(seg_dir, segname, true, "converted.inr");
-    if (inr_path.isEmpty()) {
-        Warn("Failed to convert segmentation", "Error converting segmentation to INR format");
-        return; 
-    }
-
-    QString parpath;
-    bool success = false;
-    int reply_par_file = Ask("Meshing", "Do you have a parameter file (.par) to load?");
-    if (reply_par_file == QMessageBox::Yes) {
-        parpath = QFileDialog::getOpenFileName(NULL, "Open parameter file (.par)",
-                directory.toStdString().c_str(), tr("Parameter file (*.par)"));
-        QFileInfo fpar(parpath);
-        if(QFile::exists(fpar.absolutePath()+"/"+fpar.baseName()+".json")){
-            LoadMeshingParametersFromJson(fpar.absolutePath(), fpar.baseName() + ".json");
-            success = true;
-        }
-    } else {
-        parpath = mesh_dir + "/heart_mesh_data.par";
-        success = UserSelectMeshtools3DParameters(inr_path);
-        PrintMeshingParameters(parpath);
-    }
+    // create cmd object (CemrgCommandLine) outputs to directory/meshing
+    std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
+    if (reply_load == QMessageBox::Yes) {
+        mesh_path = QFileDialog::getOpenFileName(NULL, "Open Mesh Points File (.pts)", mesh_dir.toStdString().c_str(), tr("Parameter file (*.pts)"));
+        QFileInfo fi(mesh_path);
+        meshing_parameters.out_name = fi.baseName();
+    } else if (reply_load == QMessageBox::No) {
     
-    if (success) {
-        QFileInfo finr(inr_path);
-        // create cmd object (CemrgCommandLine) outputs to directory/meshing
-        std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
-        QMessageBox::information(NULL, "Attention", "This operation takes a few minutes");
-        QString meshing_output = cmd_object->ExecuteCreateCGALMesh(directory, meshing_parameters.out_name, parpath, SDIR.SEG + "/" + finr.fileName(), SDIR.MESH);
-    } 
+        QString path = seg_dir + "/" + segname;
+        bool ask_to_load = true;
+        if(QFile::exists(path)) {
+            std::string msg = "Load previously smoothed segmentation (" + segname.toStdString() + ")?";
+            int reply = QMessageBox::question(NULL, "Question", msg.c_str());
+            if(reply==QMessageBox::Yes){
+                MITK_INFO << "Loading segmentation from file";
+                ask_to_load = false;
+            } 
+        } 
+
+        if (ask_to_load) { 
+            // retrieve the path of the segmentation after user has selected it from the UI
+            path = QFileDialog::getOpenFileName(NULL, "Open Segmentation file", seg_dir.toStdString().c_str(), QmitkIOUtil::GetFileOpenFilterString());
+            QFileInfo fi(path);
+            seg_dir = fi.absolutePath();
+            segname = fi.fileName();
+        }
+
+        QString inr_path = CemrgCommonUtils::ConvertToInr(seg_dir, segname, true, "converted.inr");
+        if (inr_path.isEmpty()) {
+            Warn("Failed to convert segmentation", "Error converting segmentation to INR format");
+            return; 
+        }
+
+        QString parpath = mesh_dir + "/heart_mesh_data.par";
+        bool success_m3d_params = UserSelectMeshtools3DParameters(inr_path);
+        PrintMeshingParameters(parpath);
+
+        if (success_m3d_params) {
+            QString out_ext = meshing_parameters.out_carp ? "pts" : "vtk";
+
+            QFileInfo finr(inr_path);
+            QMessageBox::information(NULL, "Attention", "This operation takes a few minutes");
+            QString mesh_path = cmd_object->ExecuteCreateCGALMesh(directory, meshing_parameters.out_name, parpath, SDIR.SEG + "/" + finr.fileName(), SDIR.MESH, out_ext);
+        } 
+    }
+
+    if (mesh_path.isEmpty()) return;
+
+    // meshtool extract surface -msh=myocardium -ifmt=carp_txt -surf=test  -ofmt=vtk_polydata
+    QStringList arguments;
+    arguments << "extract"
+              << "surface";
+    arguments << "-msh=" + meshing_parameters.out_name;
+    arguments << "-surf=" + meshing_parameters.out_name;
+    arguments << "-ifmt=carp_txt";
+    arguments << "-ofmt=vtk_polydata";
+
+    QString outname = meshing_parameters.out_name + ".surfmesh";
+    cmd_object->SetDockerImageOpenCarp();
+    QString visualisation_surf_path = cmd_object->ExecuteCustomDocker(cmd_object->GetDockerImage(), mesh_dir, "meshtool", arguments, outname+".vtk");
+
+    QFileInfo fvtk(visualisation_surf_path);
+
+    visualisation_surf_path = cmd_object->DockerConvertMeshFormat(mesh_dir, outname, "vtk", outname, "vtk_polydata", 0.001);
+    std::cout << "Visualisation surface loaded" << visualisation_surf_path << '\n';
+    if (fvtk.exists()) {
+        mitk::Surface::Pointer visualisation_surf = mitk::IOUtil::Load<mitk::Surface>(visualisation_surf_path.toStdString());
+
+        vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
+        transform->Translate(origin[0], origin[1], origin[2]);
+
+        vtkSmartPointer<vtkTransformPolyDataFilter> transformFilter = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
+        transformFilter->SetTransform(transform);
+        transformFilter->SetInputData(visualisation_surf->GetVtkPolyData());
+        transformFilter->Update();
+
+        visualisation_surf->SetVtkPolyData(transformFilter->GetOutput());
+
+            CemrgCommonUtils::AddToStorage(visualisation_surf, fvtk.baseName().toStdString(), this->GetDataStorage());
+    }
 }
 
 void FourChamberView::SelectLARALandmarks(){

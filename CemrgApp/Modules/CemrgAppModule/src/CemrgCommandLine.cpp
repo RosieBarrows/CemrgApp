@@ -122,13 +122,13 @@ QString CemrgCommandLine::ExecuteSurf(QString dir, QString segPath, QString morp
     return outAbsolutePath;
 }
 
-QString CemrgCommandLine::ExecuteCreateCGALMesh(QString dir, QString outputName, QString paramsFullPath, QString segmentationName, QString outputFolder) {
+QString CemrgCommandLine::ExecuteCreateCGALMesh(QString dir, QString outputName, QString paramsFullPath, QString segmentationName, QString outputFolder, QString outputExtension) {
 
     MITK_INFO << "[ATTENTION] Attempting MeshTools3D libraries.";
 
     QString segmentationDirectory = dir + "/";
     QString outputDirectory = segmentationDirectory + outputFolder;
-    QString outAbsolutePath = outputDirectory + "/" + outputName + ".vtk"; // many outputs are created with meshtools3d. .vtk is the one used in CemrgApp
+    QString outAbsolutePath = outputDirectory + "/" + outputName + "." + outputExtension; // many outputs are created with meshtools3d. .vtk is the one used in CemrgApp
 
     MITK_INFO << "Using static MeshTools3D libraries.";
     QString executablePath = QCoreApplication::applicationDirPath() + "/M3DLib";
@@ -1292,6 +1292,40 @@ QString CemrgCommandLine::OpenCarpDocker(QString dir, QString paramfile, QString
         }
 
         return outAbsolutePath;
+}
+
+QString CemrgCommandLine::ExecuteCustomDocker(QString dockerName, QString dir, QString cmd, QStringList arguments, QString outname) {
+    SetDockerImage(dockerName);
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+    QString executableName = executablePath + "docker";
+    QString outAbsolutePath = ""; // empty means error
+
+    QDir home(dir);
+    QStringList docker_arguments;
+    if (dockerName.contains("opencarp")) {
+        docker_arguments << "run" << "--rm" << ("--volume="+home.absolutePath()+":/shared:z") << "--workdir=/shared";
+        docker_arguments << "docker.opencarp.org/opencarp/opencarp:latest";
+    } else{
+        docker_arguments = GetDockerArguments(home.absolutePath());
+    }
+
+    docker_arguments << cmd; 
+    docker_arguments << arguments;
+
+    QString outPath = home.absolutePath() + "/" + outname;
+    
+    bool successful = ExecuteCommand(executableName, docker_arguments, outPath);
+    if (successful) {
+        outAbsolutePath = outPath;
+    } else {
+        MITK_WARN << "Error with custom Docker container.";
+    }
+
+    return outAbsolutePath;
+
 }
 
 /***************************************************************************
