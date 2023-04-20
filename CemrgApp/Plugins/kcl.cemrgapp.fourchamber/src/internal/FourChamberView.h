@@ -49,6 +49,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkRenderer.h"
 #include "vtkTextActor.h"
 
+#include "FourChamberCommon.h"
+
 struct FourChamberSubfolders {
     QString SEG, MESH, UVC, UVC_LA, UVC_RA, AFIB, PRESIM, SIMS;
     FourChamberSubfolders()

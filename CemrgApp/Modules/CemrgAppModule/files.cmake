@@ -24,6 +24,7 @@ set(MOC_H_FILES
     include/CemrgStrains.h
     include/CemrgPower.h
     include/CemrgScarAdvanced.h
+    common/FourChamberCommon.h
 )
 
 set(RESOURCE_FILES
