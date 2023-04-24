@@ -169,11 +169,12 @@ bool CemrgFourChamberTools::CalculateUvcs(QString base_dir, FourChamberSubfolder
 }
 
 bool CemrgFourChamberTools::ExecuteMguvc(QString directory, QString model_name, QString input_model, QString output_model, QString np, QString tags_file, QString output_dir, bool laplace_solution, bool custom_apex, QString id_solve) {
+    QString output_path = directory + "/" + output_dir;
+    QStringList arguments;
+
     if (!id_solve.isEmpty()) {
         arguments << "--ID="+id_solve;
     }
-
-    QString output_path = directory + "/" + output_dir;
 
     arguments << "--model-name" << directory + "/" + model_name;
     arguments << "--input-model" << input_model << "--output-model" << output_model;
@@ -205,4 +206,81 @@ bool CemrgFourChamber::ExecuteGlVTKConvert(QString directory, QString model, QSt
     }
 
     return this->ExecuteCommand(glvtkconvert(), arguments, output_path, false);
+}
+
+bool CemrgFourChamber::ExecuteCarp_Pt(QString directory, QString meshname, QString par_sdir, QString parfile, QStringList stim_files, QString output_dir) {
+    QString output_path = directory + "/" + output_dir;
+    QString param_path = directory + "/" + par_sdir + "/" + parfile;
+
+    QStringList arguments;
+    arguments << "+F" << param_path;
+    arguments << "-simID" << output_path;
+    arguments << "-meshname" << directory + "/" + meshname;
+    arguments << "-stimulus[0].vtx_file" << stim_files.at(0);
+    arguments << "-stimulus[1].vtx_file" << stim_files.at(1);
+
+    return this->ExecuteCommand(carp_pt(), arguments, output_path, false);
+}
+
+bool CemrgFourChamber::ExecuteIgbextract(QString directory, QString sdir, double small_f, double big_F, QString outname = "", QString name = "phie.igb") {
+    QString io_dir = directory + "/" + sdir;
+    QString input_igb = io_dir + "/" + name;
+    QFileInfo fi(input_igb); 
+    
+    if (outname.isEmpty()) {
+        outname = fi.baseName();
+    }
+
+    if (!fi.exists()) {
+        MITK_ERROR << ("IGB file [" + input_igb + "] not found").toStdString();
+        return false;
+    }
+
+    outname += (outname.contains(".")) ? "" : ".dat";
+    QString output_path = io_dir + "/" + outname;
+
+    QStringList arguments;
+    arguments << input_igb; 
+    arguments << "-o" << "ascii";
+    arguments << "-f" << QString::number(small_f);
+    arguments << "-F" << QString::number(big_F);
+    arguments << "-O" << ;
+
+    return this->ExecuteCommand(igbextract(), arguments, output_path, true);
+}
+
+    bool CemrgFourChamber::ExecuteGlRuleFibres(QString directory, VFibresParams vfib, QString output_pre)
+{
+    QString output_path = directory + "/" + output_pre + vfib.a_endo() + "_" + vfib.a_epi() + ".lon";
+    QStringList arguments;
+
+    arguments << "--meshname" << vfib.meshname(directory);
+    arguments << "--type" << vfib.type();
+    arguments << "--apex_to_base" << vfib.apex_to_base(directory) ;
+    arguments << "--epi" << vfib.epi(directory) ;
+    arguments << "--lv" << vfib.lv(directory) ;
+    arguments << "--rv" << vfib.rv(directory);
+    arguments << "--alpha_endo" << vfib.a_endo();
+    arguments << "--alpha_epi" << vfib.a_epi();
+    arguments << "--beta_endo" << vfib.b_endo();
+    arguments << "--beta_epi" << vfib.b_epi();
+    arguments << "--output" << output_path;
+
+    return this->ExecuteCommand(GlRuleFibres(), arguments, output_path, true);
+}
+
+bool CemrgFourChamber::ExecuteGlRuleFibres(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre) {
+    VFibresParams vfib;
+    vfib.meshname = m;
+    vfib.type = type;
+    vfib.apex_to_base = a;
+    vfib.epi = e;
+    vfib.lv = lv;
+    vfib.rv;
+    vfib.alpha_endo = a_endo;
+    vfib.alpha_epi = a_epi;
+    vfib.beta_endo = b_endo;
+    vfib.beta_epi = b_epi;
+
+    return ExecuteGlRuleFibres(directory, vfib, output_pre);
 }

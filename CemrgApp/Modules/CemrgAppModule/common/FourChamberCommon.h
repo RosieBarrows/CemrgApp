@@ -89,3 +89,87 @@ struct M3DParameters {
     }
 
 };
+
+struct VFibresParams {
+    double alpha_endo, alpha_epi, beta_endo, beta_epi;
+    QString bad_elem, type, apex_to_base, epi, lv, rv;
+    QString directory;
+    int nonmyo;
+
+    VFibresParams()
+    :alpha_endo(60),
+     alpha_epi(-60),
+     beta_endo(-65), 
+     beta_epi(25), 
+     bad_elem(""), 
+     type("biv"), 
+     apex_to_base(""), 
+     epi(""),
+     lv(""),
+     rv("")
+     {}
+
+     inline QString a_endo() { return QString::number(alpha_endo); }; 
+     inline QString a_epi() { return QString::number(alpha_epi); }; 
+     inline QString b_endo() { return QString::number(beta_endo); }; 
+     inline QString b_epi() { return QString::number(beta_epi); };
+     inline QString type() { return type; };
+     inline QString bad_elem(QString dir="") { return dir + "/" + bad_elem; };
+     inline QString apex_to_base(QString dir="") { return dir + "/" + apex_to_base; };
+     inline QString epi(QString dir="") { return dir + "/" + epi; };
+     inline QString lv(QString dir="") { return dir + "/" + lv; };
+     inline QString rv(QString dir="") { return dir + "/" + rv; };
+}
+
+/*
+arguments << "-m" << directory + "/" + m;
+-m, --meshname=STRING      basename of model files
+
+arguments << "--type" << type;
+
+arguments << "-a" << directory + "/" + a;
+-a, --apex_to_base=STRING  Solution with 1 at the base an 0 at the apex
+
+arguments << "-e" << directory + "/" + e;
+-e, --epi=STRING           Solution with 1 at the epi, 0 at lv/rv endo
+
+arguments << "-l" << directory + "/" + l;
+-l, --lv=STRING            Solution with 1 at lv, 0 at epi and rv, needed for
+
+arguments << "-r" << directory + "/" + r;
+-r, --rv=STRING            Solution with 1 at rv, 0 at epi and lv, needed for
+
+
+-o, --output=STRING        filename to write fibres to
+-b, --badelem=STRING       filename to write bad element indices to
+-t, --type=STRING          type of mesh you are generating fibers for                             (possible values="biv", "lv" default=`biv')
+-n, --nonmyo=INT           nonmyocardial tags to ignore
+
+
+--alpha_endo=FLOAT     Fiber rotation angle on the endocardial surfaces.
+--alpha_epi=FLOAT      Fiber rotation angle on the epicardial surfaces.
+--beta_endo=FLOAT      Sheet rotation angle on the endocardial surfaces
+--beta_epi=FLOAT       Sheet rotation angle on the epicardial surfaces
+
+  -h, --help                 Print help and exit
+  -V, --version              Print version and exit
+  -m, --meshname=STRING      basename of model files  (default=`')
+  -o, --output=STRING        filename to write fibres to (default=`fibres.lon')
+  -b, --badelem=STRING       filename to write bad element indices to (default=`')
+  -t, --type=STRING          type of mesh you are generating fibers for (possible values="biv", "lv" default=`biv')
+  -n, --nonmyo=INT           nonmyocardial tags to ignore
+
+Solutions to Laplace's equation for fiber computation:
+
+  -a, --apex_to_base=STRING  Solution with 1 at the base an 0 at the apex (default=`')
+  -e, --epi=STRING           Solution with 1 at the epi, 0 at lv/rv endo (default=`')
+  -l, --lv=STRING            Solution with 1 at lv, 0 at epi and rv, needed for biv meshes  (default=`')
+  -r, --rv=STRING            Solution with 1 at rv, 0 at epi and lv, needed for biv meshes  (default=`')
+
+Endo/epicardial fiber angles (degrees):
+
+      --alpha_endo=FLOAT     Fiber rotation angle on the endocardial surfaces. (default=`40')
+      --alpha_epi=FLOAT      Fiber rotation angle on the epicardial surfaces. (default=`-50')
+      --beta_endo=FLOAT      Sheet rotation angle on the endocardial surfaces (default=`-65')
+      --beta_epi=FLOAT       Sheet rotation angle on the epicardial surfaces (default=`25')
+*/
