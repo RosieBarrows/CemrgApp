@@ -4,7 +4,7 @@
 #include <QString>
 
 struct FourChamberSubfolders {
-    QString SEG, MESH, UVC, UVC_LA, UVC_RA, AFIB, PRESIM, SIMS;
+    QString SEG, MESH, UVC, UVC_LA, UVC_RA, AFIB, PRESIM, SIMS, PAR;
     FourChamberSubfolders()
     :SEG("segmentations"),
      MESH("meshing"),
@@ -91,35 +91,35 @@ struct M3DParameters {
 };
 
 struct VFibresParams {
-    double alpha_endo, alpha_epi, beta_endo, beta_epi;
-    QString bad_elem, type, apex_to_base, epi, lv, rv;
-    QString directory;
-    int nonmyo;
+    double _alpha_endo, _alpha_epi, _beta_endo, _beta_epi;
+    QString _bad_elem, _type, _apex_to_base, _epi, _lv, _rv;
+    QString _directory;
+    int _nonmyo;
 
     VFibresParams()
-    :alpha_endo(60),
-     alpha_epi(-60),
-     beta_endo(-65), 
-     beta_epi(25), 
-     bad_elem(""), 
-     type("biv"), 
-     apex_to_base(""), 
-     epi(""),
-     lv(""),
-     rv("")
+    :_alpha_endo(60),
+     _alpha_epi(-60),
+     _beta_endo(-65), 
+     _beta_epi(25), 
+     _bad_elem(""), 
+     _type("biv"), 
+     _apex_to_base(""), 
+     _epi(""),
+     _lv(""),
+     _rv("")
      {}
 
-     inline QString a_endo() { return QString::number(alpha_endo); }; 
-     inline QString a_epi() { return QString::number(alpha_epi); }; 
-     inline QString b_endo() { return QString::number(beta_endo); }; 
-     inline QString b_epi() { return QString::number(beta_epi); };
-     inline QString type() { return type; };
-     inline QString bad_elem(QString dir="") { return dir + "/" + bad_elem; };
-     inline QString apex_to_base(QString dir="") { return dir + "/" + apex_to_base; };
-     inline QString epi(QString dir="") { return dir + "/" + epi; };
-     inline QString lv(QString dir="") { return dir + "/" + lv; };
-     inline QString rv(QString dir="") { return dir + "/" + rv; };
-}
+     inline QString a_endo() { return QString::number(_alpha_endo); }; 
+     inline QString a_epi() { return QString::number(_alpha_epi); }; 
+     inline QString b_endo() { return QString::number(_beta_endo); }; 
+     inline QString b_epi() { return QString::number(_beta_epi); };
+     inline QString type() { return _type; };
+     inline QString bad_elem(QString dir="") { return dir + "/" + _bad_elem; };
+     inline QString apex_to_base(QString dir="") { return dir + "/" + _apex_to_base; };
+     inline QString epi(QString dir="") { return dir + "/" + _epi; };
+     inline QString lv(QString dir="") { return dir + "/" + _lv; };
+     inline QString rv(QString dir="") { return dir + "/" + _rv; };
+};
 
 /*
 arguments << "-m" << directory + "/" + m;
@@ -173,3 +173,4 @@ Endo/epicardial fiber angles (degrees):
       --beta_endo=FLOAT      Sheet rotation angle on the endocardial surfaces (default=`-65')
       --beta_epi=FLOAT       Sheet rotation angle on the epicardial surfaces (default=`25')
 */
+#endif
