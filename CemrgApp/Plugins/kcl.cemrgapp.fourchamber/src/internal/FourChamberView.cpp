@@ -149,6 +149,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
 
 
     InitialiseJsonObjects();
+    carpless = false; 
 }
 
 void FourChamberView::OnSelectionChanged(
@@ -202,7 +203,7 @@ void FourChamberView::LoadDICOM() {
         if (tmpNiftiFolder.compare("ERROR_IN_PROCESSING") != 0) {
 
             // add results in NIIs folder to Data Manager
-            MITK_INFO << ("Conversion succesful. Intermediate NII folder: " + tmpNiftiFolder).toStdString();
+            MITK_INFO << ("Conversion successful. Intermediate NII folder: " + tmpNiftiFolder).toStdString();
             QMessageBox::information(NULL, "Information", "Conversion successful, press the Process Images button to continue.");
             QDir niftiFolder(tmpNiftiFolder);
             QStringList niftiFiles = niftiFolder.entryList();
@@ -563,29 +564,29 @@ void FourChamberView::SelectPointsValvePlains(){
 }
 
 // helper
-bool FourChamberView::RequestProjectDirectoryFromUser() {
+bool FourChamberView::RequestAnyFolderFromUser(QString & dir, std::string msg, bool project_dir){
 
-    bool succesfulAssignment = true;
+    bool successfulAssignment = true;
 
-    //Ask the user for a dir to store data
-    if (directory.isEmpty()) {
-
-        MITK_INFO << "Directory is empty. Requesting user for directory.";
-        directory = QFileDialog::getExistingDirectory( NULL, "Open Project Directory",
+    // ask the user for a directory 
+    if (dir.isEmpty()) {
+        
+        MITK_INFO << "Directory is empty. Requesting user for dirrectory.";
+        dir = QFileDialog::getExistingDirectory( NULL, msg.c_str(),
             mitk::IOUtil::GetProgramPath().c_str(),QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
 
-        MITK_INFO << ("Directory selected:" + directory).toStdString();
+        MITK_INFO << ("Directory selected:" + dir).toStdString();
 
-        if (directory.isEmpty() || directory.simplified().contains(" ")) {
+        if (dir.isEmpty() || dir.simplified().contains(" ")) {
             MITK_WARN << "Please select a project directory with no spaces in the path!";
-            QMessageBox::warning(NULL, "Attention", "Please select a project directory with no spaces in the path!");
-            directory = QString();
-            succesfulAssignment = false;
+            QMessageBox::warning(NULL, "Attention", "Please select a project dir with no spaces in the path!");
+            dir = QString();
+            successfulAssignment = false;
         }//_if
 
-        if (succesfulAssignment){
+        if (successfulAssignment && project_dir){
             QString now = QDate::currentDate().toString(Qt::ISODate);
-            QString logfilename = directory + "/LOGFILE_" + now + ".log";
+            QString logfilename = dir + "/LOGFILE_" + now + ".log";
             std::string logfname_str = logfilename.toStdString();
 
             mitk::LoggingBackend::SetLogFile(logfname_str.c_str());
@@ -593,11 +594,11 @@ bool FourChamberView::RequestProjectDirectoryFromUser() {
         }
 
     } else {
-        MITK_INFO << ("Project directory already set: " + directory).toStdString();
+        MITK_INFO << ("Folder already set: " + dir).toStdString();
     }//_if
 
+    return successfulAssignment;
 
-    return succesfulAssignment;
 }
 
 int FourChamberView::Ask(std::string title, std::string msg){

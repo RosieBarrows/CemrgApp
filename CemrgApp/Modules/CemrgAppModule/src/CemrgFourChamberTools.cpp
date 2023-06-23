@@ -143,7 +143,7 @@ bool CemrgFourChamberTools::CalculateUvcs(QString base_dir, FourChamberSubfolder
         return false;
     }
 
-    n_list.clear();
+  & n_list.clear();
 
     MITK_INFO << "Calculating UVCs for the RA mesh...";
     QFile::copy(etags_folder + "/etags_ra.sh", surf_folder_ra + "/ra/etags.sh");

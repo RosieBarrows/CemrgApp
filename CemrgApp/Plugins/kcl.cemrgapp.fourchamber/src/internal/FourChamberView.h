@@ -71,7 +71,7 @@ public:
     static const QString GEOMETRY_FILE; // origin and spacing
 
     // helper functions
-    bool RequestProjectDirectoryFromUser();
+    bool RequestAnyFolderFromUser(QString & dir, std::string msg, bool project_dir=false);
     int Ask(std::string title, std::string msg);
     void Warn(std::string title, std::string msg);
     void PrintMeshingParameters(QString path_to_par);
@@ -86,7 +86,9 @@ public:
     // User Select Functions
     bool UserSelectMeshtools3DParameters(QString pre_input_path);
 
-    // inline means they're defined here, not in the cpp file
+    // inline means they're defined here, not in the cpp filemguvc
+    inline bool RequestProjectDirectoryFromUser(){ return RequestAnyFolderFromUser(directory, "Project folder", true); };
+    inline bool RequestCarpDirectoryFromUser(){ return RequestAnyFolderFromUser(carp_directory, "CARP binary folder", false); };
     inline QString Path(QString fnameExt = "") {return (directory + "/" + fnameExt); };
     inline std::string StdStringPath(QString fnameExt=""){return (Path(fnameExt).toStdString());};
     
@@ -130,10 +132,11 @@ protected:
 
 private:
     // put here the things which belong to the class, like working folder name, etc
-    QString fileName, directory, current_seg_name;
+    QString fileName, directory, current_seg_name, carp_directory;
     QStringList pt_keys_init, pt_keys_slicers, pt_keys_final;
     QJsonObject json_points; // keeps all the points available
     bool points_file_loaded; // keeps track if points.json has been loaded
+    bool carpless;           // true if user does not have CARP installed 
 
     M3DParameters meshing_parameters;
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
