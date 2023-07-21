@@ -50,7 +50,7 @@ protected:
     void AddPoint(mitk::StateMachineAction *, mitk::InteractionEvent *interactionEvent) override;
 
 private:
-    Ui::FourChamberViewPointLabelSelect m_controls;
+    Ui::FourChamberViewPointLabelSelect m_ptset_controls;
     QDialog *m_dialog;
     QString path_to_json;
 };

@@ -91,6 +91,13 @@
     </widget>
    </item>
    <item>
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="button_select_pts_a">
      <property name="styleSheet">
       <string notr="true">text-align: left; </string>
@@ -121,12 +128,29 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="button_select_pts_reset">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
+     </property>
+     <property name="text">
+      <string>        2.5: Reset Point Selection</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="Line" name="line_2">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="button_corrections">
      <property name="styleSheet">
       <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
      </property>
      <property name="text">
-      <string>        2.5: Manual Corrections</string>
+      <string>        2.6: Manual Corrections</string>
      </property>
     </widget>
    </item>

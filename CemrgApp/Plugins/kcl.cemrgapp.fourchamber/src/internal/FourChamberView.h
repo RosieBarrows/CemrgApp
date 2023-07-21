@@ -72,11 +72,19 @@ public:
 
     // helper functions
     bool RequestAnyFolderFromUser(QString & dir, std::string msg, bool project_dir=false);
+    bool CheckForExistingFile(QString dir, QString filename);
     int Ask(std::string title, std::string msg);
     void Warn(std::string title, std::string msg);
     void PrintMeshingParameters(QString path_to_par);
     void LoadMeshingParametersFromJson(QString dir, QString json_file);
     QString GetPointTypeString(ManualPointsType mpt);
+    QString ArrayToString(double *arr, int size, QString title);
+    bool ArrayEqual(double *arr1, double *arr2, int size, double tol=0.0001);
+    void ParseJsonArray(QJsonObject json, QString key, double *arr, int size=3);
+    
+    void SetButtonsEnable(bool enable);
+    inline void SetButtonsEnableToOn(){ SetButtonsEnable(true); };
+    inline void SetButtonsEnableToOff() { SetButtonsEnable(false); };
 
     void InitialiseJsonObjects();
     QStringList GetPointLabelOptions(ManualPointsType mpt);
@@ -114,6 +122,7 @@ protected slots:
     void SelectPointsCylinders();
     void SelectPointsSlicers();
     void SelectPointsValvePlains();
+    void SelectPointsReset();
     void Corrections();
 
     void M3dBrowseFile(const QString &dir);
@@ -134,7 +143,7 @@ private:
     // put here the things which belong to the class, like working folder name, etc
     QString fileName, directory, current_seg_name, carp_directory;
     QStringList pt_keys_init, pt_keys_slicers, pt_keys_final;
-    QJsonObject json_points; // keeps all the points available
+    QJsonObject json_points, json_geometry; // keeps all the points available
     bool points_file_loaded; // keeps track if points.json has been loaded
     bool carpless;           // true if user does not have CARP installed 
 

@@ -50,11 +50,11 @@ void CemrgDataInteractor::Initialise(QStringList &options, QString path_to_file)
     m_dialog = new QDialog(0,0);
     m_dialog->setWindowTitle("User input");
 
-    m_controls.setupUi(m_dialog);
-    m_controls.m_comboBox->addItems(options);
+    m_ptset_controls.setupUi(m_dialog);
+    m_ptset_controls.m_comboBox->addItems(options);
 
-    QObject::connect(m_controls.m_ok_cancel_button, SIGNAL(accepted()), m_dialog, SLOT(accept()));
-    QObject::connect(m_controls.m_ok_cancel_button, SIGNAL(rejected()), m_dialog, SLOT(reject()));
+    QObject::connect(m_ptset_controls.m_ok_cancel_button, SIGNAL(accepted()), m_dialog, SLOT(accept()));
+    QObject::connect(m_ptset_controls.m_ok_cancel_button, SIGNAL(rejected()), m_dialog, SLOT(reject()));
 
     path_to_json = path_to_file;
 }
@@ -74,8 +74,8 @@ void CemrgDataInteractor::AddPoint(mitk::StateMachineAction *, mitk::Interaction
         return; // User clicked cancel, so don't add the point
     }
 
-    QString option = m_controls.m_comboBox->currentText();
-    m_controls.m_comboBox->removeItem(m_controls.m_comboBox->currentIndex());
+    QString option = m_ptset_controls.m_comboBox->currentText();
+    m_ptset_controls.m_comboBox->removeItem(m_ptset_controls.m_comboBox->currentIndex());
 
     // Add the new point with the label and option
     Superclass::AddPoint(nullptr, interactionEvent);
@@ -85,7 +85,7 @@ void CemrgDataInteractor::AddPoint(mitk::StateMachineAction *, mitk::Interaction
     bool fileExists = fi.exists();
 
     QString pt_str = QString::number(new_pt[0]) + "," + QString::number(new_pt[1]) + "," + QString::number(new_pt[2]);
-    MITK_INFO << ("POINT: " + pt_str).toStdString();
+    MITK_INFO << ("POINT: [" + option + "]" + pt_str).toStdString();
 
     if (fileExists) {
         MITK_INFO(CemrgCommonUtils::ModifyJSONFile(fi.absolutePath(), fi.fileName(), option, pt_str, "array")) << "Added point to file";

@@ -96,6 +96,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QInputDialog>
 #include <QDirIterator>
 #include <QSignalMapper>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <QDate>
 
 //CemrgAppModule
@@ -147,7 +149,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     m_Controls.button_uvclandmarks->setVisible(false);
     m_Controls.button_calcuvcs->setVisible(false);
 
-
+    SetButtonsEnableToOff();
     InitialiseJsonObjects();
     carpless = false; 
 }
@@ -168,19 +170,24 @@ void FourChamberView::SetWorkingFolder(){
             MITK_INFO(QDir().mkpath(directory + "/" + qsl.at(ix))) << ("Folder created: [" + qsl.at(ix) + "]");
         }
 
-        MITK_INFO << "Checking for existing points.json file";
-        QFileInfo fi(directory + "/" + FourChamberView::POINTS_FILE);
-
-        if (fi.exists()){
-            int reply_load_json = Ask( "Attention" ,"Load previously found points file?");
-            if (reply_load_json == QMessageBox::Yes){
-                json_points = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
+        bool load_geometry_file = CheckForExistingFile(directory, FourChamberView::GEOMETRY_FILE);
+        if (load_geometry_file) {
+            MITK_INFO << "Loading geometry.json file";
+            json_geometry = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::GEOMETRY_FILE);
+            if (json_geometry["origin"].isUndefined() || json_geometry["spacing"].isUndefined()) {
+                MITK_INFO << "Origin and/or spacing not defined in geometry.json file";
+                m_Controls.button_origin_spacing->setEnabled(true);
             } else {
-                QMessageBox::information(NULL, "Attention", "Overwriting points.json file");
+                ParseJsonArray(json_geometry, "origin", origin);
+                ParseJsonArray(json_geometry, "spacing", spacing);
+
+                std::cout << ArrayToString(origin, 3, "Loaded Origin").toStdString();
+                std::cout << ArrayToString(spacing, 3, "Loaded Spacing").toStdString();
+                m_Controls.button_origin_spacing->setEnabled(false);
             }
         }
 
-        points_file_loaded = CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);
+        SetButtonsEnableToOn();
         m_Controls.button_loaddicom->setVisible(true);
         m_Controls.button_origin_spacing->setVisible(true);
         m_Controls.button_segment_image->setVisible(true);
@@ -248,10 +255,10 @@ void FourChamberView::LoadDICOM() {
 }
 
 void FourChamberView::GetOriginSpacing() {
-//Check for selection of images
+    //Check for selection of images
     QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
     if (nodes.size() != 1) {
-        Warn("Attention", "Please load and select only the DICOM image from the Data Manager to convert!");
+        Warn("Attention", "Please load and select only the image from the Data Manager to convert!");
         return;
     }//_if
 
@@ -297,36 +304,75 @@ void FourChamberView::SegmentImgs() {
 
     if (path.isEmpty()) return;
 
+    double seg_origin[3], seg_spacing[3], ml_origin[3], ml_spacing[3];
+    mitk::Image::Pointer segmentation = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
+        
+    segmentation->GetVtkImageData()->GetSpacing(seg_spacing);
+    segmentation->GetGeometry()->GetOrigin().ToArray(seg_origin);
+
+    mitk::Point3D mitk_origin;
+    mitk_origin[0] = origin[0];
+    mitk_origin[1] = origin[1];
+    mitk_origin[2] = origin[2];
+
+    int test_origin = 0;
+    for (int ix = 0; ix < 3; ix++){
+        test_origin += (seg_origin[ix] == origin[ix]) ? 1:0;
+    }
+        
+    if (!ArrayEqual(seg_origin, origin, 3)) {
+        std::cout << test_origin << " Origin is different" << '\n';
+        segmentation->SetOrigin(mitk_origin);
+    }
+
+    mitk::Vector3D mitk_spacing;
+    mitk_spacing[0] = spacing[0];
+    mitk_spacing[1] = spacing[1];
+    mitk_spacing[2] = spacing[2];
+
+    if (!ArrayEqual(seg_spacing, spacing, 3)){
+        // spacing is different
+        std::cout << "Spacing is different" << '\n';
+        segmentation->SetSpacing(mitk_spacing);
+    }
+
     QFileInfo fi(path);
-    double seg_origin[3], seg_spacing[3];
-    mitk::Image::Pointer im = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
-    im->GetVtkImageData()->GetSpacing(seg_spacing);
-    im->GetGeometry()->GetOrigin().ToArray(seg_origin);
-
-    std::cout << "Spacing: [" << spacing[0] << ", " << spacing[1] << ", " << spacing[2] << "]\n";
-    std::cout << "Origin: [" << origin[0] << ", " << origin[1] << ", " << origin[2] << "]\n";
-
-    std::cout << "SEG Spacing: [" << seg_spacing[0] << ", " << seg_spacing[1] << ", " << seg_spacing[2] << "]\n";
-    std::cout << "SEG Origin: [" << seg_origin[0] << ", " << seg_origin[1] << ", " << seg_origin[2] << "]\n";
-
-    im->GetGeometry()->SetSpacing(spacing);
-    im->GetGeometry()->SetOrigin(origin);
-
     try {
         mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
-        mlseg->InitializeByLabeledImage(im);
+        mlseg->InitializeByLabeledImage(segmentation);
+        mlseg->SetGeometry(segmentation->GetGeometry());
+
+        mlseg->GetVtkImageData()->GetSpacing(ml_spacing);
+        mlseg->GetGeometry()->GetOrigin().ToArray(ml_origin);
+
         CemrgCommonUtils::AddToStorage(mlseg, fi.baseName().toStdString(), this->GetDataStorage());
         mlseg->Modified();
     } catch (mitk::Exception &e) {
         MITK_ERROR << "Exception caught: " << e.GetDescription();
-        CemrgCommonUtils::AddToStorage(im, fi.baseName().toStdString(), this->GetDataStorage());
+        CemrgCommonUtils::AddToStorage(segmentation, fi.baseName().toStdString(), this->GetDataStorage());
     }
+
+    std::cout << ArrayToString(spacing, 3, "Spacing").toStdString();
+    std::cout << ArrayToString(origin, 3, "Origin").toStdString() ;
+
+    std::cout << ArrayToString(seg_spacing, 3, "SEG Spacing").toStdString();
+    std::cout << ArrayToString(seg_origin, 3, "SEG Origin").toStdString();
+
+    std::cout << ArrayToString(ml_spacing, 3, "ML Spacing").toStdString();
+    std::cout << ArrayToString(ml_origin, 3, "ML Origin").toStdString();
 
 }
 
 void FourChamberView::PrepareSegmentation() {
 
     if (!RequestProjectDirectoryFromUser()) return;
+
+    bool load_points_file = CheckForExistingFile(directory, FourChamberView::POINTS_FILE);
+    if (load_points_file) {
+        MITK_INFO << "Loading points.json file";
+        json_points = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
+        // iterate over json file keys. Unlock buttons if keys are all zeros
+    }
 
     if (m_Controls.button_select_pts_a->isVisible()){
 
@@ -528,9 +574,12 @@ void FourChamberView::Corrections(){
 }
 
 void FourChamberView::SelectPointsCylinders() {
-    if (m_Controls.button_select_pts_a->text() == "Points for Cylinders") {
+    if (!m_Controls.button_select_pts_reset->isVisible()) {
+        m_Controls.button_select_pts_reset->setVisible(true);
+    }
+    if (m_Controls.button_select_pts_a->text().contains("Points for Cylinders")) {
         CreateInteractorWithOptions(ManualPointsType::CYLINDERS);
-        m_Controls.button_select_pts_a->setText("Run Scripts for Cylinders");
+        m_Controls.button_select_pts_a->setText("            Run Scripts for Cylinders");
     }
     else {
         // Run cylinders script
@@ -540,9 +589,12 @@ void FourChamberView::SelectPointsCylinders() {
 }
 
 void FourChamberView::SelectPointsSlicers() {
-    if (m_Controls.button_select_pts_b->text() == "Points for Slicers") {
+    if (!m_Controls.button_select_pts_reset->isVisible()) {
+        m_Controls.button_select_pts_reset->setVisible(true);
+    }
+    if (m_Controls.button_select_pts_b->text().contains("Points for Slicers")) {
         CreateInteractorWithOptions(ManualPointsType::SLICERS);
-        m_Controls.button_select_pts_b->setText("Run Scripts for Slicers");
+        m_Controls.button_select_pts_b->setText("            Run Scripts for Slicers");
     }
     else {
         // Run Slicers script
@@ -552,15 +604,22 @@ void FourChamberView::SelectPointsSlicers() {
 }
 
 void FourChamberView::SelectPointsValvePlains(){
-    if (m_Controls.button_select_pts_c->text() == "Points for Valve Plains") {
+    if (!m_Controls.button_select_pts_reset->isVisible()) {
+        m_Controls.button_select_pts_reset->setVisible(true);
+    }
+    if (m_Controls.button_select_pts_c->text().contains("Points for Valve Plains")) {
         CreateInteractorWithOptions(ManualPointsType::VALVE_PLAINS);
-        m_Controls.button_select_pts_c->setText("Run Scripts for Valve Plains");
+        m_Controls.button_select_pts_c->setText("            Run Scripts for Valve Plains");
     }
     else {
         // Run Valve Plains script
         QMessageBox::information(NULL, "Attention", "Running Scripts for Valve Plains");
         m_Controls.button_select_pts_c->setEnabled(false);
     }
+}
+
+void FourChamberView::SelectPointsReset(){
+    MITK_INFO << "Resetting points";
 }
 
 // helper
@@ -599,6 +658,22 @@ bool FourChamberView::RequestAnyFolderFromUser(QString & dir, std::string msg, b
 
     return successfulAssignment;
 
+}
+
+bool FourChamberView::CheckForExistingFile(QString dir, QString filename) {
+    MITK_INFO << ("Checking for existing " + filename + " file").toStdString();
+    QFileInfo fi(dir + "/" + filename);
+    bool load_file = false;
+    if (fi.exists()){
+        std::string msg2 = "File " + filename.toStdString() + " already exists in " + dir.toStdString() + "\nLoad it? (Otherwise it will be overwritten)";
+        int reply_load_json = Ask( "Attention" , msg2.c_str());
+        if (reply_load_json == QMessageBox::Yes){
+            load_file = true;
+        } else {
+            MITK_INFO << ("Overwriting " + filename + " file").toStdString();
+        }
+    }
+    return load_file;
 }
 
 int FourChamberView::Ask(std::string title, std::string msg){
@@ -872,4 +947,41 @@ void FourChamberView::M3dBrowseFile(const QString& dir){
     QFileInfo fi(input);
     m_m3d.lineEdit_input_path->setText(input);
 
+}
+
+void FourChamberView::SetButtonsEnable(bool enable) {
+    // Sets all buttons to enable or disable.
+    // Used at the beginning of the pipeline
+    m_Controls.button_prepseg->setEnabled(enable) ; 
+    m_Controls.button_meshing->setEnabled(enable) ; 
+    m_Controls.button_uvcs->setEnabled(enable) ; 
+    m_Controls.button_ventfibres->setEnabled(enable) ; 
+    m_Controls.button_atrfibres->setEnabled(enable) ; 
+    m_Controls.button_simset->setEnabled(enable) ;
+}
+
+QString FourChamberView::ArrayToString(double *arr, int size, QString title) {
+    QString msg =  title + ": (";
+    for (int ix = 0; ix < size; ix++) {
+        QString endstr = (ix < size - 1) ? "," : ")";
+        msg += QString::number(arr[ix]); 
+        msg += endstr;
+    }
+    msg += '\n';
+    return msg;
+}
+
+bool FourChamberView::ArrayEqual(double *arr1, double *arr2, int size, double tol) {
+    for (int ix = 0; ix < size; ix++) {
+        if (fabs(arr1[ix] - arr2[ix]) > tol) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void FourChamberView::ParseJsonArray(QJsonObject json, QString key, double *arr, int size) {
+    for (int ix = 0; ix < size; ix++) {
+        arr[ix] = json[key].toArray().at(ix).toDouble();
+    }
 }
