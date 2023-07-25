@@ -3,6 +3,8 @@
 
 #include <QString>
 
+enum ManualPointsType { CYLINDERS, SLICERS, VALVE_PLAINS };
+
 struct FourChamberSubfolders {
     QString SEG, MESH, UVC, UVC_LA, UVC_RA, AFIB, PRESIM, SIMS, PAR;
     FourChamberSubfolders()
@@ -19,6 +21,65 @@ struct FourChamberSubfolders {
 
     QStringList Subdirectories(){
          return (QStringList() << SEG << MESH << UVC << UVC_LA << UVC_RA << AFIB << PRESIM << SIMS << PAR);
+    }
+};
+
+struct SegmentationPointsIds {
+    QStringList cylinders, slicers, valve_plains;
+    SegmentationPointsIds(){
+        cylinders << "SVC_1" << "SVC_2" << "SVC_3" << "IVC_1" << "IVC_2" << "IVC_3"  
+                 << "Ao_1"  << "Ao_2"  << "Ao_3" << "PArt_1" << "PArt_2" << "PArt_3";
+        slicers << "SVC_slicer_1" << "SVC_slicer_2" << "SVC_slicer_3" << "SVC_tip"
+                << "IVC_slicer_1" << "IVC_slicer_2" << "IVC_slicer_3" << "IVC_tip"
+                << "Ao_tip" << "PArt_tip";
+        valve_plains << "Ao_WT_tip" << "PArt_WT_tip";
+    }
+
+    QStringList CYLINDERS(){ return cylinders; };
+    QStringList SLICERS(){ return slicers; };
+    QStringList VALVE_PLAINS() { return valve_plains; };
+
+    QStringList GetPointLabelOptions(ManualPointsType mpt){
+        QStringList res = QStringList();
+
+        switch (mpt) {
+            case ManualPointsType::CYLINDERS :
+                res = CYLINDERS();
+                break;
+
+            case ManualPointsType::SLICERS : 
+                res = SLICERS();
+                break;
+
+            case ManualPointsType::VALVE_PLAINS :
+                res = VALVE_PLAINS();
+                break;
+            default:
+                break;
+            return res;
+        }
+        return res;
+    }
+
+    QString title(ManualPointsType mpt) {
+        QString res = QString();
+        switch (mpt) {
+            case ManualPointsType::CYLINDERS :
+                res = "Cylinders";
+                break;
+
+            case ManualPointsType::SLICERS : 
+                res = "Slicers";
+                break;
+
+            case ManualPointsType::VALVE_PLAINS :
+                res = "Valve Plains";
+                break;
+            default:
+                break;
+            return res;
+        }
+        return res;
     }
 };
 

@@ -88,7 +88,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // plugin classes
 #include "kcl_cemrgapp_fourchamber_Activator.h"
 #include "FourChamberView.h"
-#include "CemrgDataInteractor.h"
 
 // Qt
 #include <QMessageBox>
@@ -106,12 +105,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
+
 // JSON pre-determined filenames
-const QString FourChamberView::POINTS_FILE = "points.json";
+const QString FourChamberView::POINTS_FILE = "physical_points.json";
+const QString FourChamberView::POINTS_FILE_INDEX = "points.json";
 const QString FourChamberView::GEOMETRY_FILE = "geometry.json";
 
 void FourChamberView::SetFocus(){
-    // m_Controls.button_setfolder->setFocus();
+    m_Controls.button_setfolder->setFocus();
 }
 
 void FourChamberView::CreateQtPartControl(QWidget *parent){
@@ -128,21 +129,21 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_loaddicom, SIGNAL(clicked()), this, SLOT(LoadDICOM()));
     connect(m_Controls.button_origin_spacing, SIGNAL(clicked()), this, SLOT(GetOriginSpacing()));
     connect(m_Controls.button_segment_image, SIGNAL(clicked()), this, SLOT(SegmentImgs()));
-    connect(m_Controls.button_splitpulms, SIGNAL(clicked()), this, SLOT(SplitPulmVeins()));
+    connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
     connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsCylinders()));
     connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsSlicers()));
     connect(m_Controls.button_select_pts_c, SIGNAL(clicked()), this, SLOT(SelectPointsValvePlains()));
-    connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
+    connect(m_Controls.button_select_pts_reset, SIGNAL(clicked()), this, SLOT(SelectPointsReset()));
 
     // Set default variables and initialise objects
     m_Controls.button_loaddicom->setVisible(false);
     m_Controls.button_origin_spacing->setVisible(false);
     m_Controls.button_segment_image->setVisible(false);
 
-    m_Controls.button_splitpulms->setVisible(false);
     m_Controls.button_select_pts_a->setVisible(false);
     m_Controls.button_select_pts_b->setVisible(false);
     m_Controls.button_select_pts_c->setVisible(false);
+    m_Controls.button_select_pts_reset->setVisible(false);
     m_Controls.button_corrections->setVisible(false);
 
     m_Controls.button_extractsurfs->setVisible(false);
@@ -151,7 +152,11 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
 
     SetButtonsEnableToOff();
     InitialiseJsonObjects();
-    carpless = false; 
+    carpless = false;
+
+    cylinder_interactor = nullptr;
+    slicer_interactor = nullptr;
+    valve_interactor = nullptr;
 }
 
 void FourChamberView::OnSelectionChanged(
@@ -211,7 +216,7 @@ void FourChamberView::LoadDICOM() {
 
             // add results in NIIs folder to Data Manager
             MITK_INFO << ("Conversion successful. Intermediate NII folder: " + tmpNiftiFolder).toStdString();
-            QMessageBox::information(NULL, "Information", "Conversion successful, press the Process Images button to continue.");
+            Inform("Information", "Conversion successful, press the Process Images button to continue.");
             QDir niftiFolder(tmpNiftiFolder);
             QStringList niftiFiles = niftiFolder.entryList();
 
@@ -290,7 +295,7 @@ void FourChamberView::SegmentImgs() {
         path = QFileDialog::getOpenFileName(NULL, "Open Segmentation File", StdStringPath(SDIR.SEG).c_str(), QmitkIOUtil::GetFileOpenFilterString());
 
     } else if (reply_load == QMessageBox::No) {
-        QMessageBox::information(NULL, "Attention", "Creating Multilabel Segmentation From CT data.\nSelect DICOM folder");
+        Inform("Attention", "Creating Multilabel Segmentation From CT data.\nSelect DICOM folder");
         QString dicom_folder = QFileDialog::getExistingDirectory(NULL, "Open DICOM folder",
              StdStringPath().c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
 
@@ -372,6 +377,9 @@ void FourChamberView::PrepareSegmentation() {
         MITK_INFO << "Loading points.json file";
         json_points = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
         // iterate over json file keys. Unlock buttons if keys are all zeros
+    } else {
+        MITK_INFO << "Creating points.json file";
+        CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);   
     }
 
     if (m_Controls.button_select_pts_a->isVisible()){
@@ -379,12 +387,14 @@ void FourChamberView::PrepareSegmentation() {
         m_Controls.button_select_pts_a->setVisible(false);
         m_Controls.button_select_pts_b->setVisible(false);
         m_Controls.button_select_pts_c->setVisible(false);
+        m_Controls.button_select_pts_reset->setVisible(false);
+        m_Controls.button_corrections->setVisible(false);
 
     } else {
-        m_Controls.button_splitpulms->setVisible(true);
         m_Controls.button_select_pts_a->setVisible(true);
         m_Controls.button_select_pts_b->setVisible(true);
         m_Controls.button_select_pts_c->setVisible(true);
+        m_Controls.button_select_pts_reset->setVisible(true);
         m_Controls.button_corrections->setVisible(true);
     }
 
@@ -448,7 +458,7 @@ void FourChamberView::Meshing(){
             QString out_ext = meshing_parameters.out_carp ? "pts" : "vtk";
 
             QFileInfo finr(inr_path);
-            QMessageBox::information(NULL, "Attention", "This operation takes a few minutes");
+            Inform("Attention", "This operation takes a few minutes");
             QString mesh_path = cmd_object->ExecuteCreateCGALMesh(directory, meshing_parameters.out_name, parpath, SDIR.SEG + "/" + finr.fileName(), SDIR.MESH, out_ext);
         } 
     }
@@ -492,45 +502,45 @@ void FourChamberView::Meshing(){
 void FourChamberView::SelectLARALandmarks(){
     int reply = Ask("Question", "Placeholder");
     if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK!");
+        Inform("Answer", "OK!");
     }
 }
 
 void FourChamberView::ExtractSurfaces(){
     int reply = Ask("Question", "Placeholder");
     if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK!");
+        Inform("Answer", "OK!");
     }
 }
 
 void FourChamberView::SimulationSetup(){
     int reply = Ask("Question", "Placeholder");
     if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK");
+        Inform("Answer", "OK");
     }
 }
 
 void FourChamberView::AtrialFibres(){
     int reply = Ask("Question", "Placeholder");
     if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK");
+        Inform("Answer", "OK");
     }
 }
 
 void FourChamberView::VentricularFibres(){
     int reply = Ask("Question", "Placeholder");
     if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK");
+        Inform("Answer", "OK");
     }
 }
 
 void FourChamberView::UVCs(){
     int reply = Ask("Question", "Is this the mesh for which you would like to calculate UVCs?");
     if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK!");
+        Inform("Answer", "OK!");
     }
     if(reply==QMessageBox::No){
-        QMessageBox::information(NULL, "Answer", "Choose a different mesh.");
+        Inform("Answer", "Choose a different mesh.");
     }
 
     if (m_Controls.button_extractsurfs->isVisible()) {
@@ -555,22 +565,23 @@ void FourChamberView::UVCs(){
 void FourChamberView::CalculateUVCs(){
     int reply = Ask("Question", "Placeholder");
     if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK!");
-    }
-}
-
-void FourChamberView::SplitPulmVeins(){
-    int reply = Ask("Question", "Placeholder");
-    if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK!");
+        Inform("Answer", "OK!");
     }
 }
 
 void FourChamberView::Corrections(){
-    int reply = Ask("Question", "Does your segmentation require any of the following corrections? List options here.");
-    if(reply==QMessageBox::Yes){
-        QMessageBox::information(NULL, "Answer", "OK, thanks!");
+    bool button_timing = m_Controls.button_corrections->text().contains("PV Split");
+
+    std::string msg = "Loading Multilabel Segmentation tools.\n\n"; 
+    msg += button_timing ? " Make any manual corrections on pulmonary veins." : "Make additional corrections to segmentation";
+    Inform("Attention", msg.c_str());
+
+    if (button_timing){
+        m_Controls.button_corrections->setText("        2.1: Manual Corrections");
+        m_Controls.button_corrections->setStyleSheet("QPushButton {text-align: left; color: rgb(132, 174, 235);}");
     }
+
+    this->GetSite()->GetPage()->ShowView("org.mitk.views.multilabelsegmentation");
 }
 
 void FourChamberView::SelectPointsCylinders() {
@@ -578,13 +589,19 @@ void FourChamberView::SelectPointsCylinders() {
         m_Controls.button_select_pts_reset->setVisible(true);
     }
     if (m_Controls.button_select_pts_a->text().contains("Points for Cylinders")) {
-        CreateInteractorWithOptions(ManualPointsType::CYLINDERS);
-        m_Controls.button_select_pts_a->setText("            Run Scripts for Cylinders");
+        cylinder_interactor = CreateInteractorWithOptions(ManualPointsType::CYLINDERS);
+        if (cylinder_interactor == nullptr) return;
+        m_Controls.button_select_pts_a->setText("            Finalise Selection");
+        m_Controls.button_select_pts_a->setStyleSheet("QPushButton {text-align: left; color: rgb(232, 14, 23);}");
     }
-    else {
+    else if (m_Controls.button_select_pts_a->text().contains("Finalise Selection")) {
+        cylinder_interactor->~CemrgDataInteractor();
+        m_Controls.button_select_pts_a->setText("            Run Scripts for Cylinders");
+    } else {
         // Run cylinders script
-        QMessageBox::information(NULL, "Attention", "Running Scripts for Cylinders");
+        Inform("Attention", "Running Scripts for Cylinders");
         m_Controls.button_select_pts_a->setEnabled(false);
+
     }
 }
 
@@ -593,12 +610,18 @@ void FourChamberView::SelectPointsSlicers() {
         m_Controls.button_select_pts_reset->setVisible(true);
     }
     if (m_Controls.button_select_pts_b->text().contains("Points for Slicers")) {
-        CreateInteractorWithOptions(ManualPointsType::SLICERS);
-        m_Controls.button_select_pts_b->setText("            Run Scripts for Slicers");
+        slicer_interactor = CreateInteractorWithOptions(ManualPointsType::SLICERS);
+        if (slicer_interactor == nullptr) return;
+        m_Controls.button_select_pts_b->setText("            Finalise Selection");
+        m_Controls.button_select_pts_b->setStyleSheet("QPushButton {text-align: left; color: rgb(232, 14, 23);}");
     }
-    else {
+    else if (m_Controls.button_select_pts_b->text().contains("Finalise Selection")) {
+
+        slicer_interactor->~CemrgDataInteractor();
+        m_Controls.button_select_pts_b->setText("            Run Scripts for Cylinders");
+    } else {
         // Run Slicers script
-        QMessageBox::information(NULL, "Attention", "Running Scripts for Slicers");
+        Inform("Attention", "Running Scripts for Slicers");
         m_Controls.button_select_pts_b->setEnabled(false);
     }
 }
@@ -608,12 +631,17 @@ void FourChamberView::SelectPointsValvePlains(){
         m_Controls.button_select_pts_reset->setVisible(true);
     }
     if (m_Controls.button_select_pts_c->text().contains("Points for Valve Plains")) {
-        CreateInteractorWithOptions(ManualPointsType::VALVE_PLAINS);
-        m_Controls.button_select_pts_c->setText("            Run Scripts for Valve Plains");
+        valve_interactor = CreateInteractorWithOptions(ManualPointsType::VALVE_PLAINS);
+        if (valve_interactor == nullptr) return;
+       m_Controls.button_select_pts_c->setText("            Finalise Selection");
+       m_Controls.button_select_pts_c->setStyleSheet("QPushButton {text-align: left; color: rgb(232, 14, 23);}");
     }
-    else {
+    else if (m_Controls.button_select_pts_c->text().contains("Finalise Selection")) {
+        valve_interactor->~CemrgDataInteractor();
+        m_Controls.button_select_pts_c->setText("            Run Scripts for Cylinders");
+    } else {
         // Run Valve Plains script
-        QMessageBox::information(NULL, "Attention", "Running Scripts for Valve Plains");
+        Inform("Attention", "Running Scripts for Valve Plains");
         m_Controls.button_select_pts_c->setEnabled(false);
     }
 }
@@ -622,7 +650,7 @@ void FourChamberView::SelectPointsReset(){
     MITK_INFO << "Resetting points";
 }
 
-// helper
+// helper`
 bool FourChamberView::RequestAnyFolderFromUser(QString & dir, std::string msg, bool project_dir){
 
     bool successfulAssignment = true;
@@ -665,7 +693,7 @@ bool FourChamberView::CheckForExistingFile(QString dir, QString filename) {
     QFileInfo fi(dir + "/" + filename);
     bool load_file = false;
     if (fi.exists()){
-        std::string msg2 = "File " + filename.toStdString() + " already exists in " + dir.toStdString() + "\nLoad it? (Otherwise it will be overwritten)";
+        std::string msg2 = "File " + filename.toStdString() + " already exists in: \n[" + dir.toStdString() + "]\n\nYES=Load it \t NO=Overwrite it";
         int reply_load_json = Ask( "Attention" , msg2.c_str());
         if (reply_load_json == QMessageBox::Yes){
             load_file = true;
@@ -686,40 +714,18 @@ void FourChamberView::Warn(std::string title, std::string msg){
     QMessageBox::warning(NULL, title.c_str(), msg.c_str());
 }
 
-QStringList FourChamberView::GetPointLabelOptions(ManualPointsType mpt) {
-    QStringList res = QStringList();
-
-    switch (mpt) {
-        case ManualPointsType::CYLINDERS :
-            res  << "SVC_1" << "SVC_2" << "SVC_3"  
-                 << "IVC_1" << "IVC_2" << "IVC_3"  
-                 << "Ao_1"  << "Ao_2"  << "Ao_3"  
-                 << "PArt_1" << "PArt_2" << "PArt_3";
-            break;
-
-        case ManualPointsType::SLICERS : 
-            res << "SVC_slicer_1" << "SVC_slicer_2" << "SVC_slicer_3" << "SVC_tip"
-                << "IVC_slicer_1" << "IVC_slicer_2" << "IVC_slicer_3" << "IVC_tip"
-                << "Ao_tip" << "PArt_tip";
-            break;
-
-        case ManualPointsType::VALVE_PLAINS :
-            res << "Ao_WT_tip" << "PArt_WT_tip";
-            break;
-        default:
-            break;
-        return res;
-    }
-
-    return res;
+void FourChamberView::Inform(std::string title, std::string msg){
+    MITK_INFO << msg;
+    QMessageBox::information(NULL, title.c_str(), msg.c_str());
 }
 
-void FourChamberView::CreateInteractorWithOptions(ManualPointsType mpt) {
+CemrgDataInteractor::Pointer FourChamberView::CreateInteractorWithOptions(ManualPointsType mpt) {
 
-    if (!RequestProjectDirectoryFromUser()) return;
+    if (!RequestProjectDirectoryFromUser()) return nullptr;
 
-    QStringList opts = GetPointLabelOptions(mpt);
-    QString opt = GetPointTypeString(mpt);
+    QStringList opts = seg_points_ids.GetPointLabelOptions(mpt);
+    QString title = seg_points_ids.title(mpt);
+    QString opt = title.replace(" ", "_");
 
     std::string pset_name = (opt + "_point_set").toStdString();
 
@@ -727,20 +733,22 @@ void FourChamberView::CreateInteractorWithOptions(ManualPointsType mpt) {
     mitk::PointSet::Pointer pset = mitk::PointSet::New();
     CemrgCommonUtils::AddToStorage(pset, pset_name, this->GetDataStorage(), false);
 
-    QMessageBox::information(NULL, "Controls", "SHIFT + Left Click to add points");
+    Inform("Controls", "SHIFT + Left Click to add points");
 
     CemrgDataInteractor::Pointer m_interactor = CemrgDataInteractor::New();
-    m_interactor->Initialise(opts, directory + "/" + FourChamberView::POINTS_FILE);
+    m_interactor->Initialise(opts, directory + "/" + FourChamberView::POINTS_FILE, title);
     m_interactor->LoadStateMachine("PointSet.xml");
     m_interactor->SetEventConfig("PointSetConfig.xml");
     m_interactor->SetDataNode(this->GetDataStorage()->GetNamedNode(pset_name.c_str()));
+
+    return m_interactor;
 }
 
 void FourChamberView::InitialiseJsonObjects() {
 
-    QStringList pt_keys = GetPointLabelOptions(ManualPointsType::CYLINDERS);
-    pt_keys.append(GetPointLabelOptions(ManualPointsType::SLICERS));
-    pt_keys.append(GetPointLabelOptions(ManualPointsType::VALVE_PLAINS));
+    QStringList pt_keys = seg_points_ids.GetPointLabelOptions(ManualPointsType::CYLINDERS);
+    pt_keys.append(seg_points_ids.GetPointLabelOptions(ManualPointsType::SLICERS));
+    pt_keys.append(seg_points_ids.GetPointLabelOptions(ManualPointsType::VALVE_PLAINS));
 
     QStringList values = QStringList(), types = QStringList();
     InitialiseQStringListsFromSize(pt_keys.size(), values, types);
@@ -758,38 +766,38 @@ void FourChamberView::InitialiseQStringListsFromSize(int num, QStringList& value
 
 void FourChamberView::PrintMeshingParameters(QString path_to_par){
     std::ofstream fo(path_to_par.toStdString());
-    fo << "#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -" << std::endl;
-    fo << "#Data file for meshtools3d utility"<< std::endl;
-    fo << "#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -"<< std::endl;
-    fo << "[segmentation]"<< std::endl;
-    fo << "seg_dir = " << meshing_parameters.seg_dir.toStdString() << std::endl;
-    fo << "seg_name = " << meshing_parameters.seg_name.toStdString() << std::endl;
-    fo << "mesh_from_segmentation = " << meshing_parameters.mesh_from_segmentation << std::endl;
-    fo << "boundary_relabelling = " << meshing_parameters.boundary_relabelling << std::endl;
-    fo << "[meshing]"<< std::endl;
-    fo << "facet_angle         = "<< meshing_parameters.facet_angle << std::endl;
-    fo << "facet_size          = "<< meshing_parameters.facet_size << std::endl;
-    fo << "facet_distance      = "<< meshing_parameters.facet_distance << std::endl;
-    fo << "cell_rad_edge_ratio = "<< meshing_parameters.cell_rad_edge_ratio << std::endl;
-    fo << "cell_size           = "<< meshing_parameters.cell_size << std::endl;
-    fo << "rescaleFactor       = "<< meshing_parameters.rescaleFactor << std::endl;
-    fo << "[laplacesolver]" << std::endl;
-    fo << "abs_toll        = " << meshing_parameters.abs_tol << std::endl;
-    fo << "rel_toll        = " << meshing_parameters.rel_tol << std::endl;
-    fo << "itr_max         = " << meshing_parameters.itr_max << std::endl;
-    fo << "dimKrilovSp     = " << meshing_parameters.dimKrilovSp << std::endl;
-    fo << "verbose         = " << meshing_parameters.verbose << std::endl;
-    fo << "[others]"<< std::endl;
-    fo << "eval_thickness  = " << meshing_parameters.eval_thickness << std::endl;
-    fo << "[output]"<< std::endl;
-    fo << "outdir          = " << meshing_parameters.out_dir.toStdString() << std::endl;
-    fo << "name            = " << meshing_parameters.out_name.toStdString() << std::endl;
-    fo << "out_medit       = " << meshing_parameters.out_medit << std::endl;
-    fo << "out_carp        = " << meshing_parameters.out_carp << std::endl;
-    fo << "out_carp_binary = " << meshing_parameters.out_carp_binary << std::endl;
-    fo << "out_vtk         = " << meshing_parameters.out_vtk << std::endl;
-    fo << "out_vtk_binary  = " << meshing_parameters.out_vtk_binary << std::endl;
-    fo << "out_potential   = " << meshing_parameters.out_potential << std::endl;
+    fo << "#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -" << '\n';
+    fo << "#Data file for meshtools3d utility"<< '\n';
+    fo << "#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -"<< '\n';
+    fo << "[segmentation]"<< '\n';
+    fo << "seg_dir = " << meshing_parameters.seg_dir.toStdString() << '\n';
+    fo << "seg_name = " << meshing_parameters.seg_name.toStdString() << '\n';
+    fo << "mesh_from_segmentation = " << meshing_parameters.mesh_from_segmentation << '\n';
+    fo << "boundary_relabelling = " << meshing_parameters.boundary_relabelling << '\n';
+    fo << "[meshing]"<< '\n';
+    fo << "facet_angle         = "<< meshing_parameters.facet_angle << '\n';
+    fo << "facet_size          = "<< meshing_parameters.facet_size << '\n';
+    fo << "facet_distance      = "<< meshing_parameters.facet_distance << '\n';
+    fo << "cell_rad_edge_ratio = "<< meshing_parameters.cell_rad_edge_ratio << '\n';
+    fo << "cell_size           = "<< meshing_parameters.cell_size << '\n';
+    fo << "rescaleFactor       = "<< meshing_parameters.rescaleFactor << '\n';
+    fo << "[laplacesolver]" << '\n';
+    fo << "abs_toll        = " << meshing_parameters.abs_tol << '\n';
+    fo << "rel_toll        = " << meshing_parameters.rel_tol << '\n';
+    fo << "itr_max         = " << meshing_parameters.itr_max << '\n';
+    fo << "dimKrilovSp     = " << meshing_parameters.dimKrilovSp << '\n';
+    fo << "verbose         = " << meshing_parameters.verbose << '\n';
+    fo << "[others]"<< '\n';
+    fo << "eval_thickness  = " << meshing_parameters.eval_thickness << '\n';
+    fo << "[output]"<< '\n';
+    fo << "outdir          = " << meshing_parameters.out_dir.toStdString() << '\n';
+    fo << "name            = " << meshing_parameters.out_name.toStdString() << '\n';
+    fo << "out_medit       = " << meshing_parameters.out_medit << '\n';
+    fo << "out_carp        = " << meshing_parameters.out_carp << '\n';
+    fo << "out_carp_binary = " << meshing_parameters.out_carp_binary << '\n';
+    fo << "out_vtk         = " << meshing_parameters.out_vtk << '\n';
+    fo << "out_vtk_binary  = " << meshing_parameters.out_vtk_binary << '\n';
+    fo << "out_potential   = " << meshing_parameters.out_potential << '\n';
     fo.close();
 
     QStringList keys = QStringList();
@@ -881,7 +889,7 @@ bool FourChamberView::UserSelectMeshtools3DParameters(QString pre_input_path){
         meshing_parameters.out_vtk = m_m3d.checkBox_out_vtk->isChecked();
     
         if (meshing_parameters.CheckFormats()){
-            QMessageBox::information(NULL, "Attention", "No output format selected.");
+            Inform("Attention", "No output format selected.");
             return false;
         }
 
@@ -941,7 +949,7 @@ void FourChamberView::M3dBrowseFile(const QString& dir){
 
     msg = "Select segmentation image for meshing";
 
-    QMessageBox::information(NULL, "Attention", msg.c_str());
+    Inform("Attention", msg.c_str());
     input = QFileDialog::getOpenFileName(NULL, msg.c_str(), dir, QmitkIOUtil::GetFileOpenFilterString());
 
     QFileInfo fi(input);
@@ -981,6 +989,9 @@ bool FourChamberView::ArrayEqual(double *arr1, double *arr2, int size, double to
 }
 
 void FourChamberView::ParseJsonArray(QJsonObject json, QString key, double *arr, int size) {
+    if (json[key].isUndefined()){
+        MITK_WARN << ("Key [" + key + "] is Undefined for JSON object").toStdString();
+    }
     for (int ix = 0; ix < size; ix++) {
         arr[ix] = json[key].toArray().at(ix).toDouble();
     }

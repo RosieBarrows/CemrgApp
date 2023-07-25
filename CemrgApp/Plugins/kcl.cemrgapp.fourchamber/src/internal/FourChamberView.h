@@ -50,8 +50,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkTextActor.h"
 
 #include "FourChamberCommon.h"
+#include "CemrgDataInteractor.h"
 
-enum ManualPointsType { CYLINDERS, SLICERS, VALVE_PLAINS };
 /**
   \brief FourChamberView
 
@@ -67,7 +67,8 @@ class FourChamberView : public QmitkAbstractView {
 
 public:
     static const std::string VIEW_ID;
-    static const QString POINTS_FILE; // all the user-selected points
+    static const QString POINTS_FILE;   // all the user-selected points
+    static const QString POINTS_FILE_INDEX;   // all the user-selected points
     static const QString GEOMETRY_FILE; // origin and spacing
 
     // helper functions
@@ -75,6 +76,7 @@ public:
     bool CheckForExistingFile(QString dir, QString filename);
     int Ask(std::string title, std::string msg);
     void Warn(std::string title, std::string msg);
+    void Inform(std::string title, std::string msg);
     void PrintMeshingParameters(QString path_to_par);
     void LoadMeshingParametersFromJson(QString dir, QString json_file);
     QString GetPointTypeString(ManualPointsType mpt);
@@ -88,7 +90,7 @@ public:
 
     void InitialiseJsonObjects();
     QStringList GetPointLabelOptions(ManualPointsType mpt);
-    void CreateInteractorWithOptions(ManualPointsType mpt);
+    CemrgDataInteractor::Pointer CreateInteractorWithOptions(ManualPointsType mpt);
     void InitialiseQStringListsFromSize(int num, QStringList &values, QStringList &types);
 
     // User Select Functions
@@ -118,12 +120,12 @@ protected slots:
     void SelectLARALandmarks();
     void CalculateUVCs();
 
-    void SplitPulmVeins();
+    void Corrections();
     void SelectPointsCylinders();
     void SelectPointsSlicers();
     void SelectPointsValvePlains();
+    // void SelectPointsSave();
     void SelectPointsReset();
-    void Corrections();
 
     void M3dBrowseFile(const QString &dir);
 
@@ -145,10 +147,13 @@ private:
     QStringList pt_keys_init, pt_keys_slicers, pt_keys_final;
     QJsonObject json_points, json_geometry; // keeps all the points available
     bool points_file_loaded; // keeps track if points.json has been loaded
-    bool carpless;           // true if user does not have CARP installed 
+    bool carpless;           // true if user does not have CARP installed
+
+    CemrgDataInteractor::Pointer cylinder_interactor, slicer_interactor, valve_interactor;
 
     M3DParameters meshing_parameters;
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
+    SegmentationPointsIds seg_points_ids; // keeps track of the segmentation points
     double origin[3], spacing[3];
 };
 

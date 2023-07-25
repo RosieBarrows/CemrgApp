@@ -81,19 +81,12 @@
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="button_splitpulms">
+    <widget class="QPushButton" name="button_corrections">
      <property name="styleSheet">
-      <string notr="true">text-align: left; </string>
+      <string notr="true">text-align: left; color:</string>
      </property>
      <property name="text">
-      <string>        2.1: Split/Relabel PVs</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="Line" name="line">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+      <string>        2.1: Manual Corrections (PV Split)</string>
      </property>
     </widget>
    </item>
@@ -134,23 +127,6 @@
      </property>
      <property name="text">
       <string>        2.5: Reset Point Selection</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="Line" name="line_2">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="button_corrections">
-     <property name="styleSheet">
-      <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
-     </property>
-     <property name="text">
-      <string>        2.6: Manual Corrections</string>
      </property>
     </widget>
    </item>
