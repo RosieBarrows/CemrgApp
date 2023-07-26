@@ -130,9 +130,11 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_origin_spacing, SIGNAL(clicked()), this, SLOT(GetOriginSpacing()));
     connect(m_Controls.button_segment_image, SIGNAL(clicked()), this, SLOT(SegmentImgs()));
     connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
+    connect(m_Controls.button_select_pts, SIGNAL(clicked()), this, SLOT(SelectPoints()));
     connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsCylinders()));
     connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsSlicers()));
     connect(m_Controls.button_select_pts_c, SIGNAL(clicked()), this, SLOT(SelectPointsValvePlains()));
+    connect(m_Controls.button_select_pts_check, SIGNAL(clicked()), this, SLOT(SelectPointsCheck()));
     connect(m_Controls.button_select_pts_reset, SIGNAL(clicked()), this, SLOT(SelectPointsReset()));
 
     // Set default variables and initialise objects
@@ -140,9 +142,11 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     m_Controls.button_origin_spacing->setVisible(false);
     m_Controls.button_segment_image->setVisible(false);
 
+    m_Controls.button_select_pts->setVisible(false);
     m_Controls.button_select_pts_a->setVisible(false);
     m_Controls.button_select_pts_b->setVisible(false);
     m_Controls.button_select_pts_c->setVisible(false);
+    m_Controls.button_select_pts_check->setVisible(false);
     m_Controls.button_select_pts_reset->setVisible(false);
     m_Controls.button_corrections->setVisible(false);
 
@@ -154,9 +158,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     InitialiseJsonObjects();
     carpless = false;
 
-    cylinder_interactor = nullptr;
-    slicer_interactor = nullptr;
-    valve_interactor = nullptr;
+    m_interactor = nullptr;
 }
 
 void FourChamberView::OnSelectionChanged(
@@ -372,8 +374,8 @@ void FourChamberView::PrepareSegmentation() {
 
     if (!RequestProjectDirectoryFromUser()) return;
 
-    bool load_points_file = CheckForExistingFile(directory, FourChamberView::POINTS_FILE);
-    if (load_points_file) {
+    points_file_loaded = CheckForExistingFile(directory, FourChamberView::POINTS_FILE);
+    if (points_file_loaded) {
         MITK_INFO << "Loading points.json file";
         json_points = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
         // iterate over json file keys. Unlock buttons if keys are all zeros
@@ -382,20 +384,16 @@ void FourChamberView::PrepareSegmentation() {
         CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);   
     }
 
-    if (m_Controls.button_select_pts_a->isVisible()){
+    if (m_Controls.button_select_pts->isVisible()){
 
-        m_Controls.button_select_pts_a->setVisible(false);
-        m_Controls.button_select_pts_b->setVisible(false);
-        m_Controls.button_select_pts_c->setVisible(false);
-        m_Controls.button_select_pts_reset->setVisible(false);
+        m_Controls.button_select_pts->setVisible(false);
         m_Controls.button_corrections->setVisible(false);
+        m_Controls.button_select_pts_reset->setVisible(false);
 
     } else {
-        m_Controls.button_select_pts_a->setVisible(true);
-        m_Controls.button_select_pts_b->setVisible(true);
-        m_Controls.button_select_pts_c->setVisible(true);
-        m_Controls.button_select_pts_reset->setVisible(true);
+        m_Controls.button_select_pts->setVisible(true);
         m_Controls.button_corrections->setVisible(true);
+        m_Controls.button_select_pts_reset->setVisible(true);
     }
 
 }
@@ -420,7 +418,7 @@ void FourChamberView::Meshing(){
     // create cmd object (CemrgCommandLine) outputs to directory/meshing
     std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
     if (reply_load == QMessageBox::Yes) {
-        mesh_path = QFileDialog::getOpenFileName(NULL, "Open Mesh Points File (.pts)", mesh_dir.toStdString().c_str(), tr("Parameter file (*.pts)"));
+        mesh_path = QFileDialog::getOpenFileName(NULL, "Open Mesh Points File (.pts)", mesh_dir.toStdString().c_str(), tr("Points file (*.pts)"));
         QFileInfo fi(mesh_path);
         meshing_parameters.out_name = fi.baseName();
     } else if (reply_load == QMessageBox::No) {
@@ -570,13 +568,18 @@ void FourChamberView::CalculateUVCs(){
 }
 
 void FourChamberView::Corrections(){
+
+    if (!RequestProjectDirectoryFromUser())
+        return; // if the path was chosen incorrectly -> returns.
+ 
     bool button_timing = m_Controls.button_corrections->text().contains("PV Split");
 
-    std::string msg = "Loading Multilabel Segmentation tools.\n\n"; 
+    std::string msg = "Loading Multilabel Segmentation tools.\n\n";
     msg += button_timing ? " Make any manual corrections on pulmonary veins." : "Make additional corrections to segmentation";
+    
     Inform("Attention", msg.c_str());
 
-    if (button_timing){
+    if (button_timing) {
         m_Controls.button_corrections->setText("        2.1: Manual Corrections");
         m_Controls.button_corrections->setStyleSheet("QPushButton {text-align: left; color: rgb(132, 174, 235);}");
     }
@@ -584,19 +587,57 @@ void FourChamberView::Corrections(){
     this->GetSite()->GetPage()->ShowView("org.mitk.views.multilabelsegmentation");
 }
 
+void FourChamberView::SelectPoints() {
+
+    if (!RequestProjectDirectoryFromUser()) return;
+
+    if (!m_Controls.button_select_pts_a->isVisible()) {
+        m_Controls.button_select_pts_a->setVisible(true);
+        m_Controls.button_select_pts_b->setVisible(true);
+        m_Controls.button_select_pts_c->setVisible(true);
+        m_Controls.button_select_pts_check->setVisible(true);
+    } else {
+        m_Controls.button_select_pts_a->setVisible(false);
+        m_Controls.button_select_pts_b->setVisible(false);
+        m_Controls.button_select_pts_c->setVisible(false);
+        m_Controls.button_select_pts_check->setVisible(false);
+        return; 
+    }
+
+    std::string pset_name = "four_chamber_point_set";
+
+    // Create pointset
+    pset = mitk::PointSet::New();
+    CemrgCommonUtils::AddToStorage(pset, pset_name, this->GetDataStorage(), false);
+
+    Inform("Controls", "SHIFT + Left Click to add points");
+
+    CemrgDataInteractor::Pointer m_interactor = CemrgDataInteractor::New();
+    m_interactor->Initialise(directory + "/" + FourChamberView::POINTS_FILE);
+    m_interactor->LoadStateMachine("PointSet.xml");
+    m_interactor->SetEventConfig("PointSetConfig.xml");
+    m_interactor->SetDataNode(this->GetDataStorage()->GetNamedNode(pset_name.c_str()));
+
+    if (points_file_loaded) { 
+        // load points from json file
+        QStringList allKeys = json_points.keys();
+        foreach (QString Key, allKeys) {
+            double arr[3] = {0,0,0};
+            ParseJsonArray(json_points, Key, arr);
+            pset->InsertPoint(atoi(Key.toStdString().c_str()), mitk::Point3D(arr));
+        }
+    }
+}
+
 void FourChamberView::SelectPointsCylinders() {
-    if (!m_Controls.button_select_pts_reset->isVisible()) {
-        m_Controls.button_select_pts_reset->setVisible(true);
-    }
-    if (m_Controls.button_select_pts_a->text().contains("Points for Cylinders")) {
-        cylinder_interactor = CreateInteractorWithOptions(ManualPointsType::CYLINDERS);
-        if (cylinder_interactor == nullptr) return;
-        m_Controls.button_select_pts_a->setText("            Finalise Selection");
-        m_Controls.button_select_pts_a->setStyleSheet("QPushButton {text-align: left; color: rgb(232, 14, 23);}");
-    }
-    else if (m_Controls.button_select_pts_a->text().contains("Finalise Selection")) {
-        cylinder_interactor->~CemrgDataInteractor();
-        m_Controls.button_select_pts_a->setText("            Run Scripts for Cylinders");
+    
+    if (m_Controls.button_select_pts_a->text().contains("Check Cylinder")) {
+        if (!CheckPointsInJsonFile(ManualPointsType::CYLINDERS)) {
+            Warn("Attention - Missing Points", "All points need to be defined before running the script.");
+            SelectPointsCheck();
+            return;
+        }
+        m_Controls.button_select_pts_a->setText("Run Scripts for Cylinders");
     } else {
         // Run cylinders script
         Inform("Attention", "Running Scripts for Cylinders");
@@ -606,19 +647,14 @@ void FourChamberView::SelectPointsCylinders() {
 }
 
 void FourChamberView::SelectPointsSlicers() {
-    if (!m_Controls.button_select_pts_reset->isVisible()) {
-        m_Controls.button_select_pts_reset->setVisible(true);
-    }
-    if (m_Controls.button_select_pts_b->text().contains("Points for Slicers")) {
-        slicer_interactor = CreateInteractorWithOptions(ManualPointsType::SLICERS);
-        if (slicer_interactor == nullptr) return;
-        m_Controls.button_select_pts_b->setText("            Finalise Selection");
-        m_Controls.button_select_pts_b->setStyleSheet("QPushButton {text-align: left; color: rgb(232, 14, 23);}");
-    }
-    else if (m_Controls.button_select_pts_b->text().contains("Finalise Selection")) {
-
-        slicer_interactor->~CemrgDataInteractor();
-        m_Controls.button_select_pts_b->setText("            Run Scripts for Cylinders");
+    
+    if (m_Controls.button_select_pts_b->text().contains("Check Slicer")) {
+        if (!CheckPointsInJsonFile(ManualPointsType::SLICERS)) {
+            Warn("Attention - Missing Points", "All points need to be defined before running the script.");
+            SelectPointsCheck();
+            return;
+        }
+        m_Controls.button_select_pts_b->setText("Run Scripts for Slicers");
     } else {
         // Run Slicers script
         Inform("Attention", "Running Scripts for Slicers");
@@ -627,18 +663,14 @@ void FourChamberView::SelectPointsSlicers() {
 }
 
 void FourChamberView::SelectPointsValvePlains(){
-    if (!m_Controls.button_select_pts_reset->isVisible()) {
-        m_Controls.button_select_pts_reset->setVisible(true);
-    }
-    if (m_Controls.button_select_pts_c->text().contains("Points for Valve Plains")) {
-        valve_interactor = CreateInteractorWithOptions(ManualPointsType::VALVE_PLAINS);
-        if (valve_interactor == nullptr) return;
-       m_Controls.button_select_pts_c->setText("            Finalise Selection");
-       m_Controls.button_select_pts_c->setStyleSheet("QPushButton {text-align: left; color: rgb(232, 14, 23);}");
-    }
-    else if (m_Controls.button_select_pts_c->text().contains("Finalise Selection")) {
-        valve_interactor->~CemrgDataInteractor();
-        m_Controls.button_select_pts_c->setText("            Run Scripts for Cylinders");
+    
+    if (m_Controls.button_select_pts_c->text().contains("Check Valve Plains")) {
+        if (!CheckPointsInJsonFile(ManualPointsType::VALVE_PLAINS)) {
+            Warn("Attention - Missing Points", "All points need to be defined before running the script.");
+            SelectPointsCheck();
+            return;
+        }
+        m_Controls.button_select_pts_c->setText("Run Scripts for Valve Plains");
     } else {
         // Run Valve Plains script
         Inform("Attention", "Running Scripts for Valve Plains");
@@ -646,8 +678,101 @@ void FourChamberView::SelectPointsValvePlains(){
     }
 }
 
+bool FourChamberView::CheckPointsInJsonFile(ManualPointsType mpt){
+    // reload json file
+    ReloadJsonPoints();
+
+    QStringList pointsToCheck = SegPointIds.GetPointLabelOptions(mpt);
+    bool allPointsExist = true;
+    double testArray[3] = {0,0,0};
+    foreach (QString Key, pointsToCheck) {
+        double arr[3] = {0,0,0};
+        ParseJsonArray(json_points, Key, arr);
+        if (ArrayEqual(arr, testArray, 3)) {
+            std::cout << ArrayToString(arr, 3, Key).toStdString();
+            return false;
+        }
+    }
+    return allPointsExist;
+}
+
+void FourChamberView::ReloadJsonPoints(){
+    QJsonObject json = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
+    QStringList allKeys = json_points.keys();
+
+    int countDifferent = 0;
+    foreach (QString Key, allKeys) {
+        double arrCurrent[3] = {0,0,0};
+        double arrNew[3] = {0,0,0};
+        ParseJsonArray(json, Key, arrNew);
+        ParseJsonArray(json_points, Key, arrCurrent);
+        if (!ArrayEqual(arrCurrent, arrNew, 3)) {
+            countDifferent++;
+        }
+    }
+
+    if (countDifferent > 0) {
+        // This assumes that the file is always newer than what the points are already saved.
+        json_points = json;
+    }
+}
+
 void FourChamberView::SelectPointsReset(){
     MITK_INFO << "Resetting points";
+    int reply = Ask("Question", "Are you sure you want to reset the points?\nThis will overwrite the file too.");
+    if(reply==QMessageBox::Yes){
+        InitialiseJsonObjects();
+        CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);
+
+        // remove pointset from storage
+        this->GetDataStorage()->Remove(this->GetDataStorage()->GetNamedNode("four_chamber_point_set"));
+    }
+
+}
+
+void FourChamberView::SelectPointsCheck() {
+    
+    QJsonObject points = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
+    QStringList cylinders = SegPointIds.CYLINDERS();
+    QStringList slicers = SegPointIds.SLICERS();
+    QStringList valve_plains = SegPointIds.VALVE_PLAINS();
+
+    std::string output = "Selected Points\n\n";
+
+    output += PrintPoints(points, cylinders, "Cylinders") + '\n';
+    output += PrintPoints(points, slicers, "Slicers") + '\n';
+    output += PrintPoints(points, valve_plains, "Valve Plains") + '\n';
+
+    std::cout << output.c_str();
+    QMessageBox::information(nullptr, "Selected Points", output.c_str());
+}
+
+std::string FourChamberView::PrintPoints(QJsonObject json, QStringList keysList, QString title) {
+    std::string output = title.toStdString() + "\n";
+    for (int ix = 0; ix < keysList.size(); ix++) {
+        double arr[3] = {0, 0, 0};
+        QString key = keysList.at(ix);
+        if (json[key].isUndefined()) {
+            output += key.toStdString() + ": Undefined\n";
+            continue;
+        }
+        output += key.toStdString() + ": ";
+        for (int jx = 0; jx < 3; jx++) {
+            arr[jx] = json[key].toArray().at(jx).toDouble();
+        }
+
+        if (arr[0] == 0 && arr[1] == 0 && arr[2] == 0) {
+            output += "NOT SET\n";
+            continue;
+        }
+
+        for (int jx = 0; jx < 3; jx++) {
+            output += QString::number(arr[jx]).toStdString();
+            output += (jx < 2) ? ", " : ")\n";
+        }
+    }
+
+    return output;
 }
 
 // helper`
@@ -719,36 +844,11 @@ void FourChamberView::Inform(std::string title, std::string msg){
     QMessageBox::information(NULL, title.c_str(), msg.c_str());
 }
 
-CemrgDataInteractor::Pointer FourChamberView::CreateInteractorWithOptions(ManualPointsType mpt) {
-
-    if (!RequestProjectDirectoryFromUser()) return nullptr;
-
-    QStringList opts = seg_points_ids.GetPointLabelOptions(mpt);
-    QString title = seg_points_ids.title(mpt);
-    QString opt = title.replace(" ", "_");
-
-    std::string pset_name = (opt + "_point_set").toStdString();
-
-    // Create pointset
-    mitk::PointSet::Pointer pset = mitk::PointSet::New();
-    CemrgCommonUtils::AddToStorage(pset, pset_name, this->GetDataStorage(), false);
-
-    Inform("Controls", "SHIFT + Left Click to add points");
-
-    CemrgDataInteractor::Pointer m_interactor = CemrgDataInteractor::New();
-    m_interactor->Initialise(opts, directory + "/" + FourChamberView::POINTS_FILE, title);
-    m_interactor->LoadStateMachine("PointSet.xml");
-    m_interactor->SetEventConfig("PointSetConfig.xml");
-    m_interactor->SetDataNode(this->GetDataStorage()->GetNamedNode(pset_name.c_str()));
-
-    return m_interactor;
-}
-
 void FourChamberView::InitialiseJsonObjects() {
 
-    QStringList pt_keys = seg_points_ids.GetPointLabelOptions(ManualPointsType::CYLINDERS);
-    pt_keys.append(seg_points_ids.GetPointLabelOptions(ManualPointsType::SLICERS));
-    pt_keys.append(seg_points_ids.GetPointLabelOptions(ManualPointsType::VALVE_PLAINS));
+    QStringList pt_keys = SegPointIds.GetPointLabelOptions(ManualPointsType::CYLINDERS);
+    pt_keys.append(SegPointIds.GetPointLabelOptions(ManualPointsType::SLICERS));
+    pt_keys.append(SegPointIds.GetPointLabelOptions(ManualPointsType::VALVE_PLAINS));
 
     QStringList values = QStringList(), types = QStringList();
     InitialiseQStringListsFromSize(pt_keys.size(), values, types);

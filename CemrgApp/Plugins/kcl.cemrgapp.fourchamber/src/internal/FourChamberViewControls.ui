@@ -91,32 +91,58 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="button_select_pts">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; </string>
+     </property>
+     <property name="text">
+      <string>        2.2: Select Points</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
     <widget class="QPushButton" name="button_select_pts_a">
      <property name="styleSheet">
       <string notr="true">text-align: left; </string>
      </property>
      <property name="text">
-      <string>        2.2: Select Points for Cylinders</string>
+      <string>Check Cylinder Points</string>
      </property>
     </widget>
    </item>
-   <item>
+   <item alignment="Qt::AlignHCenter">
     <widget class="QPushButton" name="button_select_pts_b">
      <property name="styleSheet">
       <string notr="true">text-align: left; </string>
      </property>
      <property name="text">
-      <string>        2.3: Select Points for Slicers</string>
+      <string>Check Slicer Points</string>
      </property>
     </widget>
    </item>
-   <item>
+   <item alignment="Qt::AlignHCenter">
     <widget class="QPushButton" name="button_select_pts_c">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>23</height>
+      </size>
+     </property>
      <property name="styleSheet">
       <string notr="true">text-align: left; </string>
      </property>
      <property name="text">
-      <string>        2.4: Points for Valve Plains</string>
+      <string>Check Valve Plains Points</string>
+     </property>
+    </widget>
+   </item>
+   <item alignment="Qt::AlignHCenter">
+    <widget class="QPushButton" name="button_select_pts_check">
+     <property name="styleSheet">
+      <string notr="true"> color: rgb(132, 174, 235);</string>
+     </property>
+     <property name="text">
+      <string>Check Points</string>
      </property>
     </widget>
    </item>
@@ -126,7 +152,7 @@
       <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
      </property>
      <property name="text">
-      <string>        2.5: Reset Point Selection</string>
+      <string>        2.3: Reset Point Selection</string>
      </property>
     </widget>
    </item>

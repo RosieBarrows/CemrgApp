@@ -83,8 +83,12 @@ public:
     QString ArrayToString(double *arr, int size, QString title);
     bool ArrayEqual(double *arr1, double *arr2, int size, double tol=0.0001);
     void ParseJsonArray(QJsonObject json, QString key, double *arr, int size=3);
-    
-    void SetButtonsEnable(bool enable);
+    bool CheckPointsInJsonFile(ManualPointsType mpt);
+    void ReloadJsonPoints();
+    std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
+
+    void
+    SetButtonsEnable(bool enable);
     inline void SetButtonsEnableToOn(){ SetButtonsEnable(true); };
     inline void SetButtonsEnableToOff() { SetButtonsEnable(false); };
 
@@ -121,10 +125,11 @@ protected slots:
     void CalculateUVCs();
 
     void Corrections();
+    void SelectPoints();
     void SelectPointsCylinders();
     void SelectPointsSlicers();
     void SelectPointsValvePlains();
-    // void SelectPointsSave();
+    void SelectPointsCheck();
     void SelectPointsReset();
 
     void M3dBrowseFile(const QString &dir);
@@ -149,11 +154,11 @@ private:
     bool points_file_loaded; // keeps track if points.json has been loaded
     bool carpless;           // true if user does not have CARP installed
 
-    CemrgDataInteractor::Pointer cylinder_interactor, slicer_interactor, valve_interactor;
+    mitk::PointSet::Pointer pset;
 
     M3DParameters meshing_parameters;
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
-    SegmentationPointsIds seg_points_ids; // keeps track of the segmentation points
+    SegmentationPointsIds SegPointIds; // keeps track of the segmentation points
     double origin[3], spacing[3];
 };
 

@@ -51,12 +51,12 @@ CemrgDataInteractor::CemrgDataInteractor(){
     path_to_json = "";
 }
 
-void CemrgDataInteractor::Initialise(QStringList &options, QString path_to_file, QString title) {
+void CemrgDataInteractor::Initialise(QString path_to_file) {
     m_dialog = std::make_unique<QDialog>();
-    m_dialog->setWindowTitle("Select " + title + " Points");
+    m_dialog->setWindowTitle("Select Points");
 
     m_ptset_controls.setupUi(m_dialog.get());
-    m_ptset_controls.m_comboBox->addItems(options);
+    m_ptset_controls.m_comboBox->addItems(FillOptions());
 
     QObject::connect(m_ptset_controls.m_ok_cancel_button, SIGNAL(accepted()), m_dialog.get(), SLOT(accept()));
     QObject::connect(m_ptset_controls.m_ok_cancel_button, SIGNAL(rejected()), m_dialog.get(), SLOT(reject()));
@@ -78,16 +78,18 @@ void CemrgDataInteractor::AddPoint(mitk::StateMachineAction *, mitk::Interaction
     // Show the dialog box
     int dialogCode = m_dialog->exec();
     if (dialogCode == QDialog::Rejected) {
-        this->~CemrgDataInteractor();
+        m_dialog->close();
+        m_dialog->deleteLater();
         return; // User clicked cancel, so don't add the point
     }
 
     if (m_ptset_controls.m_comboBox->count() == 0) {
         QMessageBox::warning(nullptr, "Warning", "No more points to add");
-        this->~CemrgDataInteractor();
+        m_dialog->close();
+        m_dialog->deleteLater();
         return;
     }
-    QString option = m_ptset_controls.m_comboBox->currentText();
+    QString option = m_ptset_controls.m_comboBox->currentText().split(":")[1].trimmed();
     m_ptset_controls.m_comboBox->removeItem(m_ptset_controls.m_comboBox->currentIndex());
 
     // Add the new point with the label and option
@@ -102,7 +104,6 @@ void CemrgDataInteractor::AddPoint(mitk::StateMachineAction *, mitk::Interaction
 
     if (fileExists) {
         MITK_INFO(CemrgCommonUtils::ModifyJSONFile(fi.absolutePath(), fi.fileName(), option, pt_str, "array")) << "Added point to file";
-        CheckPoints();
     } else {
         MITK_WARN << "JSON File does not exist";
     }
@@ -120,55 +121,18 @@ mitk::Point3D CemrgDataInteractor::GetLastPoint(mitk::InteractionEvent *interact
     return res;
 }
 
-void CemrgDataInteractor::CheckPoints(){
-    QFileInfo fi(path_to_json);
-    if (!fi.exists()){
-        return;
+QStringList CemrgDataInteractor::PrepareListForComboBox(ManualPointsType mpt){
+    QStringList res = SegPointIds.GetPointLabelOptions(mpt);
+    QString title = SegPointIds.title(mpt);
+    for (int ix = 0; ix < res.size(); ix++) {
+        res[ix] = title + " : " + res[ix];
     }
-
-    QJsonObject points = CemrgCommonUtils::ReadJSONFile(fi.absolutePath(), fi.fileName());
-    QStringList cylinders = PointIds.CYLINDERS();
-    QStringList slicers = PointIds.SLICERS();
-    QStringList valve_plains = PointIds.VALVE_PLAINS();
-
-    std::string output = "Selected Points\n\n";
-
-    output += PrintPoints(points, cylinders, "Cylinders") + '\n';
-    output += PrintPoints(points, slicers, "Slicers") + '\n';
-    output += PrintPoints(points, valve_plains, "Valve Plains") + '\n';
-
-    std::cout << output.c_str();
-    QMessageBox::information(nullptr, "Selected Points", output.c_str());
+    return res;
 }
-
-std::string CemrgDataInteractor::PrintPoints(QJsonObject json, QStringList keysList, QString title) {
-    std::string output = title.toStdString() + "\n";
-    for (int ix = 0; ix < keysList.size(); ix++) {
-        double arr[3] = {0, 0, 0};
-        QString key = keysList.at(ix);
-        if (json[key].isUndefined())
-        {
-            output += key.toStdString() + ": Undefined\n";
-            continue;
-        }
-        output += key.toStdString() + ": ";
-        for (int jx = 0; jx < 3; jx++)
-        {
-            arr[jx] = json[key].toArray().at(jx).toDouble();
-        }
-
-        if (arr[0] == 0 && arr[1] == 0 && arr[2] == 0)
-        {
-            output += "NOT SET\n";
-            continue;
-        }
-
-        for (int jx = 0; jx < 3; jx++)
-        {
-            output += QString::number(arr[jx]).toStdString();
-            output += (jx < 2) ? ", " : ")\n";
-        }
-    }
-
-    return output;
+QStringList CemrgDataInteractor::FillOptions(){
+    QStringList res;
+    res << PrepareListForComboBox(ManualPointsType::CYLINDERS);
+    res << PrepareListForComboBox(ManualPointsType::SLICERS);
+    res << PrepareListForComboBox(ManualPointsType::VALVE_PLAINS);
+    return res;
 }

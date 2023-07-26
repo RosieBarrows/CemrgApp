@@ -42,13 +42,15 @@ public:
     itkFactorylessNewMacro(Self)
     CemrgDataInteractor();
 
-    void Initialise(QStringList &options, QString path_to_file="", QString title="");
+    // void Initialise(QStringList &options, QString path_to_file = "", QString title = "");
+    void Initialise(QString path_to_file = "");
     mitk::Point3D GetLastPoint(mitk::InteractionEvent *interactionEvent);
 
-    void CheckPoints();
-    std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
+    QStringList PrepareListForComboBox(ManualPointsType mpt);
+    QStringList FillOptions();
 
     virtual ~CemrgDataInteractor();
+
 protected : 
     void AddPoint(mitk::StateMachineAction *, mitk::InteractionEvent *interactionEvent) override;
 
@@ -56,5 +58,5 @@ private:
     Ui::FourChamberViewPointLabelSelect m_ptset_controls;
     std::unique_ptr<QDialog> m_dialog;
     QString path_to_json;
-    SegmentationPointsIds PointIds;
+    SegmentationPointsIds SegPointIds;
 };
