@@ -158,7 +158,6 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     InitialiseJsonObjects();
     carpless = false;
 
-    m_interactor = nullptr;
 }
 
 void FourChamberView::OnSelectionChanged(
@@ -311,7 +310,7 @@ void FourChamberView::SegmentImgs() {
 
     if (path.isEmpty()) return;
 
-    double seg_origin[3], seg_spacing[3], ml_origin[3], ml_spacing[3];
+    double seg_origin[3], seg_spacing[3];
     mitk::Image::Pointer segmentation = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
         
     segmentation->GetVtkImageData()->GetSpacing(seg_spacing);
@@ -348,9 +347,6 @@ void FourChamberView::SegmentImgs() {
         mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
         mlseg->InitializeByLabeledImage(segmentation);
         mlseg->SetGeometry(segmentation->GetGeometry());
-
-        mlseg->GetVtkImageData()->GetSpacing(ml_spacing);
-        mlseg->GetGeometry()->GetOrigin().ToArray(ml_origin);
 
         CemrgCommonUtils::AddToStorage(mlseg, fi.baseName().toStdString(), this->GetDataStorage());
         mlseg->Modified();
@@ -461,6 +457,7 @@ void FourChamberView::Meshing(){
         } 
     }
 
+    MITK_INFO << ("Mesh path: " + mesh_path).toStdString();
     if (mesh_path.isEmpty()) return;
 
     // meshtool extract surface -msh=myocardium -ifmt=carp_txt -surf=test  -ofmt=vtk_polydata
@@ -726,6 +723,14 @@ void FourChamberView::SelectPointsReset(){
 
         // remove pointset from storage
         this->GetDataStorage()->Remove(this->GetDataStorage()->GetNamedNode("four_chamber_point_set"));
+
+        // reset buttons
+        m_Controls.button_select_pts_a->setText("Check Cylinders Points");
+        m_Controls.button_select_pts_a->setEnabled(true);
+        m_Controls.button_select_pts_b->setText("Check Slicers Points");
+        m_Controls.button_select_pts_b->setEnabled(true);
+        m_Controls.button_select_pts_c->setText("Check Valve Plains Points");
+        m_Controls.button_select_pts_c->setEnabled(true);
     }
 
 }
