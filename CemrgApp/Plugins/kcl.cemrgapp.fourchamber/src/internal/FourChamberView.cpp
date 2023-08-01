@@ -361,9 +361,6 @@ void FourChamberView::SegmentImgs() {
     std::cout << ArrayToString(seg_spacing, 3, "SEG Spacing").toStdString();
     std::cout << ArrayToString(seg_origin, 3, "SEG Origin").toStdString();
 
-    std::cout << ArrayToString(ml_spacing, 3, "ML Spacing").toStdString();
-    std::cout << ArrayToString(ml_origin, 3, "ML Origin").toStdString();
-
 }
 
 void FourChamberView::PrepareSegmentation() {

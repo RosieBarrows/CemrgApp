@@ -34,6 +34,21 @@ PURPOSE.  See the above copyright notices for more information.
 #include <QFile>
 #include <QFileInfo>
 
+// MITK
+#include <mitkIOUtil.h>
+#include <mitkImageCast.h>
+#include <mitkITKImageImport.h>
+#include <mitkMorphologicalOperations.h>
+
+// ITK
+#include <itkConnectedComponentImageFilter.h>
+#include <itkLabelShapeKeepNObjectsImageFilter.h>
+#include <itkImageRegionIteratorWithIndex.h>
+#include <itkBinaryBallStructuringElement.h>
+#include <itkGrayscaleDilateImageFilter.h>
+#include <itkRelabelComponentImageFilter.h>
+
+#include "CemrgCommonUtils.h"
 #include "CemrgFourChamberTools.h"
 
 CemrgFourChamberTools::CemrgFourChamberTools() {
@@ -191,7 +206,7 @@ bool CemrgFourChamberTools::ExecuteMguvc(QString directory, QString model_name, 
     return this->ExecuteCommand(mguvc(), arguments, output_path, false);
 }
 
-bool CemrgFourChamber::ExecuteGlVTKConvert(QString directory, QString model, QStringList n_list, QString output_dir, bool trim_names = false) {
+bool CemrgFourChamberTools::ExecuteGlVTKConvert(QString directory, QString model, QStringList n_list, QString output_dir, bool trim_names = false) {
     QString output_path = directory + "/" + output_dir;
     QStringList arguments;
 
@@ -208,7 +223,7 @@ bool CemrgFourChamber::ExecuteGlVTKConvert(QString directory, QString model, QSt
     return this->ExecuteCommand(glvtkconvert(), arguments, output_path, false);
 }
 
-bool CemrgFourChamber::ExecuteCarp_Pt(QString directory, QString meshname, QString par_sdir, QString parfile, QStringList stim_files, QString output_dir) {
+bool CemrgFourChamberTools::ExecuteCarp_Pt(QString directory, QString meshname, QString par_sdir, QString parfile, QStringList stim_files, QString output_dir) {
     QString output_path = directory + "/" + output_dir;
     QString param_path = directory + "/" + par_sdir + "/" + parfile;
 
@@ -222,7 +237,7 @@ bool CemrgFourChamber::ExecuteCarp_Pt(QString directory, QString meshname, QStri
     return this->ExecuteCommand(carp_pt(), arguments, output_path, false);
 }
 
-bool CemrgFourChamber::ExecuteIgbextract(QString directory, QString sdir, double small_f, double big_F, QString outname = "", QString name = "phie.igb") {
+bool CemrgFourChamberTools::ExecuteIgbextract(QString directory, QString sdir, double small_f, double big_F, QString outname = "", QString name = "phie.igb") {
     QString io_dir = directory + "/" + sdir;
     QString input_igb = io_dir + "/" + name;
     QFileInfo fi(input_igb); 
@@ -249,7 +264,7 @@ bool CemrgFourChamber::ExecuteIgbextract(QString directory, QString sdir, double
     return this->ExecuteCommand(igbextract(), arguments, output_path, true);
 }
 
-    bool CemrgFourChamber::ExecuteGlRuleFibres(QString directory, VFibresParams vfib, QString output_pre)
+    bool CemrgFourChamberTools::ExecuteGlRuleFibres(QString directory, VFibresParams vfib, QString output_pre)
 {
     QString output_path = directory + "/" + output_pre + vfib.a_endo() + "_" + vfib.a_epi() + ".lon";
     QStringList arguments;
@@ -269,7 +284,7 @@ bool CemrgFourChamber::ExecuteIgbextract(QString directory, QString sdir, double
     return this->ExecuteCommand(GlRuleFibres(), arguments, output_path, true);
 }
 
-bool CemrgFourChamber::ExecuteGlRuleFibres(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre) {
+bool CemrgFourChamberTools::ExecuteGlRuleFibres(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre) {
     VFibresParams vfib;
     vfib.meshname = m;
     vfib.type = type;
@@ -283,4 +298,144 @@ bool CemrgFourChamber::ExecuteGlRuleFibres(QString directory, QString m, QString
     vfib.beta_epi = b_epi;
 
     return ExecuteGlRuleFibres(directory, vfib, output_pre);
+}
+
+// Segmentation Utilities
+void CemrgFourChamberTools::ExploreLabelsToSplit(mitk::Image::Pointer seg, std::vector<int> &labels) {
+    std::vector<int> labelsInSeg;
+    GetLabels(seg, labelsInSeg);
+
+    for (int ix = 0; ix < labelsInSeg.size(); ix++) { 
+        int label = labelsInSeg.at(ix);
+        std::vector<int> tagsInLabel;
+        mitk::Image::Pointer bwlabelnInLabel = BwLabelN(ExtractSingleLabel(seg, label), tagsInLabel);
+        if (tagsInLabel.size() > 1) {
+            labels.push_back(label);
+        }
+    }
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label) {
+    std::vector<int> labelsInSeg;
+    GetLabels(seg, labelsInSeg);
+    // remove label from labelsInSeg
+    labelsInSeg.erase(std::remove(labelsInSeg.begin(), labelsInSeg.end(), label), labelsInSeg.end());
+
+    mitk::Image::Pointer imageLabel = ExtractSingleLabel(seg, label);
+    mitk::MorphologicalOperations::Opening(imageLabel, 1, mitk::MorphologicalOperations::StructuralElementType::Ball);
+    
+    std::vector<int> tagsInLabel;
+    mitk::Image::Pointer ccImLabel = BwLabelN(imageLabel, tagsInLabel);
+
+    if (tagsInLabel.size() == 1) {
+        return seg;
+    }
+
+    ImageType::Pointer itkImage = ImageType::New();
+    ImageType::Pointer itkCcImLabel = ImageType::New();
+    CastToItkImage(ccImLabel, itkCcImLabel);
+    CastToItkImage(seg, itkImage);
+
+    // Remove label from seg
+    IteratorType it(itkImage, itkImage->GetLargestPossibleRegion());
+    for (it.GoToBegin(); !it.IsAtEnd(); ++it) {
+        if (it.Get() == label) {
+            it.Set(0);
+        }
+    }
+
+    for (int ix = 0; ix < tagsInLabel.size(); ix++) {
+        int tag = tagsInLabel.at(ix);
+        int newLabel = (ix==0) ? label : label*10 + (tag+1);
+
+        int qx = 1;
+        // Use std::find to check if the variable is in the vector
+        auto it = std::find(tagsInLabel.begin(), tagsInLabel.end(), newLabel);
+        while (it != tagsInLabel.end()) {
+            newLabel = label*std::pow(10, qx) + (tag+1);
+            qx++;
+            it = std::find(tagsInLabel.begin(), tagsInLabel.end(), newLabel);
+        }
+
+        IteratorType ccIt(itkCcImLabel, itkCcImLabel->GetLargestPossibleRegion());
+        IteratorType segIt(itkImage, itkImage->GetLargestPossibleRegion());
+
+        segIt.GoToBegin();
+        for (ccIt.GoToBegin(); !ccIt.IsAtEnd(); ++ccIt) {
+            if (ccIt.Get() == tag) {
+                segIt.Set(newLabel);
+            }
+            ++segIt;
+        }
+    }
+
+    mitk::Image::Pointer newSeg = mitk::ImportItkImage(itkImage)->Clone();
+    return newSeg;
+
+}
+
+
+void CemrgFourChamberTools::GetLabels(mitk::Image::Pointer seg, std::vector<int> &labels, int background) {
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(seg, itkImage);
+
+    IteratorType it(itkImage, itkImage->GetLargestPossibleRegion());
+    for (it.GoToBegin(); !it.IsAtEnd(); ++it) {
+        int label = it.Get();
+        if (label != background) {
+            labels.push_back(label);
+        }
+    }
+
+    std::sort(labels.begin(), labels.end());
+    labels.erase(std::unique(labels.begin(), labels.end()), labels.end());
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::ExtractSingleLabel(mitk::Image::Pointer seg, int label, bool binarise) {
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(seg, itkImage);
+
+    ImageType::Pointer outImage = ImageType::New();
+    outImage->SetRegions(itkImage->GetLargestPossibleRegion());
+    outImage->SetSpacing(itkImage->GetSpacing());
+    outImage->SetOrigin(itkImage->GetOrigin());
+    outImage->Allocate();
+    outImage->FillBuffer(0);
+
+    IteratorType it(itkImage, itkImage->GetLargestPossibleRegion());
+    for (it.GoToBegin(); !it.IsAtEnd(); ++it) {
+        int valueAtIter = it.Get();
+        int valueInOutput = binarise ? 1 : valueAtIter;
+        if (valueAtIter == label) {
+            outImage->SetPixel(it.GetIndex(), valueInOutput);
+        }
+    }
+    
+    return mitk::ImportItkImage(outImage)->Clone();
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::BwLabelN(mitk::Image::Pointer seg, std::vector<int> &labels) {
+    using ConnectedComponentImageFilterType = itk::ConnectedComponentImageFilter<ImageType, ImageType>;
+    using LabelShapeKeepNObjImgFilterType = itk::LabelShapeKeepNObjectsImageFilter<ImageType> ;
+    using RelabelFilterType = itk::RelabelComponentImageFilter<ImageType, ImageType> ;
+
+    mitk::Image::Pointer binImage = CemrgCommonUtils::ReturnBinarised(seg);
+    
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(binImage, itkImage);
+
+    ConnectedComponentImageFilterType::Pointer conn1 = ConnectedComponentImageFilterType::New();
+    conn1->SetInput(itkImage);
+    conn1->Update();
+
+    RelabelFilterType::Pointer labelled = RelabelFilterType::New();
+    labelled->SetInput(conn1->GetOutput());
+    labelled->Update();
+
+    mitk::Image::Pointer outImage = mitk::ImportItkImage(labelled->GetOutput())->Clone();
+
+    std::vector<int> labelsInSeg;
+    GetLabels(outImage, labelsInSeg);
+
+    return outImage;
 }

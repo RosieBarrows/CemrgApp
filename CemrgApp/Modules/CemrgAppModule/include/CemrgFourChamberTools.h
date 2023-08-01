@@ -31,10 +31,26 @@ PURPOSE.  See the above copyright notices for more information.
 
 #include <QString>
 
+#include <mitkIOUtil.h>
+#include <mitkImage.h>
+
+// VTK
+#include <vtkSmartPointer.h>
+#include <vtkConnectivityFilter.h>
+#include <vtkIdList.h>
+#include <vtkRegularPolygonSource.h>
+
+// ITK
+#include <itkImage.h>
+#include <itkImageRegionIterator.h>
+
 #include "FourChamberCommon.h"
 #include "CemrgCommandLine.h"
 
 class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools : public CemrgCommandLine {
+    typedef itk::Image<uint8_t, 3> ImageType;
+    typedef itk::ImageRegionIterator<ImageType> IteratorType;
+    
     public:
 
         mitkClassMacro(CemrgFourChamberTools, CemrgCommandLine)
@@ -42,6 +58,10 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools : public CemrgCommandLine 
         itkCloneMacro(Self)
 
         bool CheckCarpDirectory();
+
+        // Segmentation Utilities
+        void ExploreLabelsToSplit(mitk::Image::Pointer seg, std::vector<int>& labels); 
+        mitk::Image::Pointer SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label);
 
         QString CalculateUvcs(QString base_dir, FourChamberSubfolders fourch_sdirs, QString mesh_sdir, QString meshname, QString input_tags_parfile, QString etags_sdir, QString apex_sdir);
         QString CalculateEndoToEpiLaplace(QString base_dir, FourChamberSubfolders fourch_sdirs, QString meshname, QString endo_surf, QString epi_surf, QString parfile, QString outdir);
@@ -66,6 +86,11 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools : public CemrgCommandLine 
         inline QString igbextract() { return CARP_DIR("igbextract"); };
 
     protected:
+        // Segmentation Utilities
+        void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0);
+        mitk::Image::Pointer ExtractSingleLabel(mitk::Image::Pointer seg, int label, bool binarise=true);
+        mitk::Image::Pointer BwLabelN(mitk::Image::Pointer seg, std::vector<int>& labels);
+
     private:
         QString _carp_dir = "";
 };
