@@ -321,8 +321,8 @@ mitk::Image::Pointer CemrgFourChamberTools::SplitLabelsOnRepeat(mitk::Image::Poi
     // remove label from labelsInSeg
     labelsInSeg.erase(std::remove(labelsInSeg.begin(), labelsInSeg.end(), label), labelsInSeg.end());
 
-    mitk::Image::Pointer imageLabel = ExtractSingleLabel(seg, label);
-    mitk::MorphologicalOperations::Opening(imageLabel, 1, mitk::MorphologicalOperations::StructuralElementType::Ball);
+    mitk::Image::Pointer imageLabel = ExtractSingleLabel(seg, label, true);
+    mitk::MorphologicalOperations::Opening(imageLabel, 2, mitk::MorphologicalOperations::StructuralElementType::Ball);
     
     std::vector<int> tagsInLabel;
     mitk::Image::Pointer ccImLabel = BwLabelN(imageLabel, tagsInLabel);
@@ -410,19 +410,21 @@ mitk::Image::Pointer CemrgFourChamberTools::ExtractSingleLabel(mitk::Image::Poin
             outImage->SetPixel(it.GetIndex(), valueInOutput);
         }
     }
-    
-    return mitk::ImportItkImage(outImage)->Clone();
+
+    mitk::Image::Pointer outSeg = mitk::ImportItkImage(outImage)->Clone();
+
+    return outSeg;
 }
 
 mitk::Image::Pointer CemrgFourChamberTools::BwLabelN(mitk::Image::Pointer seg, std::vector<int> &labels) {
+    // assumes seg is a binary image
     using ConnectedComponentImageFilterType = itk::ConnectedComponentImageFilter<ImageType, ImageType>;
-    using LabelShapeKeepNObjImgFilterType = itk::LabelShapeKeepNObjectsImageFilter<ImageType> ;
     using RelabelFilterType = itk::RelabelComponentImageFilter<ImageType, ImageType> ;
 
-    mitk::Image::Pointer binImage = CemrgCommonUtils::ReturnBinarised(seg);
-    
+    mitk::MorphologicalOperations::Opening(seg, 1, mitk::MorphologicalOperations::StructuralElementType::Ball);
+
     ImageType::Pointer itkImage = ImageType::New();
-    mitk::CastToItkImage(binImage, itkImage);
+    mitk::CastToItkImage(seg, itkImage);
 
     ConnectedComponentImageFilterType::Pointer conn1 = ConnectedComponentImageFilterType::New();
     conn1->SetInput(itkImage);
@@ -433,9 +435,8 @@ mitk::Image::Pointer CemrgFourChamberTools::BwLabelN(mitk::Image::Pointer seg, s
     labelled->Update();
 
     mitk::Image::Pointer outImage = mitk::ImportItkImage(labelled->GetOutput())->Clone();
-
-    std::vector<int> labelsInSeg;
-    GetLabels(outImage, labelsInSeg);
-
+    
+    GetLabels(outImage, labels);
+    
     return outImage;
 }

@@ -81,6 +81,19 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="button_corrections_split">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
+     </property>
+     <property name="text">
+      <string>        2.1: Get Labels</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="combo_corrections_id"/>
+   </item>
+   <item>
     <widget class="QPushButton" name="button_corrections">
      <property name="styleSheet">
       <string notr="true">text-align: left; color:</string>

@@ -37,8 +37,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <berryISelectionListener.h>
 
 #include <QmitkAbstractView.h>
+#include <mitkLabel.h>
 
 #include "ui_FourChamberViewControls.h"
+#include "ui_FourChamberViewIdentifyLabels.h"
 #include "ui_Meshtools3DParameterUI.h"
 
 #include "QmitkRenderWindow.h"
@@ -81,15 +83,15 @@ public:
     void PrintMeshingParameters(QString path_to_par);
     void LoadMeshingParametersFromJson(QString dir, QString json_file);
     QString GetPointTypeString(ManualPointsType mpt);
-    QString ArrayToString(double *arr, int size, QString title);
     bool ArrayEqual(double *arr1, double *arr2, int size, double tol=0.0001);
     void ParseJsonArray(QJsonObject json, QString key, double *arr, int size=3);
     bool CheckPointsInJsonFile(ManualPointsType mpt);
     void ReloadJsonPoints();
     std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
+    
+    QString ArrayToString(double *arr, int size, const QString &title);
 
-    void
-    SetButtonsEnable(bool enable);
+    void SetButtonsEnable(bool enable);
     inline void SetButtonsEnableToOn(){ SetButtonsEnable(true); };
     inline void SetButtonsEnableToOff() { SetButtonsEnable(false); };
 
@@ -100,6 +102,7 @@ public:
 
     // User Select Functions
     bool UserSelectMeshtools3DParameters(QString pre_input_path);
+    bool UserSelectIdentifyLabels();
 
     // inline means they're defined here, not in the cpp filemguvc
     inline bool RequestProjectDirectoryFromUser(){ return RequestAnyFolderFromUser(directory, "Project folder", true); };
@@ -126,6 +129,9 @@ protected slots:
     void CalculateUVCs();
 
     void Corrections();
+    void CorrectionGetLabels();
+    void CorrectionIdLabels(int);
+
     void SelectPoints();
     void SelectPointsCylinders();
     void SelectPointsSlicers();
@@ -145,6 +151,7 @@ protected:
             berry::IWorkbenchPart::Pointer source, const QList<mitk::DataNode::Pointer>& nodes) override;
 
     Ui::FourChamberViewControls m_Controls;
+    Ui::FourChamberViewIdentifyLabels m_IdLabels;
     Ui::Meshtools3DParameterUI m_m3d;
 
 private:
@@ -157,6 +164,7 @@ private:
 
     mitk::PointSet::Pointer pset;
     std::unique_ptr<CemrgFourChamberTools> fourch_object;
+    std::vector<mitk::Label::Pointer> segmentationLabels;
 
     M3DParameters meshing_parameters;
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory

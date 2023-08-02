@@ -63,6 +63,9 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools : public CemrgCommandLine 
         // Segmentation Utilities
         void ExploreLabelsToSplit(mitk::Image::Pointer seg, std::vector<int>& labels); 
         mitk::Image::Pointer SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label);
+        void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0);
+        mitk::Image::Pointer ExtractSingleLabel(mitk::Image::Pointer seg, int label, bool binarise=true);
+        mitk::Image::Pointer BwLabelN(mitk::Image::Pointer seg, std::vector<int>& labels);
 
         bool CalculateUvcs(QString base_dir, FourChamberSubfolders fourch_sdirs, QString mesh_sdir, QString meshname, QString input_tags_parfile, QString etags_sdir, QString apex_sdir);
         QString CalculateEndoToEpiLaplace(QString base_dir, FourChamberSubfolders fourch_sdirs, QString meshname, QString endo_surf, QString epi_surf, QString parfile, QString outdir);
@@ -76,11 +79,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools : public CemrgCommandLine 
         bool ExecuteIgbextract(QString directory, QString sdir, double small_f, double big_F, QString outname="", QString name="phie.igb");
 
         // CARP binaries getters
-        inline void
-        SetCarpDirectory(QString carpDir)
-        {
-            _carp_dir = carpDir;
-        };
+        inline void SetCarpDirectory(QString carpDir) { _carp_dir = carpDir; };
         inline QString CARP_DIR(QString subpath) { return _carp_dir + "/" + subpath; };
 
         inline QString mguvc() { return CARP_DIR("mguvc"); };
@@ -91,10 +90,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools : public CemrgCommandLine 
         inline QString igbextract() { return CARP_DIR("igbextract"); };
 
     protected:
-        // Segmentation Utilities
-        void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0);
-        mitk::Image::Pointer ExtractSingleLabel(mitk::Image::Pointer seg, int label, bool binarise=true);
-        mitk::Image::Pointer BwLabelN(mitk::Image::Pointer seg, std::vector<int>& labels);
+        
 
     private:
         QString _carp_dir = "";

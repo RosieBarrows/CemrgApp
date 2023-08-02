@@ -130,6 +130,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_origin_spacing, SIGNAL(clicked()), this, SLOT(GetOriginSpacing()));
     connect(m_Controls.button_segment_image, SIGNAL(clicked()), this, SLOT(SegmentImgs()));
     connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
+    connect(m_Controls.button_corrections_split, SIGNAL(clicked()), this, SLOT(CorrectionsGetLabels()));
     connect(m_Controls.button_select_pts, SIGNAL(clicked()), this, SLOT(SelectPoints()));
     connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsCylinders()));
     connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsSlicers()));
@@ -149,6 +150,8 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     m_Controls.button_select_pts_check->setVisible(false);
     m_Controls.button_select_pts_reset->setVisible(false);
     m_Controls.button_corrections->setVisible(false);
+    m_Controls.button_corrections_split->setVisible(false);
+    m_Controls.combo_corrections_id->setVisible(false);
 
     m_Controls.button_extractsurfs->setVisible(false);
     m_Controls.button_uvclandmarks->setVisible(false);
@@ -381,18 +384,19 @@ void FourChamberView::PrepareSegmentation() {
 
     if (m_Controls.button_select_pts->isVisible()){
 
-        m_Controls.button_select_pts->setVisible(false);
         m_Controls.button_corrections->setVisible(false);
+        m_Controls.button_corrections_split->setVisible(false);
+        m_Controls.button_select_pts->setVisible(false);
         m_Controls.button_select_pts_reset->setVisible(false);
 
     } else {
-        m_Controls.button_select_pts->setVisible(true);
         m_Controls.button_corrections->setVisible(true);
+        m_Controls.button_corrections_split->setVisible(true);
+        m_Controls.button_select_pts->setVisible(true);
         m_Controls.button_select_pts_reset->setVisible(true);
     }
 
 }
-
 
 void FourChamberView::Meshing(){
 
@@ -565,47 +569,71 @@ void FourChamberView::CalculateUVCs(){
 
 void FourChamberView::Corrections(){
 
+    if (!RequestProjectDirectoryFromUser()) return; // if the path was chosen incorrectly -> returns.
+
+    bool button_timing = m_Controls.button_corrections->text().contains("PV Split");
+    
+    std::string msg = "Loading Multilabel Segmentation tools.\n\n";
+    msg += button_timing ? " Make any manual corrections on pulmonary veins." : "Make additional corrections to segmentation";
+    
+    Inform("Attention", msg.c_str());
+    
+    if (button_timing) {
+        m_Controls.button_corrections->setText("        2.1: Manual Corrections");
+        m_Controls.button_corrections->setStyleSheet("QPushButton {text-align: left; color: rgb(132, 174, 235);}");
+    }
+
+    this->GetSite()->GetPage()->ShowView("org.mitk.views.multilabelsegmentation");
+}
+
+void FourChamberView::CorrectionGetLabels() {
     //Check for selection of images
     QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
     if (nodes.size() != 1) {
-        Warn("Attention", "Please load and select only the image from the Data Manager to convert!");
+        Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
         return;
     }//_if
-
-    if (!RequestProjectDirectoryFromUser()) return; // if the path was chosen incorrectly -> returns.
 
     mitk::BaseData::Pointer data = nodes[0]->GetData();
     if (data) {
         mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
         if (seg) {
-            MITK_INFO << "Attempting automatic PV splitting";
             
             // find which labels need splitting
             std::vector<int> split_labels;
-            std::string labels_str;
-            fourch_object->ExploreLabelsToSplit(seg, split_labels);
-            
+            fourch_object->GetLabels(seg, split_labels);
+
             foreach (int label, split_labels) {
-                labels_str += std::to_string(label) + ", ";
-                // mitk::Image::Pointer im = fourch_object->SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label);
-            }
-            Inform("Attention", "The following labels will be split: " + labels_str);
-
-            bool button_timing = m_Controls.button_corrections->text().contains("PV Split");
-            
-            std::string msg = "Loading Multilabel Segmentation tools.\n\n";
-            msg += button_timing ? " Make any manual corrections on pulmonary veins." : "Make additional corrections to segmentation";
-            
-            Inform("Attention", msg.c_str());
-            
-            if (button_timing) {
-                m_Controls.button_corrections->setText("        2.1: Manual Corrections");
-                m_Controls.button_corrections->setStyleSheet("QPushButton {text-align: left; color: rgb(132, 174, 235);}");
+                std::cout << "Splitting label " << label << '\n';
+                m_Controls.combo_corrections_id->addItem(QString::number(label));
             }
 
-            this->GetSite()->GetPage()->ShowView("org.mitk.views.multilabelsegmentation");
+            m_Controls.combo_corrections_id->setVisible(true);
+            connect(m_Controls.combo_corrections_id, SIGNAL(activated(int)), this, SLOT(CorrectionIdLabels(int)));
         } // _if_image
     } // _if_data
+}
+
+void FourChamberView::CorrectionIdLabels(int index) {
+    if (m_Controls.combo_corrections_id->count() == 0)
+        return;
+    
+     //Check for selection of images
+    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+    if (nodes.size() != 1) {
+        Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
+        return;
+    }//_if
+
+    unsigned int label = m_Controls.combo_corrections_id->itemText(index).toInt();
+    mitk::BaseData::Pointer data = nodes[0]->GetData();
+    if (data) {
+        mitk::LabelSetImage::Pointer seg = dynamic_cast<mitk::LabelSetImage *>(data.GetPointer());
+        if (seg) {
+            seg->SetActiveLayer(label);
+            bool userInputsAccepted = UserSelectIdentifyLabels();
+        } // _if_image
+    }
 }
 
 void FourChamberView::SelectPoints() {
@@ -1072,7 +1100,50 @@ bool FourChamberView::UserSelectMeshtools3DParameters(QString pre_input_path){
     return userAccepted;
 }
 
-void FourChamberView::M3dBrowseFile(const QString& dir){
+bool FourChamberView::UserSelectIdentifyLabels(){
+    QDialog *inputs = new QDialog(0, 0);
+    bool userInputAccepted = false;
+    m_IdLabels.setupUi(inputs);
+
+    connect(m_IdLabels.buttonBox, SIGNAL(accepted()), inputs, SLOT(accept()));
+    connect(m_IdLabels.buttonBox, SIGNAL(rejected()), inputs, SLOT(reject()));
+    
+    int dialogCode = inputs->exec();
+    if (dialogCode == QDialog::Accepted) {
+        bool bp, lv, rv, ao, la, ra, la_lspv, la_lipv, la_laa, la_rspv, la_ripv;
+        bp = m_IdLabels.check_bp->isChecked();
+        lv = m_IdLabels.check_lv->isChecked();
+        rv = m_IdLabels.check_rv->isChecked();
+        ao = m_IdLabels.check_aorta->isChecked();
+        la = m_IdLabels.check_la->isChecked();
+        ra = m_IdLabels.check_ra->isChecked();
+
+        la_lspv = m_IdLabels.check_lspv->isChecked();
+        la_lipv = m_IdLabels.check_lipv->isChecked();
+        la_laa = m_IdLabels.check_laa->isChecked();
+        la_rspv = m_IdLabels.check_rspv->isChecked();
+        la_ripv = m_IdLabels.check_ripv->isChecked();
+
+        if (bp + lv + rv + ao + la + ra + la_lspv + la_lipv + la_laa + la_rspv + la_ripv == 0) {
+            Inform("Attention", "No label selected.");
+            return false;
+        }
+
+        if (bp + lv + rv + ao + la + ra + la_lspv + la_lipv + la_laa + la_rspv + la_ripv >= 2) {
+            Inform("Attention", "More than one labels selected\nAttempting to split");
+            return false;
+        }
+
+        // continue here
+        return true;
+    } else {
+        inputs->deleteLater();
+        return false;
+    }
+}
+
+    void FourChamberView::M3dBrowseFile(const QString &dir)
+{
     QString titlelabel, input = "";
     std::string msg;
 
@@ -1083,7 +1154,6 @@ void FourChamberView::M3dBrowseFile(const QString& dir){
 
     QFileInfo fi(input);
     m_m3d.lineEdit_input_path->setText(input);
-
 }
 
 void FourChamberView::SetButtonsEnable(bool enable) {
@@ -1097,7 +1167,7 @@ void FourChamberView::SetButtonsEnable(bool enable) {
     m_Controls.button_simset->setEnabled(enable) ;
 }
 
-QString FourChamberView::ArrayToString(double *arr, int size, QString title) {
+QString FourChamberView::ArrayToString(double *arr, int size, const QString &title) {
     QString msg =  title + ": (";
     for (int ix = 0; ix < size; ix++) {
         QString endstr = (ix < size - 1) ? "," : ")";
