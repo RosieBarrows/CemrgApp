@@ -88,19 +88,23 @@ struct M3DParameters {
     QString seg_dir, seg_name, out_dir, out_name;
 
     bool mesh_from_segmentation, boundary_relabelling, verbose, eval_thickness;
-    bool  out_medit, out_carp, out_carp_binary, out_vtk, out_vtk_binary, out_potential;
 
     double facet_angle, facet_size, facet_distance;
     double cell_rad_edge_ratio, cell_size;
     double rescaleFactor, abs_tol, rel_tol;
-    int itr_max;
-    int dimKrilovSp;
+    int itr_max, dimKrilovSp;
+    
+    bool  out_medit, out_carp, out_carp_binary, out_vtk, out_vtk_binary, out_potential;
 
     M3DParameters()
     :seg_dir(""),
      seg_name(""),
+     out_dir(""),
+     out_name(""),
      mesh_from_segmentation(true),
      boundary_relabelling(false),
+     verbose(true),
+     eval_thickness(false),
      facet_angle(30.0),
      facet_size(0.8),
      facet_distance(4),
@@ -111,10 +115,6 @@ struct M3DParameters {
      rel_tol(1e-6),
      itr_max(700),
      dimKrilovSp(500),
-     verbose(true),
-     eval_thickness(false),
-     out_dir(""),
-     out_name(""),
      out_medit(false),
      out_carp(true),
      out_carp_binary(false),
@@ -154,7 +154,7 @@ struct M3DParameters {
 struct VFibresParams {
     double _alpha_endo, _alpha_epi, _beta_endo, _beta_epi;
     QString _bad_elem, _type, _apex_to_base, _epi, _lv, _rv;
-    QString _directory;
+    QString _directory, _meshname;
     int _nonmyo;
 
     VFibresParams()
@@ -177,6 +177,7 @@ struct VFibresParams {
      inline QString type() { return _type; };
      inline QString bad_elem(QString dir="") { return dir + "/" + _bad_elem; };
      inline QString apex_to_base(QString dir="") { return dir + "/" + _apex_to_base; };
+     inline QString meshname(QString dir="") { return dir + "/" + _meshname; };
      inline QString epi(QString dir="") { return dir + "/" + _epi; };
      inline QString lv(QString dir="") { return dir + "/" + _lv; };
      inline QString rv(QString dir="") { return dir + "/" + _rv; };

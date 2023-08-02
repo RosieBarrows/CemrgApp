@@ -83,6 +83,16 @@ CemrgCommandLine::~CemrgCommandLine() {
     layout->deleteLater();
 }
 
+std::vector<std::string> CemrgCommandLine::GetClassHierarchy() const {
+    std::vector<std::string> hierarchy;
+    // Add the class hierarchy, starting from the base class to derived classes
+    hierarchy.push_back("CemrgCommandLine");
+    return hierarchy;
+}
+
+const char* CemrgCommandLine::GetNameOfClass() const {
+    return "CemrgCommandLine";
+}
 QDialog* CemrgCommandLine::GetDialog() {
 
     return dial;

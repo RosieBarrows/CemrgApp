@@ -33,6 +33,7 @@ PURPOSE.  See the above copyright notices for more information.
 
 #include <mitkIOUtil.h>
 #include <mitkImage.h>
+#include <mitkCommon.h>
 
 // VTK
 #include <vtkSmartPointer.h>
@@ -54,8 +55,8 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools : public CemrgCommandLine 
     public:
 
         mitkClassMacro(CemrgFourChamberTools, CemrgCommandLine)
-        itkFactorylessNewMacro(Self)
-        itkCloneMacro(Self)
+        // itkFactorylessNewMacro(Self)
+        // itkCloneMacro(Self)
 
         bool CheckCarpDirectory();
 
@@ -63,7 +64,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools : public CemrgCommandLine 
         void ExploreLabelsToSplit(mitk::Image::Pointer seg, std::vector<int>& labels); 
         mitk::Image::Pointer SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label);
 
-        QString CalculateUvcs(QString base_dir, FourChamberSubfolders fourch_sdirs, QString mesh_sdir, QString meshname, QString input_tags_parfile, QString etags_sdir, QString apex_sdir);
+        bool CalculateUvcs(QString base_dir, FourChamberSubfolders fourch_sdirs, QString mesh_sdir, QString meshname, QString input_tags_parfile, QString etags_sdir, QString apex_sdir);
         QString CalculateEndoToEpiLaplace(QString base_dir, FourChamberSubfolders fourch_sdirs, QString meshname, QString endo_surf, QString epi_surf, QString parfile, QString outdir);
 
         // CARP Utilities
@@ -75,7 +76,11 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools : public CemrgCommandLine 
         bool ExecuteIgbextract(QString directory, QString sdir, double small_f, double big_F, QString outname="", QString name="phie.igb");
 
         // CARP binaries getters
-        inline void SetCarpDirectory(QString carpDir) { _carp_dir = carpDir; };
+        inline void
+        SetCarpDirectory(QString carpDir)
+        {
+            _carp_dir = carpDir;
+        };
         inline QString CARP_DIR(QString subpath) { return _carp_dir + "/" + subpath; };
 
         inline QString mguvc() { return CARP_DIR("mguvc"); };

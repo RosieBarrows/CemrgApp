@@ -158,6 +158,8 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     InitialiseJsonObjects();
     carpless = false;
 
+    fourch_object = std::unique_ptr<CemrgFourChamberTools>(new CemrgFourChamberTools());
+    meshing_parameters = M3DParameters();
 }
 
 void FourChamberView::OnSelectionChanged(
@@ -563,22 +565,47 @@ void FourChamberView::CalculateUVCs(){
 
 void FourChamberView::Corrections(){
 
-    if (!RequestProjectDirectoryFromUser())
-        return; // if the path was chosen incorrectly -> returns.
- 
-    bool button_timing = m_Controls.button_corrections->text().contains("PV Split");
+    //Check for selection of images
+    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+    if (nodes.size() != 1) {
+        Warn("Attention", "Please load and select only the image from the Data Manager to convert!");
+        return;
+    }//_if
 
-    std::string msg = "Loading Multilabel Segmentation tools.\n\n";
-    msg += button_timing ? " Make any manual corrections on pulmonary veins." : "Make additional corrections to segmentation";
-    
-    Inform("Attention", msg.c_str());
+    if (!RequestProjectDirectoryFromUser()) return; // if the path was chosen incorrectly -> returns.
 
-    if (button_timing) {
-        m_Controls.button_corrections->setText("        2.1: Manual Corrections");
-        m_Controls.button_corrections->setStyleSheet("QPushButton {text-align: left; color: rgb(132, 174, 235);}");
-    }
+    mitk::BaseData::Pointer data = nodes[0]->GetData();
+    if (data) {
+        mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (seg) {
+            MITK_INFO << "Attempting automatic PV splitting";
+            
+            // find which labels need splitting
+            std::vector<int> split_labels;
+            std::string labels_str;
+            fourch_object->ExploreLabelsToSplit(seg, split_labels);
+            
+            foreach (int label, split_labels) {
+                labels_str += std::to_string(label) + ", ";
+                // mitk::Image::Pointer im = fourch_object->SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label);
+            }
+            Inform("Attention", "The following labels will be split: " + labels_str);
 
-    this->GetSite()->GetPage()->ShowView("org.mitk.views.multilabelsegmentation");
+            bool button_timing = m_Controls.button_corrections->text().contains("PV Split");
+            
+            std::string msg = "Loading Multilabel Segmentation tools.\n\n";
+            msg += button_timing ? " Make any manual corrections on pulmonary veins." : "Make additional corrections to segmentation";
+            
+            Inform("Attention", msg.c_str());
+            
+            if (button_timing) {
+                m_Controls.button_corrections->setText("        2.1: Manual Corrections");
+                m_Controls.button_corrections->setStyleSheet("QPushButton {text-align: left; color: rgb(132, 174, 235);}");
+            }
+
+            this->GetSite()->GetPage()->ShowView("org.mitk.views.multilabelsegmentation");
+        } // _if_image
+    } // _if_data
 }
 
 void FourChamberView::SelectPoints() {

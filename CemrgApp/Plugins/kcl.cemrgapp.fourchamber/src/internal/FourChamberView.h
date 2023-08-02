@@ -49,6 +49,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "vtkRenderer.h"
 #include "vtkTextActor.h"
 
+#include "CemrgFourChamberTools.h"
 #include "FourChamberCommon.h"
 #include "CemrgDataInteractor.h"
 
@@ -155,6 +156,7 @@ private:
     bool carpless;           // true if user does not have CARP installed
 
     mitk::PointSet::Pointer pset;
+    std::unique_ptr<CemrgFourChamberTools> fourch_object;
 
     M3DParameters meshing_parameters;
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory

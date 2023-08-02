@@ -48,6 +48,9 @@ public:
     ~CemrgCommandLine();
     QDialog* GetDialog();
 
+    virtual std::vector<std::string> GetClassHierarchy() const;
+    virtual const char *GetNameOfClass() const;
+
     //Execute Plugin Specific Functions
     QString ExecuteSurf(QString dir, QString segPath, QString morphOperation = "close", int iter = 1, float th = 0.5, int blur = 0, int smth = 10);
     QString ExecuteCreateCGALMesh(QString dir, QString outputName, QString paramsFullPath, QString segmentationName = "converted.inr", QString outputFolder="CGALMeshDir", QString outputExtension="vtk");

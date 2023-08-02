@@ -51,11 +51,11 @@ PURPOSE.  See the above copyright notices for more information.
 #include "CemrgCommonUtils.h"
 #include "CemrgFourChamberTools.h"
 
-CemrgFourChamberTools::CemrgFourChamberTools() {
+//CemrgFourChamberTools::CemrgFourChamberTools(){
+//    CemrgCommandLine();
+//}
 
-}
-
-bool CemrgFourchamberTools::CheckCarpDirectory() {
+bool CemrgFourChamberTools::CheckCarpDirectory() {
     bool success = false;
     if (_carp_dir == "") {
         MITK_ERROR << "CARP directory not set!";
@@ -68,7 +68,7 @@ bool CemrgFourchamberTools::CheckCarpDirectory() {
     
     // iterate carpDir and check for required files
     QStringList requiredFiles = {"mguvc", "GlVTKConvert", "GlRuleFibres", "GlElemCenters", "carp.pt", "igbextract"};
-    QDiriterator it(carpDir, QDirIterator::Subdirectories);
+    QDirIterator it(carpDir, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString file = it.next();
         if (requiredFiles.contains(file)) {
@@ -151,20 +151,20 @@ bool CemrgFourChamberTools::CalculateUvcs(QString base_dir, FourChamberSubfolder
     n_list <<"la/uvc/la.uvc_z.dat";
     n_list <<"la/uvc/la.uvc_ven.dat";
     n_list <<"la/uvc/la.uvc_rho.dat";
-    glvtkconvert_success = ExecuteGlVTKConvert(surf_folder_la, "la/la", arguments, "la/uvc/uvc", TRIM_N);
+    glvtkconvert_success = ExecuteGlVTKConvert(surf_folder_la, "la/la", n_list, "la/uvc/uvc", TRIM_N);
 
     if (!glvtkconvert_success) {
         MITK_ERROR << "GlVTKConvert (3) failed!";
         return false;
     }
 
-  & n_list.clear();
+    n_list.clear();
 
     MITK_INFO << "Calculating UVCs for the RA mesh...";
     QFile::copy(etags_folder + "/etags_ra.sh", surf_folder_ra + "/ra/etags.sh");
 
     // mguvc
-    mguvc_success = ExecuteMguvc(surf_folder_ra + "ra/ra", "lv", "lv", "20", "ra/etags.sh", "ra/uvc/", LAPSOL, C_APEX, ID_SOL);
+    mguvc_success = ExecuteMguvc(surf_folder_ra, "ra/ra", "lv", "lv", "20", "ra/etags.sh", "ra/uvc/", LAPSOL, C_APEX, ID_SOL);
 
     if (!mguvc_success) {
         MITK_ERROR << "mguvc (ra/uvc/) failed!";
@@ -206,7 +206,7 @@ bool CemrgFourChamberTools::ExecuteMguvc(QString directory, QString model_name, 
     return this->ExecuteCommand(mguvc(), arguments, output_path, false);
 }
 
-bool CemrgFourChamberTools::ExecuteGlVTKConvert(QString directory, QString model, QStringList n_list, QString output_dir, bool trim_names = false) {
+bool CemrgFourChamberTools::ExecuteGlVTKConvert(QString directory, QString model, QStringList n_list, QString output_dir, bool trim_names) {
     QString output_path = directory + "/" + output_dir;
     QStringList arguments;
 
@@ -220,7 +220,7 @@ bool CemrgFourChamberTools::ExecuteGlVTKConvert(QString directory, QString model
             arguments << "--trim-names";
     }
 
-    return this->ExecuteCommand(glvtkconvert(), arguments, output_path, false);
+    return this->ExecuteCommand(GlVTKConvert(), arguments, output_path, false);
 }
 
 bool CemrgFourChamberTools::ExecuteCarp_Pt(QString directory, QString meshname, QString par_sdir, QString parfile, QStringList stim_files, QString output_dir) {
@@ -237,7 +237,7 @@ bool CemrgFourChamberTools::ExecuteCarp_Pt(QString directory, QString meshname, 
     return this->ExecuteCommand(carp_pt(), arguments, output_path, false);
 }
 
-bool CemrgFourChamberTools::ExecuteIgbextract(QString directory, QString sdir, double small_f, double big_F, QString outname = "", QString name = "phie.igb") {
+bool CemrgFourChamberTools::ExecuteIgbextract(QString directory, QString sdir, double small_f, double big_F, QString outname, QString name) {
     QString io_dir = directory + "/" + sdir;
     QString input_igb = io_dir + "/" + name;
     QFileInfo fi(input_igb); 
@@ -259,7 +259,7 @@ bool CemrgFourChamberTools::ExecuteIgbextract(QString directory, QString sdir, d
     arguments << "-o" << "ascii";
     arguments << "-f" << QString::number(small_f);
     arguments << "-F" << QString::number(big_F);
-    arguments << "-O" << ;
+    arguments << "-O" << output_path ;
 
     return this->ExecuteCommand(igbextract(), arguments, output_path, true);
 }
@@ -286,16 +286,16 @@ bool CemrgFourChamberTools::ExecuteIgbextract(QString directory, QString sdir, d
 
 bool CemrgFourChamberTools::ExecuteGlRuleFibres(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre) {
     VFibresParams vfib;
-    vfib.meshname = m;
-    vfib.type = type;
-    vfib.apex_to_base = a;
-    vfib.epi = e;
-    vfib.lv = lv;
-    vfib.rv;
-    vfib.alpha_endo = a_endo;
-    vfib.alpha_epi = a_epi;
-    vfib.beta_endo = b_endo;
-    vfib.beta_epi = b_epi;
+    vfib._meshname = m;
+    vfib._type = type;
+    vfib._apex_to_base = a;
+    vfib._epi = e;
+    vfib._lv = l;
+    vfib._rv =r;
+    vfib._alpha_endo = a_endo;
+    vfib._alpha_epi = a_epi;
+    vfib._beta_endo = b_endo;
+    vfib._beta_epi = b_epi;
 
     return ExecuteGlRuleFibres(directory, vfib, output_pre);
 }
