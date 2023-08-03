@@ -102,6 +102,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //CemrgAppModule
 #include <CemrgCommonUtils.h>
 #include <CemrgCommandLine.h>
+#include <CemrgFourChamberCmd.h>
 
 
 const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
@@ -110,8 +111,9 @@ const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
 const QString FourChamberView::POINTS_FILE = "physical_points.json";
 const QString FourChamberView::POINTS_FILE_INDEX = "points.json";
 const QString FourChamberView::GEOMETRY_FILE = "geometry.json";
+const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL", "BLOODPOOL", "LEFT_VENTRICLE", "RIGHT_VENTRICLE", "LEFT_ATRIUM", "RIGHT_ATRIUM", "AORTA", "LSPV", "LIPV", "RSPV", "RIPV", "LAA", "SVC", "IVC"};
 
-void FourChamberView::SetFocus(){
+void FourChamberView::SetFocus() {
     m_Controls.button_setfolder->setFocus();
 }
 
@@ -130,7 +132,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_origin_spacing, SIGNAL(clicked()), this, SLOT(GetOriginSpacing()));
     connect(m_Controls.button_segment_image, SIGNAL(clicked()), this, SLOT(SegmentImgs()));
     connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
-    connect(m_Controls.button_corrections_split, SIGNAL(clicked()), this, SLOT(CorrectionsGetLabels()));
+    connect(m_Controls.button_corrections_split, SIGNAL(clicked()), this, SLOT(CorrectionGetLabels()));
     connect(m_Controls.button_select_pts, SIGNAL(clicked()), this, SLOT(SelectPoints()));
     connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsCylinders()));
     connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsSlicers()));
@@ -161,7 +163,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     InitialiseJsonObjects();
     carpless = false;
 
-    fourch_object = std::unique_ptr<CemrgFourChamberTools>(new CemrgFourChamberTools());
+    fourch_tools = std::unique_ptr<CemrgFourChamberTools>(new CemrgFourChamberTools());
     meshing_parameters = M3DParameters();
 }
 
@@ -595,18 +597,26 @@ void FourChamberView::CorrectionGetLabels() {
     }//_if
 
     mitk::BaseData::Pointer data = nodes[0]->GetData();
+    std::string nodeName = nodes[0]->GetName();
     if (data) {
         mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
         if (seg) {
             
             // find which labels need splitting
-            std::vector<int> split_labels;
-            fourch_object->GetLabels(seg, split_labels);
+            fourch_tools->GetLabels(seg, labelsInSegmentation);
+           
+            mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
+            mlseg->InitializeByLabeledImage(seg);
+            mlseg->SetGeometry(seg->GetGeometry());
 
-            foreach (int label, split_labels) {
-                std::cout << "Splitting label " << label << '\n';
+            foreach (int label, labelsInSegmentation) {
+                QString cbox_label = QString::number(label);
                 m_Controls.combo_corrections_id->addItem(QString::number(label));
+
+                mlseg->GetLabel(label)->SetOpacity(0.3);
             }
+            mlseg->Modified();
+            CemrgCommonUtils::UpdateFromStorage(mlseg, nodeName, this->GetDataStorage());
 
             m_Controls.combo_corrections_id->setVisible(true);
             connect(m_Controls.combo_corrections_id, SIGNAL(activated(int)), this, SLOT(CorrectionIdLabels(int)));
@@ -625,13 +635,30 @@ void FourChamberView::CorrectionIdLabels(int index) {
         return;
     }//_if
 
-    unsigned int label = m_Controls.combo_corrections_id->itemText(index).toInt();
+    QString cbox_label = m_Controls.combo_corrections_id->itemText(index);
+    unsigned int label = cbox_label.split(":")[0].toInt();
     mitk::BaseData::Pointer data = nodes[0]->GetData();
     if (data) {
-        mitk::LabelSetImage::Pointer seg = dynamic_cast<mitk::LabelSetImage *>(data.GetPointer());
-        if (seg) {
-            seg->SetActiveLayer(label);
-            bool userInputsAccepted = UserSelectIdentifyLabels();
+        mitk::LabelSetImage::Pointer mlseg = dynamic_cast<mitk::LabelSetImage *>(data.GetPointer());
+        if (mlseg) {
+            mlseg->GetLabel(label)->SetOpacity(1.0);
+            mlseg->Modified();
+            CemrgCommonUtils::UpdateFromStorage(mlseg, nodes[0]->GetName(), this->GetDataStorage());
+
+            QColor qcolor = MitkColorToQColor(mlseg->GetLabel(label)->GetColor());
+            bool userInputsAccepted = UserSelectIdentifyLabels(label, qcolor);
+            if (userInputsAccepted) {
+                if (splitCurrentLabel) {
+                    mitk::Image::Pointer updateSeg = fourch_tools->SplitLabelsOnRepeat((mitk::Image::Pointer) mlseg, (int) label);
+                    mlseg->InitializeByLabeledImage(updateSeg);
+                    mlseg->SetGeometry(updateSeg->GetGeometry());
+
+                    CemrgCommonUtils::UpdateFromStorage(mlseg, nodes[0]->GetName(), this->GetDataStorage());
+                } else {
+                    m_Controls.combo_corrections_id->setItemText(index, QString::number(label) + ": Identified");
+                }
+            }
+            MITK_INFO(userInputsAccepted) << "User inputs accepted";
         } // _if_image
     }
 }
@@ -1100,50 +1127,43 @@ bool FourChamberView::UserSelectMeshtools3DParameters(QString pre_input_path){
     return userAccepted;
 }
 
-bool FourChamberView::UserSelectIdentifyLabels(){
+bool FourChamberView::UserSelectIdentifyLabels(unsigned int label, QColor qc){
     QDialog *inputs = new QDialog(0, 0);
     bool userInputAccepted = false;
     m_IdLabels.setupUi(inputs);
 
+    m_IdLabels.label_colour->setStyleSheet("background-color: " + qc.name() + ";");
+    m_IdLabels.combo_id_label->addItems(FourChamberView::SEGMENTATION_LIST);
+    m_IdLabels.lineEdit_current_label->setText(QString::number(label));
+    
     connect(m_IdLabels.buttonBox, SIGNAL(accepted()), inputs, SLOT(accept()));
     connect(m_IdLabels.buttonBox, SIGNAL(rejected()), inputs, SLOT(reject()));
     
     int dialogCode = inputs->exec();
     if (dialogCode == QDialog::Accepted) {
-        bool bp, lv, rv, ao, la, ra, la_lspv, la_lipv, la_laa, la_rspv, la_ripv;
-        bp = m_IdLabels.check_bp->isChecked();
-        lv = m_IdLabels.check_lv->isChecked();
-        rv = m_IdLabels.check_rv->isChecked();
-        ao = m_IdLabels.check_aorta->isChecked();
-        la = m_IdLabels.check_la->isChecked();
-        ra = m_IdLabels.check_ra->isChecked();
-
-        la_lspv = m_IdLabels.check_lspv->isChecked();
-        la_lipv = m_IdLabels.check_lipv->isChecked();
-        la_laa = m_IdLabels.check_laa->isChecked();
-        la_rspv = m_IdLabels.check_rspv->isChecked();
-        la_ripv = m_IdLabels.check_ripv->isChecked();
-
-        if (bp + lv + rv + ao + la + ra + la_lspv + la_lipv + la_laa + la_rspv + la_ripv == 0) {
-            Inform("Attention", "No label selected.");
-            return false;
+        bool ok;
+        imageLabel = label;
+        defaultLabel = m_IdLabels.combo_id_label->currentIndex();
+        userLabel = m_IdLabels.lineEdit_current_label->text().toInt(&ok);
+        if (!ok) {
+            userLabel = defaultLabel;
         }
 
-        if (bp + lv + rv + ao + la + ra + la_lspv + la_lipv + la_laa + la_rspv + la_ripv >= 2) {
-            Inform("Attention", "More than one labels selected\nAttempting to split");
-            return false;
+        splitCurrentLabel = (m_IdLabels.combo_id_label->currentText() == "MIXED_LABEL");
+        if (splitCurrentLabel) {
+            Inform("Attention: Mixed Label", "Will attempt to split");
+            defaultLabel = -1;
+            userLabel = -1;
         }
 
-        // continue here
-        return true;
+        userInputAccepted = true;
     } else {
         inputs->deleteLater();
-        return false;
     }
+    return userInputAccepted;
 }
 
-    void FourChamberView::M3dBrowseFile(const QString &dir)
-{
+void FourChamberView::M3dBrowseFile(const QString &dir) {
     QString titlelabel, input = "";
     std::string msg;
 
@@ -1176,6 +1196,21 @@ QString FourChamberView::ArrayToString(double *arr, int size, const QString &tit
     }
     msg += '\n';
     return msg;
+}
+
+QString FourChamberView::MitkColorToHex(const mitk::Color& colour) {
+    QColor qcolour = MitkColorToQColor(colour);
+        
+    return qcolour.name();
+}
+
+QColor FourChamberView::MitkColorToQColor(const mitk::Color& colour) {
+    int red = static_cast<int>(colour[0] * 255);
+    int green = static_cast<int>(colour[1] * 255);
+    int blue = static_cast<int>(colour[2] * 255);
+
+    QColor res(red, green, blue);
+    return res;
 }
 
 bool FourChamberView::ArrayEqual(double *arr1, double *arr2, int size, double tol) {

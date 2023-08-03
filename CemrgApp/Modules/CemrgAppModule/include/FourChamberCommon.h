@@ -4,6 +4,22 @@
 #include <QString>
 
 enum ManualPointsType { CYLINDERS, SLICERS, VALVE_PLAINS };
+enum SegmentationTagsType {  
+    BACKGROUND = 0,
+    BLOODPOOL = 1, 
+    LEFT_VENTRICLE = 2, 
+    RIGHT_VENTRICLE = 3, 
+    LEFT_ATRIUM = 4, 
+    RIGHT_ATRIUM = 5, 
+    AORTA = 6, 
+    LSPV = 8, 
+    LIPV = 9, 
+    RSPV = 10, 
+    RIPV = 11, 
+    LAA = 12,
+    SVC = 13,
+    IVC = 14
+};
 
 struct FourChamberSubfolders {
     QString SEG, MESH, UVC, UVC_LA, UVC_RA, AFIB, PRESIM, SIMS, PAR;

@@ -1023,7 +1023,20 @@ mitk::DataNode::Pointer CemrgCommonUtils::AddToStorage(
     return node;
 }
 
-QJsonObject CemrgCommonUtils::ReadJSONFile(QString dir, QString fname) {
+mitk::DataNode::Pointer CemrgCommonUtils::UpdateFromStorage(
+    mitk::BaseData *data, std::string nodeName, mitk::DataStorage::Pointer ds){
+    
+    mitk::DataStorage::SetOfObjects::ConstPointer sob = ds->GetAll();
+    for (mitk::DataStorage::SetOfObjects::ConstIterator nodeIt = sob->Begin(); nodeIt != sob->End(); ++nodeIt) {
+        if (nodeIt->Value()->GetName().find(nodeName) != nodeIt->Value()->GetName().npos)
+            ds->Remove(nodeIt->Value());
+    } //_for
+
+    return AddToStorage(data, nodeName, ds, false);
+}
+
+QJsonObject CemrgCommonUtils::ReadJSONFile(QString dir, QString fname)
+{
     fname += (!fname.endsWith(".json")) ? ".json" : "";
     QFile file(dir + "/" + fname);
 

@@ -73,9 +73,10 @@ public:
     static const QString POINTS_FILE;   // all the user-selected points
     static const QString POINTS_FILE_INDEX;   // all the user-selected points
     static const QString GEOMETRY_FILE; // origin and spacing
+    static const QStringList SEGMENTATION_LIST; // list of possible segmentation tags
 
     // helper functions
-    bool RequestAnyFolderFromUser(QString & dir, std::string msg, bool project_dir=false);
+    bool RequestAnyFolderFromUser(QString &dir, std::string msg, bool project_dir = false);
     bool CheckForExistingFile(QString dir, QString filename);
     int Ask(std::string title, std::string msg);
     void Warn(std::string title, std::string msg);
@@ -88,8 +89,10 @@ public:
     bool CheckPointsInJsonFile(ManualPointsType mpt);
     void ReloadJsonPoints();
     std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
-    
+
     QString ArrayToString(double *arr, int size, const QString &title);
+    QColor MitkColorToQColor(const mitk::Color &colour);
+    QString MitkColorToHex(const mitk::Color &colour);
 
     void SetButtonsEnable(bool enable);
     inline void SetButtonsEnableToOn(){ SetButtonsEnable(true); };
@@ -102,7 +105,7 @@ public:
 
     // User Select Functions
     bool UserSelectMeshtools3DParameters(QString pre_input_path);
-    bool UserSelectIdentifyLabels();
+    bool UserSelectIdentifyLabels(unsigned int label, QColor qc);
 
     // inline means they're defined here, not in the cpp filemguvc
     inline bool RequestProjectDirectoryFromUser(){ return RequestAnyFolderFromUser(directory, "Project folder", true); };
@@ -163,12 +166,14 @@ private:
     bool carpless;           // true if user does not have CARP installed
 
     mitk::PointSet::Pointer pset;
-    std::unique_ptr<CemrgFourChamberTools> fourch_object;
-    std::vector<mitk::Label::Pointer> segmentationLabels;
+    std::unique_ptr<CemrgFourChamberTools> fourch_tools;
+    std::vector<int> labelsInSegmentation;
 
     M3DParameters meshing_parameters;
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
     SegmentationPointsIds SegPointIds; // keeps track of the segmentation points
+    int imageLabel, userLabel, defaultLabel; // keeps track of the label in the image, the id selected by user and the default label
+    bool splitCurrentLabel; // if true, the current label will be split into two labels
     double origin[3], spacing[3];
 };
 

@@ -38,7 +38,7 @@
       <string notr="true">QLabel { color: rgb(255, 0, 0) }</string>
      </property>
      <property name="text">
-      <string>Identify the Label</string>
+      <string>Which structures are in this label?</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -47,58 +47,105 @@
    </item>
    <item>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="1">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Identifier</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="2">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>New Label</string>
-       </property>
-      </widget>
-     </item>
      <item row="1" column="0">
-      <widget class="QLineEdit" name="lineEdit_current_label">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QLineEdit" name="lineEdit_new_label">
-       <property name="placeholderText">
-        <string>Use Default</string>
+      <widget class="QCheckBox" name="check_bp">
+       <property name="text">
+        <string>Bloodpool</string>
        </property>
       </widget>
      </item>
      <item row="1" column="1">
-      <widget class="QComboBox" name="combo_id_label"/>
+      <widget class="QCheckBox" name="check_lv">
+       <property name="text">
+        <string>Left Ventricle</string>
+       </property>
+      </widget>
      </item>
      <item row="0" column="0">
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>Current Label</string>
+        <string>Whole Heart</string>
        </property>
       </widget>
      </item>
      <item row="2" column="0">
-      <widget class="QLabel" name="label_colour">
-       <property name="styleSheet">
-        <string notr="true"/>
-       </property>
+      <widget class="QCheckBox" name="check_aorta">
        <property name="text">
-        <string>Label Colour</string>
+        <string>Aorta</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QCheckBox" name="check_rv">
+       <property name="text">
+        <string>Right Ventricle</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QCheckBox" name="check_la">
+       <property name="text">
+        <string>Left Atrium</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <widget class="QCheckBox" name="check_ra">
+       <property name="text">
+        <string>Right Atrium</string>
        </property>
       </widget>
      </item>
     </layout>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridLayout_2">
+     <item row="2" column="0">
+      <widget class="QCheckBox" name="check_lipv">
+       <property name="text">
+        <string>LIPV</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QCheckBox" name="check_lspv">
+       <property name="text">
+        <string>LSPV</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>Left Atrium</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QCheckBox" name="check_rspv">
+       <property name="text">
+        <string>RSPV</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QCheckBox" name="check_ripv">
+       <property name="text">
+        <string>RIPV</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QCheckBox" name="check_laa">
+       <property name="text">
+        <string>LAA</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridLayout_3"/>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">

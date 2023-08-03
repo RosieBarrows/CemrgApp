@@ -92,6 +92,7 @@ public:
 
     //Generic
     static mitk::DataNode::Pointer AddToStorage(mitk::BaseData* data, std::string nodeName, mitk::DataStorage::Pointer ds, bool init = true);
+    static mitk::DataNode::Pointer UpdateFromStorage(mitk::BaseData *data, std::string nodeName, mitk::DataStorage::Pointer ds);
     static QJsonObject CreateJSONObject(QStringList keys_list, QStringList values_list, QStringList types_list);
     static QJsonObject ReadJSONFile(QString dir, QString fname);
     static bool WriteJSONFile(QJsonObject json, QString dir, QString fname);

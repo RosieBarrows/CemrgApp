@@ -1,6 +1,7 @@
 set(CPP_FILES
     CemrgCommandLine.cpp
     CemrgFourChamberTools.cpp
+    CemrgFourChamberCmd.cpp
     CemrgCommonUtils.cpp
     CemrgMeasure.cpp
     CemrgScar3D.cpp
@@ -20,6 +21,7 @@ set(MOC_H_FILES
     include/CemrgAtrialTools.h
     include/CemrgCommandLine.h
     include/CemrgFourChamberTools.h
+    include/CemrgFourChamberCmd.h
     include/CemrgCommonUtils.h
     include/CemrgMeasure.h
     include/CemrgScar3D.h
