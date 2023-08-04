@@ -58,11 +58,13 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
 
         // Segmentation Utilities
         void ExploreLabelsToSplit(mitk::Image::Pointer seg, std::vector<int>& labels); 
-        mitk::Image::Pointer SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label);
+        mitk::Image::Pointer SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label, unsigned int radius=3);
         
         void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0);
         mitk::Image::Pointer ExtractSingleLabel(mitk::Image::Pointer seg, int label, bool binarise=true);
         mitk::Image::Pointer BwLabelN(mitk::Image::Pointer seg, std::vector<int>& labels);
+
+        bool GetLabelCentreOfMass(mitk::Image::Pointer seg, int label, std::vector<double> &cog);
 
     protected:
         

@@ -44,11 +44,14 @@ PURPOSE.  See the above copyright notices for more information.
 #include <itkConnectedComponentImageFilter.h>
 #include <itkLabelShapeKeepNObjectsImageFilter.h>
 #include <itkImageRegionIteratorWithIndex.h>
+#include <itkBinaryMorphologicalOpeningImageFilter.h>
 #include <itkBinaryBallStructuringElement.h>
 #include <itkGrayscaleDilateImageFilter.h>
 #include <itkRelabelComponentImageFilter.h>
+#include <itkLabelStatisticsImageFilter.h>
 
 #include "CemrgCommonUtils.h"
+#include "CemrgAtrialTools.h"
 #include "CemrgFourChamberTools.h"
 
 CemrgFourChamberTools::CemrgFourChamberTools(){
@@ -75,26 +78,41 @@ void CemrgFourChamberTools::ExploreLabelsToSplit(mitk::Image::Pointer seg, std::
     }
 }
 
-mitk::Image::Pointer CemrgFourChamberTools::SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label) {
+mitk::Image::Pointer CemrgFourChamberTools::SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label, unsigned int radius) {
+    
     std::vector<int> labelsInSeg;
     GetLabels(seg, labelsInSeg);
     // remove label from labelsInSeg
     labelsInSeg.erase(std::remove(labelsInSeg.begin(), labelsInSeg.end(), label), labelsInSeg.end());
 
+    std::unique_ptr<CemrgAtrialTools> imatools = std::unique_ptr<CemrgAtrialTools>(new CemrgAtrialTools());
+    imatools->SetDebugModeOff();
+
     mitk::Image::Pointer imageLabel = ExtractSingleLabel(seg, label, true);
-    mitk::MorphologicalOperations::Opening(imageLabel, 2, mitk::MorphologicalOperations::StructuralElementType::Ball);
-    
+    ImageType::Pointer itkLabel = ImageType::New();
+    CastToItkImage(imageLabel, itkLabel);
+
+    using StrElType = itk::BinaryBallStructuringElement<ImageType::PixelType, ImageType::ImageDimension>;
+    using OpeningType = itk::BinaryMorphologicalOpeningImageFilter<ImageType, ImageType, StrElType>;
+    StrElType strel;
+    strel.SetRadius(radius);
+    strel.CreateStructuringElement();
+    OpeningType::Pointer imopen = OpeningType::New();
+    imopen->SetInput(itkLabel);
+    imopen->SetKernel(strel);
+    imopen->Update();
+
     std::vector<int> tagsInLabel;
-    mitk::Image::Pointer ccImLabel = BwLabelN(imageLabel, tagsInLabel);
+    mitk::Image::Pointer ccImLabel = BwLabelN(mitk::ImportItkImage(imopen->GetOutput()) , tagsInLabel);
 
     if (tagsInLabel.size() == 1) {
         return seg;
     }
 
     ImageType::Pointer itkImage = ImageType::New();
+    CastToItkImage(seg, itkImage);
     ImageType::Pointer itkCcImLabel = ImageType::New();
     CastToItkImage(ccImLabel, itkCcImLabel);
-    CastToItkImage(seg, itkImage);
 
     // Remove label from seg
     IteratorType it(itkImage, itkImage->GetLargestPossibleRegion());
@@ -199,4 +217,47 @@ mitk::Image::Pointer CemrgFourChamberTools::BwLabelN(mitk::Image::Pointer seg, s
     GetLabels(outImage, labels);
     
     return outImage;
+}
+
+bool CemrgFourChamberTools::GetLabelCentreOfMass(mitk::Image::Pointer seg, int label, std::vector<double> &cog) {
+    using LabelStatisticsFilterType = itk::LabelStatisticsImageFilter<ImageType, ImageType>;
+
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(seg, itkImage);
+
+    LabelStatisticsFilterType::Pointer labelStats = LabelStatisticsFilterType::New();
+    labelStats->SetInput(itkImage);
+    labelStats->SetLabelInput(itkImage); // Use the segmentation image as label
+    labelStats->Update();
+
+    LabelStatisticsFilterType::LabelPixelType labelValue = label;
+    LabelStatisticsFilterType::BoundingBoxType bb = labelStats->GetBoundingBox(labelValue);
+
+    if (bb.empty()) {
+        return false;
+    }
+
+
+    // get the centre of the bounding box
+    ImageType::IndexType centerOfBoundingBoxIndex;
+    ImageType::PointType centerOfBoundingBoxWorld;
+    foreach (int value, bb) {
+        std::cout << value << '\n';
+    }
+    
+    for (unsigned int ix = 0; ix < 3; ix++) {
+        double spacing = itkImage->GetSpacing()[ix];
+        double origin = itkImage->GetOrigin()[ix];
+        centerOfBoundingBoxIndex[ix] = (bb[ix] + bb[ix + 3]) / 2;
+        centerOfBoundingBoxWorld[ix] = (bb[ix] + bb[ix + 3]) / 2.0 * spacing + origin;
+    }
+
+    itkImage->TransformIndexToPhysicalPoint(centerOfBoundingBoxIndex, centerOfBoundingBoxWorld);
+    cog.push_back(centerOfBoundingBoxWorld[0]);
+    cog.push_back(centerOfBoundingBoxWorld[1]);
+    cog.push_back(centerOfBoundingBoxWorld[2]);
+
+    std::cout << "Centre of mass: " << cog[0] << ", " << cog[1] << ", " << cog[2] << '\n';
+
+    return true;
 }

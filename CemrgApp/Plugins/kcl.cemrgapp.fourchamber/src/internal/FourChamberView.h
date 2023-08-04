@@ -133,6 +133,7 @@ protected slots:
 
     void Corrections();
     void CorrectionGetLabels();
+    void CorrectionConfirmSplit();
     void CorrectionIdLabels(int);
 
     void SelectPoints();
@@ -167,14 +168,17 @@ private:
 
     mitk::PointSet::Pointer pset;
     std::unique_ptr<CemrgFourChamberTools> fourch_tools;
-    std::vector<int> labelsInSegmentation;
 
     M3DParameters meshing_parameters;
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
     SegmentationPointsIds SegPointIds; // keeps track of the segmentation points
-    int imageLabel, userLabel, defaultLabel; // keeps track of the label in the image, the id selected by user and the default label
-    bool splitCurrentLabel; // if true, the current label will be split into two labels
     double origin[3], spacing[3];
+
+    // members handling the current label of the segmentation being handled
+    int imageLabel, userLabel, defaultLabel; // keeps track of the label in the image, the id selected by user and the default label
+    std::vector<int> labelsInSegmentation, labelsToSplit, labelsToUse;
+    QString pickedLabelName; // keeps track of the name of the label selected by the user
+    bool splitCurrentLabel, deleteCurrentLabel; // if true, the current label will be split into two labels
 };
 
 #endif // FourChamberView_h

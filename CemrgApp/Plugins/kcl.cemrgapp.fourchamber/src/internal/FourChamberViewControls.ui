@@ -20,7 +20,7 @@
    <string>QmitkTemplate</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QLabel" name="label">
      <property name="styleSheet">
       <string notr="true">QLabel { color: rgb(255, 0, 0) }</string>
@@ -91,7 +91,18 @@
     </widget>
    </item>
    <item>
-    <widget class="QComboBox" name="combo_corrections_id"/>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QComboBox" name="combo_corrections_id"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="button_confirm_split">
+       <property name="text">
+        <string>Confirm Split</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QPushButton" name="button_corrections">
@@ -113,7 +124,7 @@
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_select_pts_a">
      <property name="styleSheet">
       <string notr="true">text-align: left; </string>
@@ -123,7 +134,7 @@
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_select_pts_b">
      <property name="styleSheet">
       <string notr="true">text-align: left; </string>
@@ -133,7 +144,7 @@
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_select_pts_c">
      <property name="minimumSize">
       <size>
@@ -149,7 +160,7 @@
      </property>
     </widget>
    </item>
-   <item alignment="Qt::AlignHCenter">
+   <item>
     <widget class="QPushButton" name="button_select_pts_check">
      <property name="styleSheet">
       <string notr="true"> color: rgb(132, 174, 235);</string>

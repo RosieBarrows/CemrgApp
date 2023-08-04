@@ -111,7 +111,7 @@ const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
 const QString FourChamberView::POINTS_FILE = "physical_points.json";
 const QString FourChamberView::POINTS_FILE_INDEX = "points.json";
 const QString FourChamberView::GEOMETRY_FILE = "geometry.json";
-const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL", "BLOODPOOL", "LEFT_VENTRICLE", "RIGHT_VENTRICLE", "LEFT_ATRIUM", "RIGHT_ATRIUM", "AORTA", "LSPV", "LIPV", "RSPV", "RIPV", "LAA", "SVC", "IVC"};
+const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL", "BLOODPOOL", "LEFT_VENTRICLE", "RIGHT_VENTRICLE", "LEFT_ATRIUM", "RIGHT_ATRIUM", "AORTA", "LSPV", "LIPV", "RSPV", "RIPV", "LAA", "SVC", "IVC", "DELETE"};
 
 void FourChamberView::SetFocus() {
     m_Controls.button_setfolder->setFocus();
@@ -133,6 +133,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_segment_image, SIGNAL(clicked()), this, SLOT(SegmentImgs()));
     connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
     connect(m_Controls.button_corrections_split, SIGNAL(clicked()), this, SLOT(CorrectionGetLabels()));
+    connect(m_Controls.button_confirm_split, SIGNAL(clicked()), this, SLOT(CorrectionConfirmSplit()));
     connect(m_Controls.button_select_pts, SIGNAL(clicked()), this, SLOT(SelectPoints()));
     connect(m_Controls.button_select_pts_a, SIGNAL(clicked()), this, SLOT(SelectPointsCylinders()));
     connect(m_Controls.button_select_pts_b, SIGNAL(clicked()), this, SLOT(SelectPointsSlicers()));
@@ -153,6 +154,8 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     m_Controls.button_select_pts_reset->setVisible(false);
     m_Controls.button_corrections->setVisible(false);
     m_Controls.button_corrections_split->setVisible(false);
+    m_Controls.button_confirm_split->setVisible(false);
+    m_Controls.button_confirm_split->setEnabled(false);
     m_Controls.combo_corrections_id->setVisible(false);
 
     m_Controls.button_extractsurfs->setVisible(false);
@@ -601,25 +604,55 @@ void FourChamberView::CorrectionGetLabels() {
     if (data) {
         mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
         if (seg) {
-            
+
             // find which labels need splitting
             fourch_tools->GetLabels(seg, labelsInSegmentation);
-           
-            mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
-            mlseg->InitializeByLabeledImage(seg);
-            mlseg->SetGeometry(seg->GetGeometry());
-
+            fourch_tools->GetLabels(seg, labelsToUse);
             foreach (int label, labelsInSegmentation) {
                 QString cbox_label = QString::number(label);
                 m_Controls.combo_corrections_id->addItem(QString::number(label));
-
-                mlseg->GetLabel(label)->SetOpacity(0.3);
             }
-            mlseg->Modified();
-            CemrgCommonUtils::UpdateFromStorage(mlseg, nodeName, this->GetDataStorage());
-
+           
             m_Controls.combo_corrections_id->setVisible(true);
+            m_Controls.button_confirm_split->setVisible(true);
             connect(m_Controls.combo_corrections_id, SIGNAL(activated(int)), this, SLOT(CorrectionIdLabels(int)));
+        } // _if_image
+    } // _if_data
+}
+
+void FourChamberView::CorrectionConfirmSplit() {
+    //Check for selection of images
+    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+    if (nodes.size() != 1) {
+        Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
+        return;
+    }//_if
+
+    if (labelsToSplit.size() == 0) { 
+        Inform("Attention", "No labels have been selected for splitting.");
+        return;
+    }
+
+    mitk::BaseData::Pointer data = nodes[0]->GetData();
+    std::string nodeName = nodes[0]->GetName();
+    if (data) {
+        mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (seg) {
+            MITK_INFO << "Splitting labels";
+            foreach (int label, labelsToSplit) {
+                MITK_INFO << ("Splitting label: " + QString::number(label)).toStdString();
+                seg = fourch_tools->SplitLabelsOnRepeat(seg, label, 5);
+            }
+
+            QString path = Path(SDIR.SEG + "/seg_corrected.nii");
+            mitk::IOUtil::Save(seg, path.toStdString());
+
+            this->GetDataStorage()->Remove(nodes[0]);
+            mitk::LabelSetImage::Pointer seg_corrected = mitk::IOUtil::Load<mitk::LabelSetImage>(path.toStdString());
+            CemrgCommonUtils::AddToStorage(seg_corrected, "seg_corrected", this->GetDataStorage(), false);
+            seg_corrected->Modified();
+            // mitk::DataStorage::SetOfObjects::Pointer set = mitk::IOUtil::Load(path.toStdString(), *this->GetDataStorage());
+
         } // _if_image
     } // _if_data
 }
@@ -627,8 +660,8 @@ void FourChamberView::CorrectionGetLabels() {
 void FourChamberView::CorrectionIdLabels(int index) {
     if (m_Controls.combo_corrections_id->count() == 0)
         return;
-    
-     //Check for selection of images
+
+    // Check for selection of images
     QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
     if (nodes.size() != 1) {
         Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
@@ -641,21 +674,46 @@ void FourChamberView::CorrectionIdLabels(int index) {
     if (data) {
         mitk::LabelSetImage::Pointer mlseg = dynamic_cast<mitk::LabelSetImage *>(data.GetPointer());
         if (mlseg) {
-            mlseg->GetLabel(label)->SetOpacity(1.0);
-            mlseg->Modified();
-            CemrgCommonUtils::UpdateFromStorage(mlseg, nodes[0]->GetName(), this->GetDataStorage());
+            std::string nodeName = nodes[0]->GetName();
+            std::vector<double> labelCog;
+            fourch_tools->GetLabelCentreOfMass((mitk::Image::Pointer) mlseg, label, labelCog);
+            mitk::Point3D cog;
+            cog[0] = labelCog[0];
+            cog[1] = labelCog[1];
+            cog[2] = labelCog[2];
+
+            // set the crosshair to the centre of mass
+            this->GetRenderWindowPart()->SetSelectedPosition(cog);
+            mitk::RenderingManager::GetInstance()->RequestUpdateAll();
 
             QColor qcolor = MitkColorToQColor(mlseg->GetLabel(label)->GetColor());
             bool userInputsAccepted = UserSelectIdentifyLabels(label, qcolor);
+
             if (userInputsAccepted) {
                 if (splitCurrentLabel) {
-                    mitk::Image::Pointer updateSeg = fourch_tools->SplitLabelsOnRepeat((mitk::Image::Pointer) mlseg, (int) label);
-                    mlseg->InitializeByLabeledImage(updateSeg);
-                    mlseg->SetGeometry(updateSeg->GetGeometry());
 
-                    CemrgCommonUtils::UpdateFromStorage(mlseg, nodes[0]->GetName(), this->GetDataStorage());
+                    if (!m_Controls.button_confirm_split->isEnabled()){
+                        if (labelsToSplit.size() == 0) {
+                            Inform("Attention", "Keep selecting labels to split until you are done.\nThen use Confirm Split button");
+                        }
+                        m_Controls.button_confirm_split->setEnabled(true);
+                    }
+
+                    labelsToSplit.push_back(label);
+
+                } else if (deleteCurrentLabel) {
+                    m_Controls.combo_corrections_id->removeItem(index);
+                    // mlseg->RemoveLabel(label);
+
                 } else {
-                    m_Controls.combo_corrections_id->setItemText(index, QString::number(label) + ": Identified");
+                    QString itemText = QString::number(label);
+                    itemText += (pickedLabelName.isEmpty()) ? "" : ": " + pickedLabelName;
+                    m_Controls.combo_corrections_id->setItemText(index, itemText);
+
+                    labelsToUse.at(index) = userLabel;
+                    
+                    mlseg->GetLabel(label)->SetName(pickedLabelName.toStdString());
+                    mitk::IOUtil::Save(mlseg, StdStringPath(SDIR.SEG + "seg_corrected.nii"));
                 }
             }
             MITK_INFO(userInputsAccepted) << "User inputs accepted";
@@ -1138,22 +1196,28 @@ bool FourChamberView::UserSelectIdentifyLabels(unsigned int label, QColor qc){
     
     connect(m_IdLabels.buttonBox, SIGNAL(accepted()), inputs, SLOT(accept()));
     connect(m_IdLabels.buttonBox, SIGNAL(rejected()), inputs, SLOT(reject()));
+    pickedLabelName = "";
     
     int dialogCode = inputs->exec();
     if (dialogCode == QDialog::Accepted) {
         bool ok;
         imageLabel = label;
         defaultLabel = m_IdLabels.combo_id_label->currentIndex();
+        pickedLabelName = m_IdLabels.combo_id_label->currentText();
         userLabel = m_IdLabels.lineEdit_current_label->text().toInt(&ok);
         if (!ok) {
             userLabel = defaultLabel;
         }
 
         splitCurrentLabel = (m_IdLabels.combo_id_label->currentText() == "MIXED_LABEL");
-        if (splitCurrentLabel) {
-            Inform("Attention: Mixed Label", "Will attempt to split");
+        deleteCurrentLabel = (m_IdLabels.combo_id_label->currentText() == "DELETE");
+        if (splitCurrentLabel || deleteCurrentLabel) {
+            std::string title = splitCurrentLabel ? "Split Label" : "Delete Label";
+            std::string msg = splitCurrentLabel ? "Label marked for splitting" : "Label marked for deletion";
+            Inform(title, msg);
             defaultLabel = -1;
             userLabel = -1;
+            pickedLabelName = "";
         }
 
         userInputAccepted = true;

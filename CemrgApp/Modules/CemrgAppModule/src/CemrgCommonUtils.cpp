@@ -1032,7 +1032,7 @@ mitk::DataNode::Pointer CemrgCommonUtils::UpdateFromStorage(
             ds->Remove(nodeIt->Value());
     } //_for
 
-    return AddToStorage(data, nodeName, ds, false);
+    return AddToStorage(data, nodeName, ds);
 }
 
 QJsonObject CemrgCommonUtils::ReadJSONFile(QString dir, QString fname)
