@@ -39,6 +39,7 @@ PURPOSE.  See the above copyright notices for more information.
 #include <mitkImageCast.h>
 #include <mitkITKImageImport.h>
 #include <mitkMorphologicalOperations.h>
+#include <mitkImagePixelWriteAccessor.h>
 
 // ITK
 #include <itkConnectedComponentImageFilter.h>
@@ -124,13 +125,13 @@ mitk::Image::Pointer CemrgFourChamberTools::SplitLabelsOnRepeat(mitk::Image::Poi
 
     for (long unsigned int ix = 0; ix < tagsInLabel.size(); ix++) {
         int tag = tagsInLabel.at(ix);
-        int newLabel = (ix==0) ? label : label*10 + (tag+1);
+        int newLabel = (ix==0) ? label : label*10 + (tag-1);
 
         int qx = 1;
         // Use std::find to check if the variable is in the vector
         auto it = std::find(tagsInLabel.begin(), tagsInLabel.end(), newLabel);
         while (it != tagsInLabel.end()) {
-            newLabel = label*std::pow(10, qx) + (tag+1);
+            newLabel = label*std::pow(10, qx) + (tag-1);
             qx++;
             it = std::find(tagsInLabel.begin(), tagsInLabel.end(), newLabel);
         }
@@ -152,6 +153,37 @@ mitk::Image::Pointer CemrgFourChamberTools::SplitLabelsOnRepeat(mitk::Image::Poi
 
 }
 
+mitk::Image::Pointer CemrgFourChamberTools::SwapLabel(mitk::Image::Pointer seg, int label1, int label2, bool checkExisting, bool overwrite) {
+    std::vector<int> labelsInSeg;
+    GetLabels(seg, labelsInSeg);
+
+    if (checkExisting) {
+        MITK_INFO << ("Checking if label " + QString::number(label2) + " exists in segmentation").toStdString();
+        auto it = std::find(labelsInSeg.begin(), labelsInSeg.end(), QString::number(label2));
+        if (it != labelsInSeg.end() && !overwrite) {
+            MITK_INFO << ("Label " + QString::number(label2) + " already exists in segmentation").toStdString();
+            return seg;
+        }
+    }
+
+    MITK_INFO(overwrite) << ("Overwritting label " + QString::number(label2)).toStdString();
+    ImageType::Pointer itkImage = ImageType::New();
+    CastToItkImage(seg, itkImage);
+
+    IteratorType segIt(itkImage, itkImage->GetLargestPossibleRegion());
+    for (segIt.GoToBegin(); !segIt.IsAtEnd(); ++segIt) {
+        if (segIt.Get() == label1) {
+            segIt.Set(label2);
+        } else if (segIt.Get() == label2) {
+            segIt.Set(label1);
+        }
+    }
+    
+    mitk::Image::Pointer newSeg = mitk::ImportItkImage(itkImage)->Clone();
+    newSeg->SetGeometry(seg->GetGeometry());
+    return newSeg;
+    
+}
 
 void CemrgFourChamberTools::GetLabels(mitk::Image::Pointer seg, std::vector<int> &labels, int background) {
     ImageType::Pointer itkImage = ImageType::New();
@@ -219,7 +251,7 @@ mitk::Image::Pointer CemrgFourChamberTools::BwLabelN(mitk::Image::Pointer seg, s
     return outImage;
 }
 
-bool CemrgFourChamberTools::GetLabelCentreOfMass(mitk::Image::Pointer seg, int label, std::vector<double> &cog) {
+bool CemrgFourChamberTools::GetLabelCentreOfMassIndex(mitk::Image::Pointer seg, int label, std::vector<unsigned int> &cogIndx) {
     using LabelStatisticsFilterType = itk::LabelStatisticsImageFilter<ImageType, ImageType>;
 
     ImageType::Pointer itkImage = ImageType::New();
@@ -237,27 +269,54 @@ bool CemrgFourChamberTools::GetLabelCentreOfMass(mitk::Image::Pointer seg, int l
         return false;
     }
 
-
     // get the centre of the bounding box
     ImageType::IndexType centerOfBoundingBoxIndex;
-    ImageType::PointType centerOfBoundingBoxWorld;
-    foreach (int value, bb) {
-        std::cout << value << '\n';
-    }
     
     for (unsigned int ix = 0; ix < 3; ix++) {
         double spacing = itkImage->GetSpacing()[ix];
         double origin = itkImage->GetOrigin()[ix];
-        centerOfBoundingBoxIndex[ix] = (bb[ix] + bb[ix + 3]) / 2;
-        centerOfBoundingBoxWorld[ix] = (bb[ix] + bb[ix + 3]) / 2.0 * spacing + origin;
+        // cogIndx.push_back( (bb[ix] + bb[ix + 3]) / 2) ;
+        cogIndx.push_back((bb[2*ix] + bb[2*ix + 1]) / 2);
     }
 
-    itkImage->TransformIndexToPhysicalPoint(centerOfBoundingBoxIndex, centerOfBoundingBoxWorld);
-    cog.push_back(centerOfBoundingBoxWorld[0]);
-    cog.push_back(centerOfBoundingBoxWorld[1]);
-    cog.push_back(centerOfBoundingBoxWorld[2]);
+    return true;
+}
+
+bool CemrgFourChamberTools::GetLabelCentreOfMass(mitk::Image::Pointer seg, int label, std::vector<double> &cog) {
+    std::vector<unsigned int> cogIndx;
+    bool result = GetLabelCentreOfMassIndex(seg, label, cogIndx);    
+    if (!result) {
+        return false;
+    }
+
+    for (unsigned int ix = 0; ix < 3; ix++) {
+        double spacing = seg->GetGeometry()->GetSpacing()[ix];
+        double origin = seg->GetGeometry()->GetOrigin()[ix];
+
+        cog.push_back( (cogIndx[ix] * spacing) + origin );
+        
+    }
+
+    // itkImage->TransformIndexToPhysicalPoint(centerOfBoundingBoxIndex, centerOfBoundingBoxWorld);
+    // cog.push_back(centerOfBoundingBoxWorld[0]);
+    // cog.push_back(centerOfBoundingBoxWorld[1]);
+    // cog.push_back(centerOfBoundingBoxWorld[2]);
 
     std::cout << "Centre of mass: " << cog[0] << ", " << cog[1] << ", " << cog[2] << '\n';
 
     return true;
+}
+
+bool CemrgFourChamberTools::WorldToIndex(mitk::Image::Pointer image, std::vector<double> world, std::vector<unsigned int>& index) {
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(image, itkImage);
+
+    return false;
+}
+
+bool CemrgFourChamberTools::IndexToWorld(mitk::Image::Pointer image, std::vector<unsigned int> index, std::vector<double> &world) {
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(image, itkImage);
+
+    return false;
 }

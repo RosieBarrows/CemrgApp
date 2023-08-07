@@ -111,7 +111,7 @@ const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
 const QString FourChamberView::POINTS_FILE = "physical_points.json";
 const QString FourChamberView::POINTS_FILE_INDEX = "points.json";
 const QString FourChamberView::GEOMETRY_FILE = "geometry.json";
-const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL", "BLOODPOOL", "LEFT_VENTRICLE", "RIGHT_VENTRICLE", "LEFT_ATRIUM", "RIGHT_ATRIUM", "AORTA", "LSPV", "LIPV", "RSPV", "RIPV", "LAA", "SVC", "IVC", "DELETE"};
+const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL", "BLOODPOOL", "LEFT_VENTRICLE", "RIGHT_VENTRICLE", "LEFT_ATRIUM", "RIGHT_ATRIUM", "AORTA", "PArt","LSPV", "LIPV", "RSPV", "RIPV", "LAA", "SVC", "IVC", "DELETE"};
 
 void FourChamberView::SetFocus() {
     m_Controls.button_setfolder->setFocus();
@@ -330,16 +330,14 @@ void FourChamberView::SegmentImgs() {
     mitk_origin[0] = origin[0];
     mitk_origin[1] = origin[1];
     mitk_origin[2] = origin[2];
-
-    int test_origin = 0;
-    for (int ix = 0; ix < 3; ix++){
-        test_origin += (seg_origin[ix] == origin[ix]) ? 1:0;
-    }
         
     if (!ArrayEqual(seg_origin, origin, 3)) {
-        std::cout << test_origin << " Origin is different" << '\n';
+        std::cout << "Origin is different" << '\n';
         segmentation->SetOrigin(mitk_origin);
     }
+
+    std::cout << ArrayToString(spacing, 3, "Spacing").toStdString();
+    std::cout << ArrayToString(origin, 3, "Origin").toStdString() ;
 
     mitk::Vector3D mitk_spacing;
     mitk_spacing[0] = spacing[0];
@@ -351,6 +349,9 @@ void FourChamberView::SegmentImgs() {
         std::cout << "Spacing is different" << '\n';
         segmentation->SetSpacing(mitk_spacing);
     }
+
+    std::cout << ArrayToString(seg_spacing, 3, "SEG Spacing").toStdString();
+    std::cout << ArrayToString(seg_origin, 3, "SEG Origin").toStdString();
 
     QFileInfo fi(path);
     try {
@@ -364,12 +365,6 @@ void FourChamberView::SegmentImgs() {
         MITK_ERROR << "Exception caught: " << e.GetDescription();
         CemrgCommonUtils::AddToStorage(segmentation, fi.baseName().toStdString(), this->GetDataStorage());
     }
-
-    std::cout << ArrayToString(spacing, 3, "Spacing").toStdString();
-    std::cout << ArrayToString(origin, 3, "Origin").toStdString() ;
-
-    std::cout << ArrayToString(seg_spacing, 3, "SEG Spacing").toStdString();
-    std::cout << ArrayToString(seg_origin, 3, "SEG Origin").toStdString();
 
 }
 
@@ -640,18 +635,37 @@ void FourChamberView::CorrectionConfirmSplit() {
         if (seg) {
             MITK_INFO << "Splitting labels";
             foreach (int label, labelsToSplit) {
+                int radius = 5;
                 MITK_INFO << ("Splitting label: " + QString::number(label)).toStdString();
-                seg = fourch_tools->SplitLabelsOnRepeat(seg, label, 5);
+                seg = fourch_tools->SplitLabelsOnRepeat(seg, label, radius);
             }
 
+            // update labelsInSegmentation and labelsToUse with new labels in aux 
+            std::vector<int> auxLabelsInSeg;
+            fourch_tools->GetLabels(seg, auxLabelsInSeg);
+            foreach (int label, auxLabelsInSeg) {
+                auto test =  std::find(labelsInSegmentation.begin(), labelsInSegmentation.end(), label);
+                if (test == labelsInSegmentation.end()) {
+                    labelsInSegmentation.push_back(label);
+                    labelsToUse.push_back(label);
+                    m_Controls.combo_corrections_id->addItem(QString::number(label));
+                }
+            }
+
+            labelsToSplit.clear();
+
             QString path = Path(SDIR.SEG + "/seg_corrected.nii");
+            std::string name = path.left(path.length() - 4).toStdString();
             mitk::IOUtil::Save(seg, path.toStdString());
 
+            mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
+            mlseg->InitializeByLabeledImage(seg);
+            mlseg->SetGeometry(seg->GetGeometry());
+
+            CemrgCommonUtils::AddToStorage(mlseg, "seg_corrected", this->GetDataStorage());
+            mlseg->Modified();
+
             this->GetDataStorage()->Remove(nodes[0]);
-            mitk::LabelSetImage::Pointer seg_corrected = mitk::IOUtil::Load<mitk::LabelSetImage>(path.toStdString());
-            CemrgCommonUtils::AddToStorage(seg_corrected, "seg_corrected", this->GetDataStorage(), false);
-            seg_corrected->Modified();
-            // mitk::DataStorage::SetOfObjects::Pointer set = mitk::IOUtil::Load(path.toStdString(), *this->GetDataStorage());
 
         } // _if_image
     } // _if_data
@@ -703,7 +717,10 @@ void FourChamberView::CorrectionIdLabels(int index) {
 
                 } else if (deleteCurrentLabel) {
                     m_Controls.combo_corrections_id->removeItem(index);
-                    // mlseg->RemoveLabel(label);
+                    fourch_tools->RemoveLabel((mitk::Image::Pointer) mlseg, label);
+                    mitk::IOUtil::Save(mlseg, StdStringPath(SDIR.SEG + "/seg_corrected.nii"));
+
+                    CemrgCommonUtils::UpdateFromStorage(mlseg, nodes[0]->GetName(), this->GetDataStorage());
 
                 } else {
                     QString itemText = QString::number(label);
@@ -713,7 +730,7 @@ void FourChamberView::CorrectionIdLabels(int index) {
                     labelsToUse.at(index) = userLabel;
                     
                     mlseg->GetLabel(label)->SetName(pickedLabelName.toStdString());
-                    mitk::IOUtil::Save(mlseg, StdStringPath(SDIR.SEG + "seg_corrected.nii"));
+                    mitk::IOUtil::Save(mlseg, StdStringPath(SDIR.SEG + "/seg_corrected.nii"));
                 }
             }
             MITK_INFO(userInputsAccepted) << "User inputs accepted";
