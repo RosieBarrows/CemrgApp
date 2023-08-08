@@ -111,7 +111,7 @@ const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
 const QString FourChamberView::POINTS_FILE = "physical_points.json";
 const QString FourChamberView::POINTS_FILE_INDEX = "points.json";
 const QString FourChamberView::GEOMETRY_FILE = "geometry.json";
-const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL", "BLOODPOOL", "LEFT_VENTRICLE", "RIGHT_VENTRICLE", "LEFT_ATRIUM", "RIGHT_ATRIUM", "AORTA", "PArt","LSPV", "LIPV", "RSPV", "RIPV", "LAA", "SVC", "IVC", "DELETE"};
+const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL", "BLOODPOOL", "LEFT_VENTRICLE", "RIGHT_VENTRICLE", "LEFT_ATRIUM", "RIGHT_ATRIUM", "AORTA", "PULMONARY_ARTERY","LSPV", "LIPV", "RSPV", "RIPV", "LAA", "SVC", "IVC", "DELETE"};
 
 void FourChamberView::SetFocus() {
     m_Controls.button_setfolder->setFocus();
@@ -211,6 +211,21 @@ void FourChamberView::SetWorkingFolder(){
 }
 
 void FourChamberView::LoadDICOM() {
+    
+    int replyNii = Ask("Question: Data type", "Do you have a Nifti file to load? \n(NO = DICOMs)"); 
+    if (replyNii == QMessageBox::Yes) {
+        QString niiFile = QFileDialog::getOpenFileName(NULL, "Open Nifti file.", StdStringPath(SDIR.SEG).c_str());
+        QFileInfo fnii(niiFile);
+        if (fnii.exists()) {
+            std::string key = "dicom.series.SeriesDescription";
+            mitk::DataStorage::SetOfObjects::Pointer set = mitk::IOUtil::Load(niiFile.toStdString(), *this->GetDataStorage());
+            set->Begin().Value()->GetData()->GetPropertyList()->SetStringProperty(key.c_str(), fnii.baseName().toStdString().c_str());
+
+            mitk::RenderingManager::GetInstance()->InitializeViewsByBoundingObjects(this->GetDataStorage());
+            return;
+        }
+    }
+
     int reply1 = QMessageBox::No;
 #if defined(__APPLE__)
     MITK_INFO << "Ask user about alternative DICOM reader";
@@ -219,7 +234,7 @@ void FourChamberView::LoadDICOM() {
 
     if (reply1 == QMessageBox::Yes) {
 
-        QString dicomFolder = QFileDialog::getExistingDirectory(NULL, "Open folder with DICOMs.", mitk::IOUtil::GetProgramPath().c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
+        QString dicomFolder = QFileDialog::getExistingDirectory(NULL, "Open folder with DICOMs.", StdStringPath(SDIR.SEG).c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
         std::unique_ptr<CemrgCommandLine> cmd(new CemrgCommandLine());
         QString tmpNiftiFolder = cmd->DockerDicom2Nifti(dicomFolder);
 
@@ -579,8 +594,7 @@ void FourChamberView::Corrections(){
     Inform("Attention", msg.c_str());
     
     if (button_timing) {
-        m_Controls.button_corrections->setText("        2.1: Manual Corrections");
-        m_Controls.button_corrections->setStyleSheet("QPushButton {text-align: left; color: rgb(132, 174, 235);}");
+        m_Controls.button_corrections->setText("        2.1: Other Manual Corrections");
     }
 
     this->GetSite()->GetPage()->ShowView("org.mitk.views.multilabelsegmentation");

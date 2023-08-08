@@ -268,14 +268,10 @@ bool CemrgFourChamberTools::GetLabelCentreOfMassIndex(mitk::Image::Pointer seg, 
     if (bb.empty()) {
         return false;
     }
-
-    // get the centre of the bounding box
-    ImageType::IndexType centerOfBoundingBoxIndex;
     
     for (unsigned int ix = 0; ix < 3; ix++) {
         double spacing = itkImage->GetSpacing()[ix];
         double origin = itkImage->GetOrigin()[ix];
-        // cogIndx.push_back( (bb[ix] + bb[ix + 3]) / 2) ;
         cogIndx.push_back((bb[2*ix] + bb[2*ix + 1]) / 2);
     }
 
@@ -293,14 +289,8 @@ bool CemrgFourChamberTools::GetLabelCentreOfMass(mitk::Image::Pointer seg, int l
         double spacing = seg->GetGeometry()->GetSpacing()[ix];
         double origin = seg->GetGeometry()->GetOrigin()[ix];
 
-        cog.push_back( (cogIndx[ix] * spacing) + origin );
-        
+        cog.push_back( (cogIndx[ix] * spacing) + origin );   
     }
-
-    // itkImage->TransformIndexToPhysicalPoint(centerOfBoundingBoxIndex, centerOfBoundingBoxWorld);
-    // cog.push_back(centerOfBoundingBoxWorld[0]);
-    // cog.push_back(centerOfBoundingBoxWorld[1]);
-    // cog.push_back(centerOfBoundingBoxWorld[2]);
 
     std::cout << "Centre of mass: " << cog[0] << ", " << cog[1] << ", " << cog[2] << '\n';
 

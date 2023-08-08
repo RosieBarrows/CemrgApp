@@ -46,7 +46,7 @@
       <string notr="true">text-align: left; </string>
      </property>
      <property name="text">
-      <string>        1.1: Load DICOM</string>
+      <string>        1.1: Load Image</string>
      </property>
     </widget>
    </item>
@@ -81,12 +81,22 @@
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="button_corrections_split">
+    <widget class="QPushButton" name="button_corrections">
      <property name="styleSheet">
       <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
      </property>
      <property name="text">
-      <string>        2.1: Get Labels</string>
+      <string>        2.1: Manual Corrections (PV Split)</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_corrections_split">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>        2.2: Identify Segmentation Labels</string>
      </property>
     </widget>
    </item>
@@ -105,16 +115,6 @@
     </layout>
    </item>
    <item>
-    <widget class="QPushButton" name="button_corrections">
-     <property name="styleSheet">
-      <string notr="true">text-align: left; color:</string>
-     </property>
-     <property name="text">
-      <string>        2.1: Manual Corrections (PV Split)</string>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QPushButton" name="button_select_pts">
      <property name="styleSheet">
       <string notr="true">text-align: left; </string>
@@ -127,7 +127,7 @@
    <item>
     <widget class="QPushButton" name="button_select_pts_a">
      <property name="styleSheet">
-      <string notr="true">text-align: left; </string>
+      <string notr="true">text-align: center; </string>
      </property>
      <property name="text">
       <string>Check Cylinder Points</string>
@@ -137,7 +137,7 @@
    <item>
     <widget class="QPushButton" name="button_select_pts_b">
      <property name="styleSheet">
-      <string notr="true">text-align: left; </string>
+      <string notr="true">text-align: center; </string>
      </property>
      <property name="text">
       <string>Check Slicer Points</string>
@@ -153,7 +153,7 @@
       </size>
      </property>
      <property name="styleSheet">
-      <string notr="true">text-align: left; </string>
+      <string notr="true">text-align: center; </string>
      </property>
      <property name="text">
       <string>Check Valve Plains Points</string>

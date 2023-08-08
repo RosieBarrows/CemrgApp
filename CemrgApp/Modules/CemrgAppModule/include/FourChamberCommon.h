@@ -12,7 +12,7 @@ enum SegmentationTagsType {
     LEFT_ATRIUM = 4, 
     RIGHT_ATRIUM = 5, 
     AORTA = 6,
-    PArt = 7, 
+    PULMONARY_ARTERY = 7, 
     LSPV = 8, 
     LIPV = 9, 
     RSPV = 10, 
