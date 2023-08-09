@@ -795,6 +795,13 @@ void FourChamberView::SelectPoints() {
 }
 
 void FourChamberView::SelectPointsCylinders() {
+
+     QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+    if (nodes.size() != 1) {
+        Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
+        return;
+    }//_if
+
     
     if (m_Controls.button_select_pts_a->text().contains("Check Cylinder")) {
         if (!CheckPointsInJsonFile(ManualPointsType::CYLINDERS)) {
@@ -802,10 +809,67 @@ void FourChamberView::SelectPointsCylinders() {
             SelectPointsCheck();
             return;
         }
+
+        fourch_tools->SetCylinders(json_points);
         m_Controls.button_select_pts_a->setText("Run Scripts for Cylinders");
     } else {
         // Run cylinders script
         Inform("Attention", "Running Scripts for Cylinders");
+        if (!fourch_tools->CylindersSet()) {
+            fourch_tools->SetCylinders(json_points);
+        }
+
+        QString svcPath = Path(SDIR.SEG + "/SVC.nii");
+        QString ivcPath = Path(SDIR.SEG + "/IVC.nii");
+        QString aortaPath = Path(SDIR.SEG + "/aorta_slicer.nii");
+        QString pArtPath = Path(SDIR.SEG + "/PArt_slicer.nii");
+
+        mitk::BaseData::Pointer data = nodes[0]->GetData();
+        if (!data) return; 
+
+        mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (!seg) return;
+
+        int slicerRadius = 10, slicerHeight = 30;
+
+        mitk::Image::Pointer cylSvc = fourch_tools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, svcPath);
+        mitk::Image::Pointer cylIvc = fourch_tools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ivcPath);
+
+        slicerRadius = 30;
+        slicerHeight = 2;
+        mitk::Image::Pointer cylAo = fourch_tools->Cylinder(seg, "Ao", slicerRadius, slicerHeight, aortaPath);
+        mitk::Image::Pointer cylPArt = fourch_tools->Cylinder(seg, "PArt", slicerRadius, slicerHeight, pArtPath);
+
+        if (!cylSvc || !cylIvc) {
+            Warn("Attention - Missing Cylinders", "Cylinders for SVC and IVC were not created. Check LOG.");
+            return;
+        }
+        
+        std::vector<mitk::Image::Pointer> images(3);
+        images.push_back(seg);
+        images.push_back(cylSvc);
+        images.push_back(cylIvc);
+        int RspvLabel = 10, SvcLabel = 13, IvcLabel = 14; // check values based on image and user choices
+        mitk::Image::Pointer newSeg = fourch_tools->CreateSvcIvc(images, RspvLabel, SvcLabel, IvcLabel);
+
+        if (!newSeg) {
+            Warn("Attention - SVC/IVC", "SVC and IVC added to segmentation.");
+            return;
+        }
+
+        mitk::IOUtil::Save(newSeg, StdStringPath(SDIR.SEG + "/seg_s2a.nii"));
+
+        mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
+        mlseg->InitializeByLabeledImage(newSeg);
+        mlseg->SetGeometry(newSeg->GetGeometry());
+
+        CemrgCommonUtils::AddToStorage(mlseg, "seg_corrected", this->GetDataStorage());
+        mlseg->Modified();
+
+        this->GetDataStorage()->Remove(nodes[0]);
+
+        Inform("Success", "Created SVC/IVC Cylinders correctly.");
+
         m_Controls.button_select_pts_a->setEnabled(false);
 
     }

@@ -159,7 +159,7 @@ mitk::Image::Pointer CemrgFourChamberTools::SwapLabel(mitk::Image::Pointer seg, 
 
     if (checkExisting) {
         MITK_INFO << ("Checking if label " + QString::number(label2) + " exists in segmentation").toStdString();
-        auto it = std::find(labelsInSeg.begin(), labelsInSeg.end(), QString::number(label2));
+        auto it = std::find(labelsInSeg.begin(), labelsInSeg.end(), label2);
         if (it != labelsInSeg.end() && !overwrite) {
             MITK_INFO << ("Label " + QString::number(label2) + " already exists in segmentation").toStdString();
             return seg;
@@ -183,6 +183,38 @@ mitk::Image::Pointer CemrgFourChamberTools::SwapLabel(mitk::Image::Pointer seg, 
     newSeg->SetGeometry(seg->GetGeometry());
     return newSeg;
     
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::AddMaskToSegmentation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int label, std::vector<int> labelsToIgnore) {
+    std::vector<int> labelsInSeg;
+    GetLabels(seg, labelsInSeg);
+    auto test = std::find(labelsInSeg.begin(), labelsInSeg.end(), label);
+    if (test != labelsInSeg.end()) {
+        MITK_INFO << ("Label " + QString::number(label) + " exists in segmentation").toStdString();
+        return nullptr;
+    }
+
+    ImageType::Pointer itkImage = ImageType::New();
+    ImageType::Pointer itkMask = ImageType::New();
+    CastToItkImage(seg, itkImage);
+    CastToItkImage(mask, itkMask);
+
+    IteratorType segIt(itkImage, itkImage->GetLargestPossibleRegion());
+    IteratorType maskIt(itkMask, itkMask->GetLargestPossibleRegion());
+
+    for (segIt.GoToBegin(), maskIt.GoToBegin(); !segIt.IsAtEnd(); ++segIt, ++maskIt) {
+        if (maskIt.Get() > 0) {
+            auto testIgnored = std::find(labelsToIgnore.begin(), labelsToIgnore.end(), segIt.Get());
+            if (testIgnored == labelsToIgnore.end()) {
+                segIt.Set(label);
+            }
+        }
+    }
+
+    mitk::Image::Pointer newSeg = mitk::ImportItkImage(itkImage)->Clone();
+    newSeg->SetGeometry(seg->GetGeometry());
+    return newSeg;
+
 }
 
 void CemrgFourChamberTools::GetLabels(mitk::Image::Pointer seg, std::vector<int> &labels, int background) {
@@ -310,3 +342,264 @@ bool CemrgFourChamberTools::IndexToWorld(mitk::Image::Pointer image, std::vector
 
     return false;
 }
+
+void CemrgFourChamberTools::SetCylinders(QJsonObject json) {
+    QStringList keys = json.keys();
+    foreach (QString key, keys) {
+        _cylinders.SetPoint(json, key);
+    }
+    _cylinders.PointSetOn();
+}
+
+void CemrgFourChamberTools::SetSlicers(QJsonObject json) {
+    QStringList keys = json.keys();
+    foreach (QString key, keys) {
+        _slicers.SetPoint(json, key);
+    }
+    _slicers.PointSetOn();
+}
+
+void CemrgFourChamberTools::SetValvePoints(QJsonObject json) {
+    QStringList keys = json.keys();
+    foreach (QString key, keys) {
+        _valvePoints.SetPoint(json, key);
+    }
+    _valvePoints.PointSetOn();
+}
+
+struct PointList {
+    std::vector<double> pt1, pt2, pt3, v1, v2, _normal;
+    PointList() 
+        : pt1(3, 0.0), 
+          pt2(3, 0.0), 
+          pt3(3, 0.0), 
+          v1(3, 0.0), v2(3, 0.0), _normal(3, 0.0) {};
+    
+    void FillPoint(int whichPoint, std::vector<double> point) {
+        switch (whichPoint) {
+            case 1: pt1 = point; break;
+            case 2: pt2 = point; break;
+            case 3: pt3 = point; break;
+            default: break;
+        }
+    }
+
+    std::vector<double> pt(int whichPoint) {
+        switch (whichPoint) {
+            case 1: return pt1;
+            case 2: return pt2;
+            case 3: return pt3;
+            default: return std::vector<double>(3, 0.0);
+        }
+    }
+
+    void normalise(std::vector<double>& v) {
+        double norm = std::sqrt(std::pow(v.at(0), 2) + std::pow(v.at(1), 2) + std::pow(v.at(2), 2));
+        for (int ix = 0; ix < 3; ix++) {
+            v.at(ix) /= norm;
+        }
+    }
+
+    std::vector<double> v(int a, int b) {
+        std::vector<double> v(3, 0.0);
+        for (int ix = 0; ix < 3; ix++) {
+            v.at(ix) = pt(b).at(ix) - pt(a).at(ix);
+        }
+        normalise(v);
+
+        return v;
+    }
+
+    void cross() {
+        _normal.at(0) = v1.at(1)*v2.at(2) - v1.at(2)*v2.at(1);
+        _normal.at(1) = v1.at(2)*v2.at(0) - v1.at(0)*v2.at(2);
+        _normal.at(2) = v1.at(0)*v2.at(1) - v1.at(1)*v2.at(0);
+        normalise(_normal);
+    }
+
+    void SetVectors() {
+        v1 = v(1, 2);
+        v2 = v(1, 3);
+    }
+
+    std::vector<double> normal() { return _normal; };
+
+    std::vector<double> getCross(std::vector<double> a, std::vector<double> b) {
+        std::vector<double> cross(3, 0.0);
+        cross.at(0) = a.at(1)*b.at(2) - a.at(2)*b.at(1);
+        cross.at(1) = a.at(2)*b.at(0) - a.at(0)*b.at(2);
+        cross.at(2) = a.at(0)*b.at(1) - a.at(1)*b.at(0);
+        return cross;
+    }
+
+    double getNorm(std::vector<double> a) {
+        return std::sqrt(std::pow(a.at(0), 2) + std::pow(a.at(1), 2) + std::pow(a.at(2), 2));
+    }
+};
+
+// make sure the origin and spacing of the image is correct 
+mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, QString saveAs) {
+    if (!_cylinders.pointsSet) {
+        MITK_WARN << "Cylinders have not been set";
+        return nullptr;
+    }
+    
+    SegmentationPointsIds segIds;
+    QStringList keys = segIds.CYLINDERS();
+
+    if (!keys.contains(ptPrefix)) {
+        MITK_WARN << ("Prefix " + ptPrefix + " not found in segmentation").toStdString();
+        return nullptr;
+    }
+    
+    // remove keys that do not contain the prefix
+    for (int ix = 0; ix < keys.size(); ix++) {
+        if (!keys.at(ix).contains(ptPrefix)) {
+            keys.removeAt(ix);
+            ix--;
+        }
+    }
+
+    if (keys.size() != 3) {
+        MITK_WARN << ("Prefix " + ptPrefix + " does not have 3 points").toStdString();
+        return nullptr;
+    }
+
+    double origin[3], spacing[3];
+    seg->GetGeometry()->GetOrigin().ToArray(origin);
+    seg->GetGeometry()->GetSpacing().ToArray(spacing);
+
+    ImageType::Pointer outputImg = ImageType::New();
+    mitk::CastToItkImage(seg->Clone(), outputImg);
+
+    using IteratorType = itk::ImageRegionIterator<ImageType>;
+    IteratorType imIter(outputImg, outputImg->GetLargestPossibleRegion());
+    imIter.GoToBegin();
+    while(!imIter.IsAtEnd()){
+        imIter.Set(0);
+        ++imIter;
+    }
+
+
+    int numPoints = keys.size(); 
+
+    std::vector<double> cog(3, 0.0);
+    PointList pts;
+    int pointId = 1;
+
+    foreach (QString key, keys) {
+        CylinderPointsNamesType cyl = _cylinders.FromKey(key);
+        std::vector<double> thisPoint(3);
+        for (int ix = 0; ix < 3; ix++) {
+            thisPoint.at(ix) = _cylinders.GetPointAt(cyl, ix);
+            cog.at(ix) += thisPoint.at(ix);
+        }
+        pts.FillPoint(pointId, thisPoint);
+        pointId++;
+    }
+
+    for (int ix = 0; ix < 3; ix++) {
+        cog.at(ix) /= numPoints;
+    }
+
+    pts.SetVectors();
+    pts.cross();
+
+    std::vector<double> p1(3), p2(3), normalVector(3);
+    double n_x, n_y, n_z;
+
+    for (int ix = 0; ix < 3; ix++) {
+        p1.at(ix) = cog.at(ix) - pts.normal().at(ix) * (slicerHeight/2); 
+        p2.at(ix) = cog.at(ix) + pts.normal().at(ix) * (slicerHeight/2); 
+
+        normalVector.at(ix) = p2.at(ix) - p1.at(ix);
+    }
+
+    n_x = seg->GetDimensions()[0];
+    n_y = seg->GetDimensions()[1];
+    n_z = seg->GetDimensions()[2];
+
+    double cubeSize = std::max(slicerHeight, slicerRadius);
+    cubeSize += (slicerHeight > slicerRadius) ? 10 : 30;
+
+    std::vector<int> xCubeCoord, yCubeCoord, zCubeCoord;
+
+    for (int dim = 0; dim < 3;dim++) {
+
+        for (int ix = 0; ix < n_x; ix++) {
+            double coord = origin[dim] + ix * spacing[dim];
+            if (std::abs(coord - cog.at(dim)) < (cubeSize / 2)) {
+                switch (dim) {
+                    case 0: xCubeCoord.push_back(ix); break;
+                    case 1: yCubeCoord.push_back(ix); break;
+                    case 2: zCubeCoord.push_back(ix); break;
+                    default: break;
+                }
+            }
+        }
+    }
+
+    foreach (int xcoord, xCubeCoord) {
+        foreach (int ycoord, yCubeCoord) { 
+            foreach (int zcoord, zCubeCoord) {
+                std::vector<double> testPts(3), v1(3), v2(3);
+                for (int ix = 0; ix<3; ix++) {
+                    testPts.at(ix) = origin[ix] + xcoord * spacing[ix];
+                    v1.at(ix) = testPts.at(ix) - p1.at(ix);
+                    v2.at(ix) = testPts.at(ix) - p2.at(ix);
+                }
+                double dot1, dot2;
+                dot1 = v1.at(0)*normalVector.at(0) + v1.at(1)*normalVector.at(1) + v1.at(2)*normalVector.at(2);
+                dot2 = v2.at(0)*normalVector.at(0) + v2.at(1)*normalVector.at(1) + v2.at(2)*normalVector.at(2);
+                if (dot1 >= 0 && dot2 <= 0) {
+                    pts.normalise(normalVector);
+                    double testRadius = pts.getNorm(pts.getCross(testPts, normalVector));
+                    if (testRadius <= slicerRadius) {
+                        ImageType::IndexType index;
+                        index[0] = xcoord;
+                        index[1] = ycoord;
+                        index[2] = zcoord;
+                        outputImg->SetPixel(index, 1);
+                    }
+                }
+            }
+        }
+    }
+
+    mitk::Image::Pointer output = mitk::ImportItkImage(outputImg)->Clone();
+    output->SetGeometry(seg->GetGeometry());
+
+    if (output) {
+        if (!saveAs.isEmpty()) {
+            mitk::IOUtil::Save(output, saveAs.toStdString());
+        }
+    } else {
+        MITK_WARN << "Could not create cylinder: ";
+        MITK_WARN(!saveAs.isEmpty()) << saveAs.toStdString();
+    }
+
+    return output;
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::CreateSvcIvc(std::vector<mitk::Image::Pointer> images, int RspvLabel, int SvcLabel, int IvcLabel) {
+    if (images.size() != 3) {
+        MITK_WARN << "Need 3 images to create SVC/IVC";
+        return nullptr;
+    }
+
+    mitk::Image::Pointer seg = images.at(0);
+    mitk::Image::Pointer svc = images.at(1);
+    mitk::Image::Pointer ivc = images.at(2);
+
+    std::vector<int> labelsToIgnore;
+    labelsToIgnore.push_back(RspvLabel);
+    mitk::Image::Pointer svcIvc = AddMaskToSegmentation(seg, svc, SvcLabel, labelsToIgnore);
+
+    if (svcIvc == nullptr) {
+        return nullptr;
+    }
+
+    return AddMaskToSegmentation(svcIvc, ivc, IvcLabel);
+}
+
+
