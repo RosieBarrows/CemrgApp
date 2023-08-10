@@ -24,6 +24,54 @@ enum SegmentationTagsType {
     IVC = 14
 };
 
+struct SegmentationTagsStruct {
+    SegmentationTagsType stt;
+    SegmentationTagsStruct() : stt(SegmentationTagsType::BACKGROUND) {}
+    SegmentationTagsStruct(SegmentationTagsType usrStt) : stt(usrStt) {}
+
+    int GetTag() { return static_cast<int>(stt); } 
+    void SetTag(SegmentationTagsType usrStt) { stt = usrStt; }
+
+    void SetTagFromString(QString tagName) { 
+        if (tagName.compare("BACKGROUND", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::BACKGROUND); return; }
+        if (tagName.compare("BLOODPOOL", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::BLOODPOOL); return; }
+        if (tagName.compare("LEFT_VENTRICLE", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::LEFT_VENTRICLE); return; }
+        if (tagName.compare("RIGHT_VENTRICLE", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::RIGHT_VENTRICLE); return; }
+        if (tagName.compare("LEFT_ATRIUM", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::LEFT_ATRIUM); return; }
+        if (tagName.compare("RIGHT_ATRIUM", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::RIGHT_ATRIUM); return; }
+        if (tagName.compare("AORTA", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::AORTA); return; }
+        if (tagName.compare("PULMONARY_ARTERY", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::PULMONARY_ARTERY); return; }
+        if (tagName.compare("LSPV", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::LSPV); return; }
+        if (tagName.compare("LIPV", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::LIPV); return; }
+        if (tagName.compare("RSPV", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::RSPV); return; }
+        if (tagName.compare("RIPV", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::RIPV); return; }
+        if (tagName.compare("LAA", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::LAA); return; }
+        if (tagName.compare("SVC", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::SVC); return; }
+        if (tagName.compare("IVC", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::IVC); return; }
+    }
+
+    QString TagName() {
+        switch (stt) {
+        case SegmentationTagsType::BACKGROUND: return "BACKGROUND";
+        case SegmentationTagsType::BLOODPOOL: return "BLOODPOOL";
+        case SegmentationTagsType::LEFT_VENTRICLE: return "LEFT_VENTRICLE";
+        case SegmentationTagsType::RIGHT_VENTRICLE: return "RIGHT_VENTRICLE";
+        case SegmentationTagsType::LEFT_ATRIUM: return "LEFT_ATRIUM";
+        case SegmentationTagsType::RIGHT_ATRIUM: return "RIGHT_ATRIUM";
+        case SegmentationTagsType::AORTA: return "AORTA";
+        case SegmentationTagsType::PULMONARY_ARTERY: return "PULMONARY_ARTERY";
+        case SegmentationTagsType::LSPV: return "LSPV";
+        case SegmentationTagsType::LIPV: return "LIPV";
+        case SegmentationTagsType::RSPV: return "RSPV";
+        case SegmentationTagsType::RIPV: return "RIPV";
+        case SegmentationTagsType::LAA: return "LAA";
+        case SegmentationTagsType::SVC: return "SVC";
+        case SegmentationTagsType::IVC: return "IVC";
+        default: return "BACKGROUND";
+        }
+    }
+};
+
 struct FourChamberSubfolders {
     QString SEG, MESH, UVC, UVC_LA, UVC_RA, AFIB, PRESIM, SIMS, PAR;
     FourChamberSubfolders()

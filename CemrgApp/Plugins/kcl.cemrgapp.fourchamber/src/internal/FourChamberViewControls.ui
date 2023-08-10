@@ -106,9 +106,9 @@
       <widget class="QComboBox" name="combo_corrections_id"/>
      </item>
      <item>
-      <widget class="QPushButton" name="button_confirm_split">
+      <widget class="QPushButton" name="button_confirm_labels">
        <property name="text">
-        <string>Confirm Split</string>
+        <string>Confirm</string>
        </property>
       </widget>
      </item>

@@ -153,36 +153,31 @@ mitk::Image::Pointer CemrgFourChamberTools::SplitLabelsOnRepeat(mitk::Image::Poi
 
 }
 
-mitk::Image::Pointer CemrgFourChamberTools::SwapLabel(mitk::Image::Pointer seg, int label1, int label2, bool checkExisting, bool overwrite) {
-    std::vector<int> labelsInSeg;
-    GetLabels(seg, labelsInSeg);
-
-    if (checkExisting) {
-        MITK_INFO << ("Checking if label " + QString::number(label2) + " exists in segmentation").toStdString();
-        auto it = std::find(labelsInSeg.begin(), labelsInSeg.end(), label2);
-        if (it != labelsInSeg.end() && !overwrite) {
-            MITK_INFO << ("Label " + QString::number(label2) + " already exists in segmentation").toStdString();
-            return seg;
-        }
-    }
-
-    MITK_INFO(overwrite) << ("Overwritting label " + QString::number(label2)).toStdString();
+mitk::Image::Pointer CemrgFourChamberTools::ReplaceLabel(mitk::Image::Pointer seg, int oldLabel, int newLabel) {
     ImageType::Pointer itkImage = ImageType::New();
     CastToItkImage(seg, itkImage);
 
     IteratorType segIt(itkImage, itkImage->GetLargestPossibleRegion());
     for (segIt.GoToBegin(); !segIt.IsAtEnd(); ++segIt) {
-        if (segIt.Get() == label1) {
-            segIt.Set(label2);
-        } else if (segIt.Get() == label2) {
-            segIt.Set(label1);
+        if (segIt.Get() == oldLabel) {
+            segIt.Set(newLabel);
         }
     }
     
     mitk::Image::Pointer newSeg = mitk::ImportItkImage(itkImage)->Clone();
     newSeg->SetGeometry(seg->GetGeometry());
-    return newSeg;
     
+    return newSeg;
+}
+
+bool CemrgFourChamberTools::CheckExisting(mitk::Image::Pointer seg, int queryLabel) {
+    std::vector<int> labelsInSeg;
+    GetLabels(seg, labelsInSeg);
+
+    MITK_INFO << ("Checking if label " + QString::number(queryLabel) + " exists in segmentation").toStdString();
+    auto it = std::find(labelsInSeg.begin(), labelsInSeg.end(), queryLabel);
+
+    return (it != labelsInSeg.end()); 
 }
 
 mitk::Image::Pointer CemrgFourChamberTools::AddMaskToSegmentation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int label, std::vector<int> labelsToIgnore) {
@@ -323,8 +318,6 @@ bool CemrgFourChamberTools::GetLabelCentreOfMass(mitk::Image::Pointer seg, int l
 
         cog.push_back( (cogIndx[ix] * spacing) + origin );   
     }
-
-    std::cout << "Centre of mass: " << cog[0] << ", " << cog[1] << ", " << cog[2] << '\n';
 
     return true;
 }
@@ -525,8 +518,9 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
     std::vector<int> xCubeCoord, yCubeCoord, zCubeCoord;
 
     for (int dim = 0; dim < 3;dim++) {
+        int upperBound = (dim == 0) ? n_x : (dim == 1) ? n_y : n_z;
 
-        for (int ix = 0; ix < n_x; ix++) {
+        for (int ix = 0; ix < upperBound; ix++) {
             double coord = origin[dim] + ix * spacing[dim];
             if (std::abs(coord - cog.at(dim)) < (cubeSize / 2)) {
                 switch (dim) {

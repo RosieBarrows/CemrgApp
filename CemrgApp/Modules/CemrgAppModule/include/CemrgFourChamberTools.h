@@ -58,11 +58,12 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         ~CemrgFourChamberTools();
 
         // Segmentation Utilities
+        bool CheckExisting(mitk::Image::Pointer seg, int queryLabel);
         void ExploreLabelsToSplit(mitk::Image::Pointer seg, std::vector<int>& labels); 
         mitk::Image::Pointer SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label, unsigned int radius=3);
-        mitk::Image::Pointer SwapLabel(mitk::Image::Pointer seg, int label1, int label2, bool checkExisting = true, bool overwrite = false);
+        mitk::Image::Pointer ReplaceLabel(mitk::Image::Pointer seg, int oldLabel, int newLabel);
         mitk::Image::Pointer AddMaskToSegmentation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int label, std::vector<int> labelsToIgnore = std::vector<int>());
-        inline mitk::Image::Pointer RemoveLabel(mitk::Image::Pointer seg, int label) { return SwapLabel(seg, label, 0, false, true); };
+        inline mitk::Image::Pointer RemoveLabel(mitk::Image::Pointer seg, int label) { return ReplaceLabel(seg, label, 0); };
 
         void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0);
         mitk::Image::Pointer ExtractSingleLabel(mitk::Image::Pointer seg, int label, bool binarise=true);

@@ -1433,7 +1433,7 @@ std::string CemrgCommandLine::PrintFullCommand(QString command, QStringList argu
         QString prodPath = QString::fromStdString(mitk::IOUtil::GetProgramPath());
         MITK_INFO << ("Program path: " + prodPath).toStdString();
         ofstream prodFile1;
-        prodFile1.open((prodPath + "dockerDebug.txt").toStdString(), ofstream::out | ofstream::app);
+        prodFile1.open((prodPath + "/dockerDebug.txt").toStdString(), ofstream::out | ofstream::app);
         prodFile1 << (command + " " + argumentList).toStdString() << "\n";
         prodFile1.close();
     }//_if

@@ -74,9 +74,11 @@ public:
     static const QString POINTS_FILE_INDEX;   // all the user-selected points
     static const QString GEOMETRY_FILE; // origin and spacing
     static const QStringList SEGMENTATION_LIST; // list of possible segmentation tags
+    static const QString LABELS_FILE; // labels for the segmentation
 
     // helper functions
-    bool RequestAnyFolderFromUser(QString &dir, std::string msg, bool project_dir = false);
+    bool
+    RequestAnyFolderFromUser(QString &dir, std::string msg, bool project_dir = false);
     bool CheckForExistingFile(QString dir, QString filename);
     int Ask(std::string title, std::string msg);
     void Warn(std::string title, std::string msg);
@@ -90,7 +92,12 @@ public:
     void ReloadJsonPoints();
     std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
 
-    QString ArrayToString(double *arr, int size, const QString &title);
+    template <typename T = double>
+    QString ArrayToString(T *arr, int size, const QString &title);
+
+    template <typename T = double>
+    inline QString ArrayToString(std::vector<T> arr, const QString &title){ return ArrayToString(arr.data(), arr.size(), title); };
+
     QColor MitkColorToQColor(const mitk::Color &colour);
     QString MitkColorToHex(const mitk::Color &colour);
 
@@ -105,7 +112,7 @@ public:
 
     // User Select Functions
     bool UserSelectMeshtools3DParameters(QString pre_input_path);
-    bool UserSelectIdentifyLabels(unsigned int label, QColor qc);
+    bool UserSelectIdentifyLabels(int index, unsigned int label, QColor qc);
 
     // inline means they're defined here, not in the cpp filemguvc
     inline bool RequestProjectDirectoryFromUser(){ return RequestAnyFolderFromUser(directory, "Project folder", true); };
@@ -133,7 +140,7 @@ protected slots:
 
     void Corrections();
     void CorrectionGetLabels();
-    void CorrectionConfirmSplit();
+    void CorrectionConfirmLabels();
     void CorrectionIdLabels(int);
 
     void SelectPoints();
@@ -145,9 +152,10 @@ protected slots:
 
     void M3dBrowseFile(const QString &dir);
 
-protected:
-    // this whole block hardly ever changes 
-    virtual void CreateQtPartControl(QWidget *parent) override;
+        protected :
+        // this whole block hardly ever changes
+        virtual void
+        CreateQtPartControl(QWidget *parent) override;
     virtual void SetFocus() override;
 
     /// \brief called by QmitkFunctionality when DataManager's selection has changed
@@ -162,7 +170,7 @@ private:
     // put here the things which belong to the class, like working folder name, etc
     QString fileName, directory, current_seg_name, carp_directory;
     QStringList pt_keys_init, pt_keys_slicers, pt_keys_final;
-    QJsonObject json_points, json_geometry; // keeps all the points available
+    QJsonObject json_points, json_geometry, json_segmentation; // keeps all the points available
     bool points_file_loaded; // keeps track if points.json has been loaded
     bool carpless;           // true if user does not have CARP installed
 
