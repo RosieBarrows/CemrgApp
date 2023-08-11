@@ -80,11 +80,11 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         void SetSlicers(QJsonObject json);
         void SetValvePoints(QJsonObject json);
 
-        inline bool CylindersSet() { return _cylinders.pointsSet; };
-        inline bool SlicersSet() { return _slicers.pointsSet; };
-        inline bool ValvePointsSet() { return _valvePoints.pointsSet; };
+        inline bool CylindersSet() { return _cylinders.IsPointSet(); };
+        inline bool SlicersSet() { return _slicers.IsPointSet(); };
+        inline bool ValvePointsSet() { return _valvePoints.IsPointSet(); };
 
-        mitk::Image::Pointer Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, QString saveAs = "");
+        mitk::Image::Pointer Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, ManualPointsType mpl, QString saveAs = "");
         mitk::Image::Pointer CreateSvcIvc(std::vector<mitk::Image::Pointer> images, int RspvLabel=10, int SvcLabel=13, int IvcLabel=14);
     protected:
         

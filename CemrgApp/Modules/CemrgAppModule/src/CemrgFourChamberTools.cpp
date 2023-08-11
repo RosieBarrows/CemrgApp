@@ -56,7 +56,9 @@ PURPOSE.  See the above copyright notices for more information.
 #include "CemrgFourChamberTools.h"
 
 CemrgFourChamberTools::CemrgFourChamberTools(){
-
+    _cylinders = CylinderPointsType();
+    _slicers = SlicersPointsType();
+    _valvePoints = ValvePlainsPointsType();
 }
 
 CemrgFourChamberTools::~CemrgFourChamberTools(){
@@ -430,15 +432,35 @@ struct PointList {
     }
 };
 
-// make sure the origin and spacing of the image is correct 
-mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, QString saveAs) {
-    if (!_cylinders.pointsSet) {
-        MITK_WARN << "Cylinders have not been set";
-        return nullptr;
-    }
-    
+/// @brief 
+/// @param seg - input segmentation
+/// @param ptPrefix - prefix of the points to be used CYLINDERS(SVC, IVC, ...) SLICERS(SVC_slicer, IVC_Slicer)
+/// @param slicerRadius 
+/// @param slicerHeight 
+/// @param mpl - ManualPointsType
+/// @param saveAs 
+/// @return 
+mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, ManualPointsType mpl, QString saveAs) {
+
+    // Get keys whether it is cylinders, slicers, or valve_plains
     SegmentationPointsIds segIds;
-    QStringList keys = segIds.CYLINDERS();
+    QStringList keys = segIds.GetPointLabelOptions(mpl);
+
+    BasePointsType* bpt;
+    switch (mpl) { 
+        case ManualPointsType::CYLINDERS: 
+            bpt = &_cylinders; 
+            break;
+        case ManualPointsType::SLICERS:
+            bpt = &_slicers;
+            break;
+        case ManualPointsType::VALVE_PLAINS:
+            bpt = &_valvePoints;
+            break;
+        default: 
+            MITK_ERROR << "Invalid ManualPointsType";
+            return nullptr;
+    }
 
     if (!keys.contains(ptPrefix)) {
         MITK_WARN << ("Prefix " + ptPrefix + " not found in segmentation").toStdString();
@@ -473,7 +495,6 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
         ++imIter;
     }
 
-
     int numPoints = keys.size(); 
 
     std::vector<double> cog(3, 0.0);
@@ -481,10 +502,12 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
     int pointId = 1;
 
     foreach (QString key, keys) {
-        CylinderPointsNamesType cyl = _cylinders.FromKey(key);
+
+        PointsNamesType pointType = bpt->FromKey(key);
+
         std::vector<double> thisPoint(3);
         for (int ix = 0; ix < 3; ix++) {
-            thisPoint.at(ix) = _cylinders.GetPointAt(cyl, ix);
+            thisPoint.at(ix) = bpt->GetPointAt(pointType, ix);
             cog.at(ix) += thisPoint.at(ix);
         }
         pts.FillPoint(pointId, thisPoint);
@@ -517,13 +540,13 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
 
     std::vector<int> xCubeCoord, yCubeCoord, zCubeCoord;
 
-    for (int dim = 0; dim < 3;dim++) {
-        int upperBound = (dim == 0) ? n_x : (dim == 1) ? n_y : n_z;
+    for (int dimension = 0; dimension < 3;dimension++) {
+        int upperBound = (dimension == 0) ? n_x : ((dimension == 1) ? n_y : n_z);
 
         for (int ix = 0; ix < upperBound; ix++) {
-            double coord = origin[dim] + ix * spacing[dim];
-            if (std::abs(coord - cog.at(dim)) < (cubeSize / 2)) {
-                switch (dim) {
+            double coord = origin[dimension] + ix * spacing[dimension];
+            if (std::abs(coord - cog.at(dimension)) < (cubeSize / 2)) {
+                switch (dimension) {
                     case 0: xCubeCoord.push_back(ix); break;
                     case 1: yCubeCoord.push_back(ix); break;
                     case 2: zCubeCoord.push_back(ix); break;

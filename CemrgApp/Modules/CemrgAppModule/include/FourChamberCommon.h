@@ -90,8 +90,60 @@ struct FourChamberSubfolders {
          return (QStringList() << SEG << MESH << UVC << UVC_LA << UVC_RA << AFIB << PRESIM << SIMS << PAR);
     }
 };
+struct FourChamberSegmentationNames {
+    QString _base, _s1, _s2a, _s2b, _s2c, _s2d, _s2e, _s2f;
+    FourChamberSegmentationNames()
+        :_base(""), 
+         _s1("seg_corrected"), 
+         _s2a("seg_s2a"),
+         _s2b("seg_s2b"),
+         _s2c("seg_s2c"),
+         _s2d("seg_s2d"),
+         _s2e("seg_s2e"),
+         _s2f("seg_s2f") {}
+    
+    void SetBase(QString name) { _base = name; }
+    
+    QString QGetBase(QString ext="") { return _base + ext; }
+    QString QGetS1(QString ext="") { return _s1 + ext; }
+    QString QGetS2A(QString ext="") { return _s2a + ext; }
+    QString QGetS2B(QString ext="") { return _s2b + ext; }
+    QString QGetS2C(QString ext="") { return _s2c + ext; }
+    QString QGetS2D(QString ext="") { return _s2d + ext; }
+    QString QGetS2E(QString ext="") { return _s2e + ext; }
+    QString QGetS2F(QString ext="") { return _s2f + ext; }
 
-struct SegmentationPointsIds {
+    QString QbaseNii() { return QGetBase(".nii"); }
+    QString Qs1Nii() { return QGetS1(".nii"); }
+    QString Qs2aNii() { return QGetS2A(".nii"); } 
+    QString Qs2bNii() { return QGetS2B(".nii"); } 
+    QString Qs2cNii() { return QGetS2C(".nii"); } 
+    QString Qs2dNii() { return QGetS2D(".nii"); } 
+    QString Qs2eNii() { return QGetS2E(".nii"); } 
+    QString Qs2fNii() { return QGetS2F(".nii"); } 
+
+    std::string base() { return QGetBase().toStdString(); }
+    std::string s1() { return QGetS1().toStdString(); }
+    std::string s2a() { return QGetS2A().toStdString(); } 
+    std::string s2b() { return QGetS2B().toStdString(); } 
+    std::string s2c() { return QGetS2C().toStdString(); } 
+    std::string s2d() { return QGetS2D().toStdString(); } 
+    std::string s2e() { return QGetS2E().toStdString(); } 
+    std::string s2f() { return QGetS2F().toStdString(); } 
+
+    std::string base_nii() { return QbaseNii().toStdString(); }
+    std::string s1_nii() { return Qs1Nii().toStdString(); } 
+    std::string s2a_nii() { return Qs2aNii().toStdString(); }
+    std::string s2b_nii() { return Qs2bNii().toStdString(); }
+    std::string s2c_nii() { return Qs2cNii().toStdString(); }
+    std::string s2d_nii() { return Qs2dNii().toStdString(); }
+    std::string s2e_nii() { return Qs2eNii().toStdString(); }
+    std::string s2f_nii() { return Qs2fNii().toStdString(); }
+
+};
+
+struct SegmentationPointsIds
+{
     QStringList cylinders, slicers, valve_plains;
     SegmentationPointsIds(){
         cylinders << "SVC_1" << "SVC_2" << "SVC_3" << "IVC_1" << "IVC_2" << "IVC_3"  
@@ -149,213 +201,6 @@ struct SegmentationPointsIds {
         return res;
     }
 };
-
-enum CylinderPointsNamesType { SVC1, SVC2, SVC3, IVC1, IVC2, IVC3, Ao1, Ao2, Ao3, PArt1, PArt2, PArt3 };
-enum SlicersPointsNamesType { SVC_SLICER1, SVC_SLICER2, SVC_SLICER3, SVC_TIP, IVC_SLICER1, IVC_SLICER2, IVC_SLICER3, IVC_TIP, Ao_TIP, PArt_TIP };
-enum ValvePlainsPointsNamesType { Ao_WT_TIP, PArt_WT_TIP };
-struct CylinderPointsType {
-    std::vector<double> Svc1, Svc2, Svc3, Ivc1, Ivc2, Ivc3, Ao1, Ao2, Ao3, PArt1, PArt2, PArt3;
-    bool pointsSet;
-
-    CylinderPointsType()
-        : Svc1(3), Svc2(3), Svc3(3), 
-          Ivc1(3), Ivc2(3), Ivc3(3), 
-          Ao1(3), Ao2(3), Ao3(3), 
-          PArt1(3), PArt2(3), PArt3(3), 
-          pointsSet(false) {}
-
-    double GetPointAt(CylinderPointsNamesType ptType, unsigned int index) {
-        switch (ptType) {
-            case CylinderPointsNamesType::SVC1: return Svc1.at(index);
-            case CylinderPointsNamesType::SVC2: return Svc2.at(index);
-            case CylinderPointsNamesType::SVC3: return Svc3.at(index);
-            case CylinderPointsNamesType::IVC1: return Ivc1.at(index);
-            case CylinderPointsNamesType::IVC2: return Ivc2.at(index);
-            case CylinderPointsNamesType::IVC3: return Ivc3.at(index);
-            case CylinderPointsNamesType::Ao1: return Ao1.at(index);
-            case CylinderPointsNamesType::Ao2: return Ao2.at(index);
-            case CylinderPointsNamesType::Ao3: return Ao3.at(index);
-            case CylinderPointsNamesType::PArt1: return PArt1.at(index);
-            case CylinderPointsNamesType::PArt2: return PArt2.at(index);
-            case CylinderPointsNamesType::PArt3: return PArt3.at(index);
-            default: return 0.0;
-        }        
-    }
-
-    void SetPointAt(CylinderPointsNamesType ptType, unsigned int index, double value) {
-        switch (ptType) {
-            case CylinderPointsNamesType::SVC1: Svc1.at(index) = value; break; 
-            case CylinderPointsNamesType::SVC2: Svc2.at(index) = value; break; 
-            case CylinderPointsNamesType::SVC3: Svc3.at(index) = value; break; 
-            case CylinderPointsNamesType::IVC1: Ivc1.at(index) = value; break; 
-            case CylinderPointsNamesType::IVC2: Ivc2.at(index) = value; break; 
-            case CylinderPointsNamesType::IVC3: Ivc3.at(index) = value; break; 
-            case CylinderPointsNamesType::Ao1: Ao1.at(index) = value; break; 
-            case CylinderPointsNamesType::Ao2: Ao2.at(index) = value; break; 
-            case CylinderPointsNamesType::Ao3: Ao3.at(index) = value; break; 
-            case CylinderPointsNamesType::PArt1: PArt1.at(index) = value; break; 
-            case CylinderPointsNamesType::PArt2: PArt2.at(index) = value; break; 
-            case CylinderPointsNamesType::PArt3: PArt3.at(index) = value; break; 
-            default: break; 
-        }  
-    }
-
-    CylinderPointsNamesType FromKey(QString key){
-        if (key == "SVC_1") return CylinderPointsNamesType::SVC1;
-        if (key == "SVC_2") return CylinderPointsNamesType::SVC2;
-        if (key == "SVC_3") return CylinderPointsNamesType::SVC3;
-        if (key == "IVC_1") return CylinderPointsNamesType::IVC1;
-        if (key == "IVC_2") return CylinderPointsNamesType::IVC2;
-        if (key == "IVC_3") return CylinderPointsNamesType::IVC3;
-        if (key == "Ao_1") return CylinderPointsNamesType::Ao1;
-        if (key == "Ao_2") return CylinderPointsNamesType::Ao2;
-        if (key == "Ao_3") return CylinderPointsNamesType::Ao3;
-        if (key == "PArt_1") return CylinderPointsNamesType::PArt1;
-        if (key == "PArt_2") return CylinderPointsNamesType::PArt2;
-        if (key == "PArt_3") return CylinderPointsNamesType::PArt3;
-
-        return CylinderPointsNamesType::SVC1;
-    }
-
-    void SetPoint(QJsonObject json, QString key) {
-        if (json[key].isUndefined()) {
-            MITK_WARN << "Undefined key: " << key.toStdString();
-            return;
-        }
-
-        for (int ix = 0; ix < 3; ix++) {
-            SetPointAt(FromKey(key), ix, json[key].toArray().at(ix).toDouble());
-        }
-    }
-
-    void PointSet(bool value) { pointsSet = value; };
-    void PointSetOn() { PointSet(true); };
-    void PointSetOff() { PointSet(false); };
-};
-
-struct SlicersPointsType {
-    std::vector<double> SvcSlicer1, SvcSlicer2, SvcSlicer3, SvcTip,
-                        IvcSlicer1, IvcSlicer2, IvcSlicer3, IvcTip,
-                        AoTip, PArtTip;
-    bool pointsSet;
-
-    SlicersPointsType()
-        : SvcSlicer1(3), SvcSlicer2(3), SvcSlicer3(3), SvcTip(3),
-          IvcSlicer1(3), IvcSlicer2(3), IvcSlicer3(3), IvcTip(3),
-          AoTip(3), PArtTip(3), pointsSet(false) {}
-
-    double GetPointAt(SlicersPointsNamesType ptType, unsigned int index) {
-        switch (ptType) {
-            case SlicersPointsNamesType::SVC_SLICER1: return SvcSlicer1.at(index);
-            case SlicersPointsNamesType::SVC_SLICER2: return SvcSlicer2.at(index);
-            case SlicersPointsNamesType::SVC_SLICER3: return SvcSlicer3.at(index);
-            case SlicersPointsNamesType::SVC_TIP: return SvcTip.at(index);
-            case SlicersPointsNamesType::IVC_SLICER1: return IvcSlicer1.at(index);
-            case SlicersPointsNamesType::IVC_SLICER2: return IvcSlicer2.at(index);
-            case SlicersPointsNamesType::IVC_SLICER3: return IvcSlicer3.at(index);
-            case SlicersPointsNamesType::IVC_TIP: return IvcTip.at(index);
-            case SlicersPointsNamesType::Ao_TIP: return AoTip.at(index);
-            case SlicersPointsNamesType::PArt_TIP: return PArtTip.at(index);
-           
-            default: return 0.0;
-        }        
-    }
-
-    void SetPointAt(SlicersPointsNamesType ptType, unsigned int index, double value) {
-        switch (ptType) {
-            case SlicersPointsNamesType::SVC_SLICER1: SvcSlicer1.at(index) = value; break; 
-            case SlicersPointsNamesType::SVC_SLICER2: SvcSlicer2.at(index) = value; break;
-            case SlicersPointsNamesType::SVC_SLICER3: SvcSlicer3.at(index) = value; break;
-            case SlicersPointsNamesType::SVC_TIP: SvcTip.at(index) = value; break;
-            case SlicersPointsNamesType::IVC_SLICER1: IvcSlicer1.at(index) = value; break;
-            case SlicersPointsNamesType::IVC_SLICER2: IvcSlicer2.at(index) = value; break;
-            case SlicersPointsNamesType::IVC_SLICER3: IvcSlicer3.at(index) = value; break;
-            case SlicersPointsNamesType::IVC_TIP: IvcTip.at(index) = value; break;
-            case SlicersPointsNamesType::Ao_TIP: AoTip.at(index) = value; break;
-            case SlicersPointsNamesType::PArt_TIP: PArtTip.at(index) = value; break;
-            
-            default: break; 
-        }  
-    }
-
-    SlicersPointsNamesType FromKey(QString key){
-        if (key == "SVC_slicer_1") return SlicersPointsNamesType::SVC_SLICER1;
-        if (key == "SVC_slicer_2") return SlicersPointsNamesType::SVC_SLICER2;
-        if (key == "SVC_slicer_3") return SlicersPointsNamesType::SVC_SLICER3;
-        if (key == "SVC_tip") return SlicersPointsNamesType::SVC_TIP;
-        if (key == "IVC_slicer_1") return SlicersPointsNamesType::IVC_SLICER1;
-        if (key == "IVC_slicer_2") return SlicersPointsNamesType::IVC_SLICER2;
-        if (key == "IVC_slicer_3") return SlicersPointsNamesType::IVC_SLICER3;
-        if (key == "IVC_tip") return SlicersPointsNamesType::IVC_TIP;
-        if (key == "Ao_tip") return SlicersPointsNamesType::Ao_TIP;
-        if (key == "PArt_tip") return SlicersPointsNamesType::PArt_TIP;       
-
-        return SlicersPointsNamesType::SVC_SLICER1;
-    }
-
-    void SetPoint(QJsonObject json, QString key) {
-        if (json[key].isUndefined()) {
-            MITK_WARN << "Undefined key: " << key.toStdString();
-            return;
-        }
-
-        for (int ix = 0; ix < 3; ix++) {
-            SetPointAt(FromKey(key), ix, json[key].toArray().at(ix).toDouble());
-        }
-    }
-
-    void PointSet(bool value) { pointsSet = value; };
-    void PointSetOn() { PointSet(true); };
-    void PointSetOff() { PointSet(false); };
-};
-
-struct ValvePlainsPointsType {
-    std::vector<double> AoWtTip, PArtWtTip;
-    bool pointsSet;
-
-    ValvePlainsPointsType()
-        : AoWtTip(3), PArtWtTip(3), pointsSet(false) {}
-
-    double GetPointAt(ValvePlainsPointsNamesType ptType, unsigned int index) {
-        switch (ptType) {
-            case ValvePlainsPointsNamesType::Ao_WT_TIP: return AoWtTip.at(index);
-            case ValvePlainsPointsNamesType::PArt_WT_TIP: return PArtWtTip.at(index);
-            default: return 0.0;
-        }        
-    }
-
-    void SetPointAt(ValvePlainsPointsNamesType ptType, unsigned int index, double value) {
-        switch (ptType) {
-            case ValvePlainsPointsNamesType::Ao_WT_TIP: AoWtTip.at(index) = value; break; 
-            case ValvePlainsPointsNamesType::PArt_WT_TIP: PArtWtTip.at(index) = value; break;
-         
-            default: break; 
-        }  
-    }
-
-    ValvePlainsPointsNamesType FromKey(QString key){
-        if (key == "Ao_WT_tip") return ValvePlainsPointsNamesType::Ao_WT_TIP;
-        if (key == "PArt_WT_tip") return ValvePlainsPointsNamesType::PArt_WT_TIP;
- 
-        return ValvePlainsPointsNamesType::Ao_WT_TIP;
-    }
-
-    void SetPoint(QJsonObject json, QString key) {
-        if (json[key].isUndefined()) {
-            MITK_WARN << "Undefined key: " << key.toStdString();
-            return;
-        }
-
-        for (int ix = 0; ix < 3; ix++) {
-            SetPointAt(FromKey(key), ix, json[key].toArray().at(ix).toDouble());
-        }
-    }
-
-    void PointSet(bool value) { pointsSet = value; };
-    void PointSetOn() { PointSet(true); };
-    void PointSetOff() { PointSet(false); };
-};
-
 
 /// @brief Meshtool3D static libraries parameters structures
 struct M3DParameters {
@@ -509,4 +354,123 @@ Endo/epicardial fiber angles (degrees):
       --beta_endo=FLOAT      Sheet rotation angle on the endocardial surfaces (default=`-65')
       --beta_epi=FLOAT       Sheet rotation angle on the epicardial surfaces (default=`25')
 */
+
+enum PointsNamesType {
+    SVC1, SVC2, SVC3, IVC1, IVC2, IVC3, Ao1, Ao2, Ao3, PArt1, PArt2, PArt3,
+    SVC_SLICER1, SVC_SLICER2, SVC_SLICER3, SVC_TIP, IVC_SLICER1, IVC_SLICER2, IVC_SLICER3, IVC_TIP, Ao_TIP, PArt_TIP,
+    Ao_WT_TIP, PArt_WT_TIP
+};
+
+class BasePointsType {
+
+public:
+    BasePointsType(int numEnumValues)
+        : points(3 * numEnumValues), pointsSet(false) {}
+    
+    BasePointsType(ManualPointsType mpt)
+        : points(3 * GetNumEnumValues(mpt)), pointsSet(false) {}
+
+    double GetPointAt(PointsNamesType ptType, unsigned int index) {
+        return points.at(static_cast<int>(ptType) * 3 + index);
+    }
+
+    void SetPointAt(PointsNamesType ptType, unsigned int index, double value) {
+        points.at(static_cast<int>(ptType) * 3 + index) = value;
+    }
+
+    void SetPoint(PointsNamesType ptType, std::vector<double> value) {
+        for (int ix = 0; ix < 3; ix++) {
+            SetPointAt(ptType, ix, value.at(ix));
+        }
+    }
+
+    virtual PointsNamesType FromKey(QString key) = 0;
+
+    void SetPoint(QJsonObject json, QString key) {
+        if (json[key].isUndefined()) {
+            MITK_WARN << ("Undefined key: " + key + '\n').toStdString();
+            return;
+        }
+
+        for (int ix = 0; ix < 3; ix++) {
+            SetPointAt(FromKey(key), ix, json[key].toArray().at(ix).toDouble());
+        }
+    }
+
+    inline void PointSet(bool value) { pointsSet = value; };
+    inline void PointSetOn() { PointSet(true); };
+    inline void PointSetOff() { PointSet(false); };
+    inline bool IsPointSet() { return pointsSet; };
+
+protected:
+    std::vector<double> points;
+    bool pointsSet;
+
+private: 
+    int GetNumEnumValues(ManualPointsType mpt) {
+        switch (mpt) {
+            case ManualPointsType::CYLINDERS:
+                return static_cast<int>(PArt3) - static_cast<int>(SVC1) + 1; // Or any calculation that fits your needs
+            case ManualPointsType::SLICERS:
+                return static_cast<int>(PArt_TIP) - static_cast<int>(SVC_SLICER1) + 1; // Calculate for SlicersPointsType
+            case ManualPointsType::VALVE_PLAINS:
+                return static_cast<int>(PArt_WT_TIP) - static_cast<int>(Ao_WT_TIP) + 1; // Calculate for ValvePlainsPointsType
+        }
+    }
+};
+
+class CylinderPointsType : public BasePointsType {
+public:
+    CylinderPointsType()
+        : BasePointsType(static_cast<int>(PArt3) - static_cast<int>(SVC1) + 1) {} 
+
+    PointsNamesType FromKey(QString key) override {
+        if (key == "SVC_1") return SVC1;
+        if (key == "SVC_2") return SVC2;
+        if (key == "SVC_3") return SVC3;
+        if (key == "IVC_1") return IVC1;
+        if (key == "IVC_2") return IVC2;
+        if (key == "IVC_3") return IVC3;
+        if (key == "Ao_1") return Ao1;
+        if (key == "Ao_2") return Ao2;
+        if (key == "Ao_3") return Ao3;
+        if (key == "PArt_1") return PArt1;
+        if (key == "PArt_2") return PArt2;
+        if (key == "PArt_3") return PArt3;
+        return SVC1; // Default value, you can adjust this as needed
+    }
+}; 
+
+class SlicersPointsType : public BasePointsType {
+public:
+    SlicersPointsType()
+        : BasePointsType(static_cast<int>(PArt_TIP) - static_cast<int>(SVC_SLICER1) + 1) {} 
+
+    PointsNamesType FromKey(QString key) override {
+        if (key == "SVC_slicer_1") return SVC_SLICER1;
+        if (key == "SVC_slicer_2") return SVC_SLICER2;
+        if (key == "SVC_slicer_3") return SVC_SLICER3;
+        if (key == "SVC_tip") return SVC_TIP;
+        if (key == "IVC_slicer_1") return IVC_SLICER1;
+        if (key == "IVC_slicer_2") return IVC_SLICER2;
+        if (key == "IVC_slicer_3") return IVC_SLICER3;
+        if (key == "IVC_tip") return IVC_TIP;
+        if (key == "Ao_tip") return Ao_TIP;
+        if (key == "PArt_tip") return PArt_TIP;
+        return SVC_SLICER1; // Default value, you can adjust this as needed
+    }
+};
+
+class ValvePlainsPointsType : public BasePointsType {
+public:
+    ValvePlainsPointsType() 
+        : BasePointsType(static_cast<int>(PArt_WT_TIP) - static_cast<int>(Ao_WT_TIP) + 1) {} // Total number of enum values for ValvePlains
+
+    PointsNamesType FromKey(QString key) override {
+        if (key == "Ao_WT_TIP") return Ao_WT_TIP;
+        if (key == "PArt_WT_TIP") return PArt_WT_TIP;
+        return Ao_WT_TIP; // Default value, you can adjust this as needed
+    }
+};
+
 #endif

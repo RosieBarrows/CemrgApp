@@ -179,6 +179,7 @@ private:
 
     M3DParameters meshing_parameters;
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
+    FourChamberSegmentationNames sname; // helps set access segmentation names
     SegmentationPointsIds SegPointIds; // keeps track of the segmentation points
     double origin[3], spacing[3];
 
