@@ -43,6 +43,7 @@ PURPOSE.  See the above copyright notices for more information.
 
 // ITK
 #include <itkConnectedComponentImageFilter.h>
+#include <itkConnectedThresholdImageFilter.h>
 #include <itkLabelShapeKeepNObjectsImageFilter.h>
 #include <itkImageRegionIteratorWithIndex.h>
 #include <itkBinaryMorphologicalOpeningImageFilter.h>
@@ -59,6 +60,10 @@ CemrgFourChamberTools::CemrgFourChamberTools(){
     _cylinders = CylinderPointsType();
     _slicers = SlicersPointsType();
     _valvePoints = ValvePlainsPointsType();
+    debug = false;
+    debugDir = "";
+    currentStep = SegmentationStep::NONE;
+    currentImage = nullptr;
 }
 
 CemrgFourChamberTools::~CemrgFourChamberTools(){
@@ -172,6 +177,8 @@ mitk::Image::Pointer CemrgFourChamberTools::ReplaceLabel(mitk::Image::Pointer se
     return newSeg;
 }
 
+
+
 bool CemrgFourChamberTools::CheckExisting(mitk::Image::Pointer seg, int queryLabel) {
     std::vector<int> labelsInSeg;
     GetLabels(seg, labelsInSeg);
@@ -182,14 +189,7 @@ bool CemrgFourChamberTools::CheckExisting(mitk::Image::Pointer seg, int queryLab
     return (it != labelsInSeg.end()); 
 }
 
-mitk::Image::Pointer CemrgFourChamberTools::AddMaskToSegmentation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int label, std::vector<int> labelsToIgnore) {
-    std::vector<int> labelsInSeg;
-    GetLabels(seg, labelsInSeg);
-    auto test = std::find(labelsInSeg.begin(), labelsInSeg.end(), label);
-    if (test != labelsInSeg.end()) {
-        MITK_INFO << ("Label " + QString::number(label) + " exists in segmentation").toStdString();
-        return nullptr;
-    }
+mitk::Image::Pointer CemrgFourChamberTools::AddMaskToSegmentation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel, MaskLabelBehaviour mlb, std::vector<int> labelsToProcess) {
 
     ImageType::Pointer itkImage = ImageType::New();
     ImageType::Pointer itkMask = ImageType::New();
@@ -200,10 +200,30 @@ mitk::Image::Pointer CemrgFourChamberTools::AddMaskToSegmentation(mitk::Image::P
     IteratorType maskIt(itkMask, itkMask->GetLargestPossibleRegion());
 
     for (segIt.GoToBegin(), maskIt.GoToBegin(); !segIt.IsAtEnd(); ++segIt, ++maskIt) {
+        bool conditionToProcess = false;
+        uint8_t value = segIt.Get();
+
         if (maskIt.Get() > 0) {
-            auto testIgnored = std::find(labelsToIgnore.begin(), labelsToIgnore.end(), segIt.Get());
-            if (testIgnored == labelsToIgnore.end()) {
-                segIt.Set(label);
+            auto testValueInLabels = std::find(labelsToProcess.begin(), labelsToProcess.end(), value);
+            switch(mlb) { 
+                case MaskLabelBehaviour::ZEROS: 
+                    conditionToProcess = (value == 0);
+                    break;
+                case MaskLabelBehaviour::ONLY:
+                    conditionToProcess = (value == 0) || (testValueInLabels != labelsToProcess.end());
+                    break;
+                case MaskLabelBehaviour::REPLACE:
+                    conditionToProcess = true;
+                    break;
+                case MaskLabelBehaviour::FORBID:
+                    conditionToProcess = (testValueInLabels == labelsToProcess.end());
+                    break;
+                default:
+                    conditionToProcess = false;
+                }
+
+            if (conditionToProcess) {
+                segIt.Set(newLabel);
             }
         }
     }
@@ -212,6 +232,27 @@ mitk::Image::Pointer CemrgFourChamberTools::AddMaskToSegmentation(mitk::Image::P
     newSeg->SetGeometry(seg->GetGeometry());
     return newSeg;
 
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::LabelMaskAndOperation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int oldLabel, int newLabel) {
+    ImageType::Pointer itkImage = ImageType::New();
+    ImageType::Pointer itkMask = ImageType::New();
+    CastToItkImage(seg, itkImage);
+    CastToItkImage(mask, itkMask);
+
+    IteratorType segIt(itkImage, itkImage->GetLargestPossibleRegion());
+    IteratorType maskIt(itkMask, itkMask->GetLargestPossibleRegion());
+
+    for (segIt.GoToBegin(), maskIt.GoToBegin(); !segIt.IsAtEnd(); ++segIt, ++maskIt) {
+        if (maskIt.Get() > 0) {
+            int valueToSet = (segIt.Get() == oldLabel) ? newLabel : 0;
+            segIt.Set(valueToSet);
+        }
+    }
+
+    mitk::Image::Pointer newSeg = mitk::ImportItkImage(itkImage)->Clone();
+    newSeg->SetGeometry(seg->GetGeometry());
+    return newSeg;
 }
 
 void CemrgFourChamberTools::GetLabels(mitk::Image::Pointer seg, std::vector<int> &labels, int background) {
@@ -299,8 +340,6 @@ bool CemrgFourChamberTools::GetLabelCentreOfMassIndex(mitk::Image::Pointer seg, 
     }
     
     for (unsigned int ix = 0; ix < 3; ix++) {
-        double spacing = itkImage->GetSpacing()[ix];
-        double origin = itkImage->GetOrigin()[ix];
         cogIndx.push_back((bb[2*ix] + bb[2*ix + 1]) / 2);
     }
 
@@ -314,28 +353,37 @@ bool CemrgFourChamberTools::GetLabelCentreOfMass(mitk::Image::Pointer seg, int l
         return false;
     }
 
-    for (unsigned int ix = 0; ix < 3; ix++) {
-        double spacing = seg->GetGeometry()->GetSpacing()[ix];
-        double origin = seg->GetGeometry()->GetOrigin()[ix];
-
-        cog.push_back( (cogIndx[ix] * spacing) + origin );   
-    }
+    IndexToWorld(seg, cogIndx, cog);
 
     return true;
 }
 
-bool CemrgFourChamberTools::WorldToIndex(mitk::Image::Pointer image, std::vector<double> world, std::vector<unsigned int>& index) {
+void CemrgFourChamberTools::WorldToIndex(mitk::Image::Pointer image, std::vector<double> world, std::vector<unsigned int>& index) {
     ImageType::Pointer itkImage = ImageType::New();
     mitk::CastToItkImage(image, itkImage);
 
-    return false;
+    ImageType::PointType point;
+    ImageType::IndexType indexType;
+    for (unsigned int ix = 0; ix < 3; ix++) {
+        point[ix] = world.at(ix);
+    }
+
+    itkImage->TransformPhysicalPointToIndex(point, indexType);
+
+    for (unsigned int ix = 0; ix < 3; ix++) {
+        index.push_back(indexType[ix]);
+    }
 }
 
-bool CemrgFourChamberTools::IndexToWorld(mitk::Image::Pointer image, std::vector<unsigned int> index, std::vector<double> &world) {
-    ImageType::Pointer itkImage = ImageType::New();
-    mitk::CastToItkImage(image, itkImage);
+void CemrgFourChamberTools::IndexToWorld(mitk::Image::Pointer image, std::vector<unsigned int> index, std::vector<double> &world) {
+    
+    for (unsigned int ix = 0; ix < 3; ix++) {
+        double spacing = image->GetGeometry()->GetSpacing()[ix];
+        double origin = image->GetGeometry()->GetOrigin()[ix];
 
-    return false;
+        world.push_back( (index[ix] * spacing) + origin );   
+    }
+
 }
 
 void CemrgFourChamberTools::SetCylinders(QJsonObject json) {
@@ -437,28 +485,28 @@ struct PointList {
 /// @param ptPrefix - prefix of the points to be used CYLINDERS(SVC, IVC, ...) SLICERS(SVC_slicer, IVC_Slicer)
 /// @param slicerRadius 
 /// @param slicerHeight 
-/// @param mpl - ManualPointsType
+/// @param mpl - ManualPoints
 /// @param saveAs 
 /// @return 
-mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, ManualPointsType mpl, QString saveAs) {
+mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, ManualPoints mpl, QString saveAs) {
 
     // Get keys whether it is cylinders, slicers, or valve_plains
-    SegmentationPointsIds segIds;
+    ManualPointsStruct segIds;
     QStringList keys = segIds.GetPointLabelOptions(mpl);
 
     BasePointsType* bpt;
     switch (mpl) { 
-        case ManualPointsType::CYLINDERS: 
+        case ManualPoints::CYLINDERS: 
             bpt = &_cylinders; 
             break;
-        case ManualPointsType::SLICERS:
+        case ManualPoints::SLICERS:
             bpt = &_slicers;
             break;
-        case ManualPointsType::VALVE_PLAINS:
+        case ManualPoints::VALVE_PLAINS:
             bpt = &_valvePoints;
             break;
         default: 
-            MITK_ERROR << "Invalid ManualPointsType";
+            MITK_ERROR << "Invalid ManualPoints";
             return nullptr;
     }
 
@@ -608,15 +656,278 @@ mitk::Image::Pointer CemrgFourChamberTools::CreateSvcIvc(std::vector<mitk::Image
     mitk::Image::Pointer svc = images.at(1);
     mitk::Image::Pointer ivc = images.at(2);
 
-    std::vector<int> labelsToIgnore;
-    labelsToIgnore.push_back(RspvLabel);
-    mitk::Image::Pointer svcIvc = AddMaskToSegmentation(seg, svc, SvcLabel, labelsToIgnore);
+    std::vector<int> labelsToProcess;
+    labelsToProcess.push_back(RspvLabel);
+    mitk::Image::Pointer svcIvc = AddMaskReplaceOnly(seg, svc, SvcLabel, labelsToProcess);
 
     if (svcIvc == nullptr) {
         return nullptr;
     }
 
-    return AddMaskToSegmentation(svcIvc, ivc, IvcLabel);
+    return AddMask(svcIvc, ivc, IvcLabel);
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::S2B(std::vector<unsigned int> seedSVC) {
+    if (currentStep != SegmentationStep::S2A) {
+        MITK_WARN << "Need to run S2A first";
+        return nullptr;
+    }
+
+    mitk::Image::Pointer s2b = ConnectedComponentKeep(currentImage, seedSVC, chosenLabels.Get(LabelsType::SVC));
+    if (debug) {
+        MITK_INFO << "Saving connected threshold.";
+        mitk::IOUtil::Save(s2b, debugDir + "/seg_s2b.nii");
+    }
+
+    UpdateStep(s2b, SegmentationStep::S2B);
+
+    return s2b;
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::S2C(std::vector<unsigned int> seedIVC) {
+    if (currentStep != SegmentationStep::S2B) {
+        MITK_WARN << "Need to run S2B first";
+        return nullptr;
+    }
+
+    mitk::Image::Pointer s2c = ConnectedComponentKeep(currentImage, seedIVC, chosenLabels.Get(LabelsType::IVC));
+    if (debug) {
+        MITK_INFO << "Saving connected threshold.";
+        mitk::IOUtil::Save(s2c, debugDir + "/seg_s2c.nii");
+    }
+
+    UpdateStep(s2c, SegmentationStep::S2C);
+
+    return s2c;
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::S2D(mitk::Image::Pointer aorta, 
+                                                mitk::Image::Pointer PArt, 
+                                                mitk::Image::Pointer svc_slicer, 
+                                                mitk::Image::Pointer ivc_slicer,
+                                                int aortaSlicerLabel,
+                                                int PArtSlicerLabel) {
+    if (currentStep != SegmentationStep::S2C) {
+        MITK_WARN << "Need to run S2C first";
+        return nullptr;
+    }
+    // aortaSlicerLabel,PArtSlicerLabel
+    int aortaLabel = chosenLabels.Get(LabelsType::AORTA);
+    int PArtLabel = chosenLabels.Get(LabelsType::PULMONARY_ARTERY);
+    int svcLabel = chosenLabels.Get(LabelsType::SVC);
+    int ivcLabel = chosenLabels.Get(LabelsType::IVC);
+    int RALabel = chosenLabels.Get(LabelsType::RIGHT_ATRIUM);
+
+    std::vector<int> labelsToProcess;
+    labelsToProcess.push_back(aortaLabel);
+
+    mitk::Image::Pointer s2d = AddMaskReplaceOnly(currentImage, aorta, aortaSlicerLabel, labelsToProcess);
+
+    labelsToProcess.clear();
+    labelsToProcess.push_back(PArtLabel);
+
+    s2d = AddMaskReplaceOnly(s2d, PArt, PArtSlicerLabel, labelsToProcess);
+
+    mitk::Image::Pointer newRA = LabelMaskAndOperation(s2d, svc_slicer, svcLabel, RALabel);
+
+    labelsToProcess.clear();
+    labelsToProcess.push_back(svcLabel);
+    s2d = AddMaskReplaceOnly(s2d, newRA, RALabel, labelsToProcess);
+
+    newRA = LabelMaskAndOperation(s2d, ivc_slicer, ivcLabel, RALabel);
+
+    labelsToProcess.clear();
+    labelsToProcess.push_back(ivcLabel);
+    s2d = AddMaskReplaceOnly(s2d, newRA, RALabel, labelsToProcess);
+
+    if (debug) { 
+        MITK_INFO << "Saving s2d.";
+        mitk::IOUtil::Save(s2d, debugDir + "/seg_s2d.nii");
+    }
+
+    return s2d;
+    UpdateStep(s2d, SegmentationStep::S2D);
+
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::S2E(std::vector<unsigned int> seedSVC){
+    if (currentStep != SegmentationStep::S2D) {
+        MITK_WARN << "Need to run S2D first";
+        return nullptr;
+    }
+
+    int svcLabel = chosenLabels.Get(LabelsType::SVC);
+    int RALabel = chosenLabels.Get(LabelsType::RIGHT_ATRIUM);
+
+    mitk::Image::Pointer s2e = ConnectedComponent(currentImage, seedSVC, svcLabel);
+
+    std::vector<int> labelsToProcess;
+    labelsToProcess.push_back(svcLabel);
+    s2e = AddMaskReplaceOnly(s2e, s2e, RALabel, labelsToProcess);
+
+    mitk::Image::Pointer cc = mitk::IOUtil::Load<mitk::Image>(debugDir + "/CC.nii");
+    if (!cc) {
+        MITK_WARN << "Could not load CC.nii";
+        return nullptr;
+    }
+
+    s2e = AddMaskReplace(s2e, cc, svcLabel);
+
+    if (debug) { 
+        MITK_INFO << "Saving s2e.";
+        mitk::IOUtil::Save(s2e, debugDir + "/seg_s2e.nii");
+    }
+
+    UpdateStep(s2e, SegmentationStep::S2E);
+    return s2e;
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::S2F(std::vector<unsigned int> seedIVC) {
+    if (currentStep != SegmentationStep::S2E) {
+        MITK_WARN << "Need to run S2E first";
+        return nullptr;
+    }
+
+    int ivcLabel = chosenLabels.Get(LabelsType::IVC);
+    int RALabel = chosenLabels.Get(LabelsType::RIGHT_ATRIUM);
+
+    mitk::Image::Pointer s2f = ConnectedComponent(currentImage, seedIVC, ivcLabel);
+
+    mitk::Image::Pointer cc = mitk::IOUtil::Load<mitk::Image>(debugDir + "/CC.nii");
+    if (!cc) {
+        MITK_WARN << "Could not load CC.nii";
+        return nullptr;
+    }
+
+    std::vector<int> labelsToProcess;
+    labelsToProcess.push_back(ivcLabel);
+    s2f = AddMaskReplaceOnly(s2f, s2f, RALabel, labelsToProcess);
+    s2f = AddMaskReplace(s2f, cc, ivcLabel);
+
+    if (debug) { 
+        MITK_INFO << "Saving s2f.";
+        mitk::IOUtil::Save(s2f, debugDir + "/seg_s2f.nii");
+    }
+
+    UpdateStep(s2f, SegmentationStep::S2F);
+
+    return s2f;
 }
 
 
+mitk::Image::Pointer CemrgFourChamberTools::CropSvcIvc(std::vector<mitk::Image::Pointer> images,
+                                                       std::vector<unsigned int> seedSVC,
+                                                       std::vector<unsigned int> seedIVC, 
+                                                       int aortaSlicerLabel,  
+                                                       int PArtSlicerLabel) {
+    if (images.size() != 5) {
+        MITK_WARN << "Need 5 images to crop SVC/IVC: seg_s2a, aorta_slicer, PArt_slicer, SVC_slicer and IVC_slicer images";
+        return nullptr;
+    }
+
+    int svcLabel = chosenLabels.Get(LabelsType::SVC);
+    int ivcLabel = chosenLabels.Get(LabelsType::IVC);
+    int aortaLabel = chosenLabels.Get(LabelsType::AORTA);
+    int PArtLabel = chosenLabels.Get(LabelsType::PULMONARY_ARTERY);
+    int RALabel = chosenLabels.Get(LabelsType::RIGHT_ATRIUM);
+
+    // s2a = images.at(0);
+    mitk::Image::Pointer s2b = ConnectedComponentKeep(images.at(0), seedSVC, svcLabel);
+    if (debug) {
+        MITK_INFO << "Saving connected threshold.";
+        mitk::IOUtil::Save(s2b, debugDir + "/seg_s2b.nii");
+    }
+
+    mitk::Image::Pointer s2c = ConnectedComponentKeep(s2b, seedIVC, ivcLabel);
+    if (debug) {
+        MITK_INFO << "Saving connected threshold.";
+        mitk::IOUtil::Save(s2c, debugDir + "/seg_s2c.nii");
+    }
+
+    std::vector<int> labelsToProcess; 
+    labelsToProcess.push_back(aortaLabel);
+
+    // aorta = images.at(1);
+    mitk::Image::Pointer s2d = AddMaskReplaceOnly(s2c, images.at(1), aortaSlicerLabel, labelsToProcess);
+
+    labelsToProcess.clear();
+    labelsToProcess.push_back(PArtLabel);
+
+    // PArt = images.at(2);
+    s2d = AddMaskReplaceOnly(s2d, images.at(2), PArtSlicerLabel, labelsToProcess);
+
+    // svc = images.at(3);
+    mitk::Image::Pointer newRA = LabelMaskAndOperation(s2d, images.at(3), svcLabel, RALabel);
+
+    labelsToProcess.clear();
+    labelsToProcess.push_back(svcLabel);
+    s2d = AddMaskReplaceOnly(s2d, newRA, RALabel, labelsToProcess);
+
+    
+    // ivc = images.at(4);
+    newRA = LabelMaskAndOperation(s2d, images.at(4), ivcLabel, RALabel);
+
+    labelsToProcess.clear();
+    labelsToProcess.push_back(ivcLabel);
+    s2d = AddMaskReplaceOnly(s2d, newRA, RALabel, labelsToProcess);
+
+    if (debug) { 
+        MITK_INFO << "Saving s2d.";
+        mitk::IOUtil::Save(s2d, debugDir + "/seg_s2d.nii");
+    }
+
+    mitk::Image::Pointer s2e = ConnectedComponent(s2d, seedSVC, svcLabel);
+
+    labelsToProcess.clear();
+    labelsToProcess.push_back(svcLabel);
+    s2e = AddMaskReplaceOnly(s2e, s2e, RALabel, labelsToProcess);
+
+    mitk::Image::Pointer cc = mitk::IOUtil::Load<mitk::Image>(debugDir + "/CC.nii");
+    s2e = AddMaskReplace(s2e, cc, svcLabel);
+
+    if (debug) { 
+        MITK_INFO << "Saving s2e.";
+        mitk::IOUtil::Save(s2e, debugDir + "/seg_s2e.nii");
+    }
+
+    mitk::Image::Pointer s2f = ConnectedComponent(s2e, seedIVC, ivcLabel);
+
+    labelsToProcess.clear();
+    labelsToProcess.push_back(ivcLabel);
+    s2f = AddMaskReplaceOnly(s2f, s2f, RALabel, labelsToProcess);
+    s2f = AddMaskReplace(s2f, cc, ivcLabel);
+
+    return s2f;
+}
+
+mitk::Image::Pointer CemrgFourChamberTools::ConnectedComponent(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int layer, bool keep) {
+    using ConnectedThresholdType = itk::ConnectedThresholdImageFilter<ImageType, ImageType>;
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(seg, itkImage);
+    ImageType::IndexType seedPointIndex;
+    seedPointIndex[0] = seedIdx.at(0);
+    seedPointIndex[1] = seedIdx.at(1);
+    seedPointIndex[2] = seedIdx.at(2);
+    
+    ConnectedThresholdType::Pointer cc = ConnectedThresholdType::New();
+    cc->SetInput(itkImage);
+    cc->SetSeed(seedPointIndex);
+    cc->SetLower(layer);
+    cc->SetUpper(layer);
+
+    mitk::Image::Pointer ccImage = mitk::ImportItkImage(cc->GetOutput())->Clone();
+    ccImage->SetGeometry(seg->GetGeometry());
+
+    
+    MITK_INFO << "Saving connected threshold.";
+    mitk::IOUtil::Save(ccImage, debugDir + "/CC.nii");
+
+    int replaceValue = 0;
+    if (keep) {
+        seg = RemoveLabel(seg, layer);
+        replaceValue = layer;
+    }
+
+    return AddMaskReplace(seg, ccImage, replaceValue);
+
+}

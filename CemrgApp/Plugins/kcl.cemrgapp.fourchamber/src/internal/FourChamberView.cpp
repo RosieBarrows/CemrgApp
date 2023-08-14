@@ -184,8 +184,10 @@ void FourChamberView::SetWorkingFolder(){
         MITK_INFO << "Creating folder structure.";
         QStringList qsl = SDIR.Subdirectories();
         for (int ix=0; ix < qsl.size(); ix++) {
-            MITK_INFO(QDir().mkpath(directory + "/" + qsl.at(ix))) << ("Folder created: [" + qsl.at(ix) + "]");
+            MITK_INFO(QDir().mkpath(Path(qsl.at(ix)))) << ("Folder created: [" + qsl.at(ix) + "]");
         }
+        fourch_tools->SetDebugDir(StdStringPath(SDIR.SEG + "/tmp"));
+        QDir().mkpath(fourch_tools->QGetDebugDir());
 
         bool load_geometry_file = CheckForExistingFile(directory, FourChamberView::GEOMETRY_FILE);
         if (load_geometry_file) {
@@ -821,7 +823,7 @@ void FourChamberView::SelectPoints() {
 
     std::string pset_name = "four_chamber_point_set";
 
-    // Create pointset
+    // Create pointset‘input_tags_parfile’
     pset = mitk::PointSet::New();
     CemrgCommonUtils::AddToStorage(pset, pset_name, this->GetDataStorage(), false);
 
@@ -854,7 +856,7 @@ void FourChamberView::SelectPointsCylinders() {
 
     
     if (m_Controls.button_select_pts_a->text().contains("Check Cylinder")) {
-        if (!CheckPointsInJsonFile(ManualPointsType::CYLINDERS)) {
+        if (!CheckPointsInJsonFile(ManualPoints::CYLINDERS)) {
             Warn("Attention - Missing Points", "All points need to be defined before running the script.");
             SelectPointsCheck();
             return;
@@ -882,13 +884,13 @@ void FourChamberView::SelectPointsCylinders() {
 
         int slicerRadius = 10, slicerHeight = 30;
 
-        mitk::Image::Pointer cylSvc = fourch_tools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPointsType::CYLINDERS, svcPath);
-        mitk::Image::Pointer cylIvc = fourch_tools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPointsType::CYLINDERS, ivcPath);
+        mitk::Image::Pointer cylSvc = fourch_tools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, svcPath);
+        mitk::Image::Pointer cylIvc = fourch_tools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, ivcPath);
 
         slicerRadius = 30;
         slicerHeight = 2;
-        mitk::Image::Pointer cylAo = fourch_tools->Cylinder(seg, "Ao", slicerRadius, slicerHeight, ManualPointsType::CYLINDERS, aortaPath);
-        mitk::Image::Pointer cylPArt = fourch_tools->Cylinder(seg, "PArt", slicerRadius, slicerHeight, ManualPointsType::CYLINDERS, pArtPath);
+        mitk::Image::Pointer cylAo = fourch_tools->Cylinder(seg, "Ao", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, aortaPath);
+        mitk::Image::Pointer cylPArt = fourch_tools->Cylinder(seg, "PArt", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, pArtPath);
 
         if (!cylSvc || !cylIvc) {
             Warn("Attention - Missing Cylinders", "Cylinders for SVC and IVC were not created. Check LOG.");
@@ -900,18 +902,19 @@ void FourChamberView::SelectPointsCylinders() {
         images.push_back(cylSvc);
         images.push_back(cylIvc);
         int RspvLabel = 10, SvcLabel = 13, IvcLabel = 14; // check values based on image and user choices
-        mitk::Image::Pointer newSeg = fourch_tools->CreateSvcIvc(images, RspvLabel, SvcLabel, IvcLabel);
+        mitk::Image::Pointer s2a = fourch_tools->CreateSvcIvc(images, RspvLabel, SvcLabel, IvcLabel);
 
-        if (!newSeg) {
+        if (!s2a) {
             Warn("Attention - SVC/IVC", "SVC and IVC added to segmentation.");
             return;
         }
 
-        mitk::IOUtil::Save(newSeg, StdStringPath(SDIR.SEG + "/" + sname.Qs2aNii()));
+        mitk::IOUtil::Save(s2a, StdStringPath(SDIR.SEG + "/" + sname.Qs2aNii()));
+        fourch_tools->UpdateStep(s2a, SegmentationStep::S2A);
 
         mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
-        mlseg->InitializeByLabeledImage(newSeg);
-        mlseg->SetGeometry(newSeg->GetGeometry());
+        mlseg->InitializeByLabeledImage(s2a);
+        mlseg->SetGeometry(s2a->GetGeometry());
 
         CemrgCommonUtils::AddToStorage(mlseg, sname.s2a(), this->GetDataStorage());
         mlseg->Modified();
@@ -934,7 +937,7 @@ void FourChamberView::SelectPointsSlicers() {
     }//_if
    
     if (m_Controls.button_select_pts_b->text().contains("Check Slicer")) {
-        if (!CheckPointsInJsonFile(ManualPointsType::SLICERS)) {
+        if (!CheckPointsInJsonFile(ManualPoints::SLICERS)) {
             Warn("Attention - Missing Points", "All points need to be defined before running the script.");
             SelectPointsCheck();
             return;
@@ -960,19 +963,15 @@ void FourChamberView::SelectPointsSlicers() {
 
         int slicerRadius = 30, slicerHeight = 2;
 
-        mitk::Image::Pointer sliSvc = fourch_tools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPointsType::SLICERS, svcSlicerPath);
-        mitk::Image::Pointer sliIvc = fourch_tools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPointsType::SLICERS, ivcSlicerPath);
+        mitk::Image::Pointer sliSvc = fourch_tools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPoints::SLICERS, svcSlicerPath);
+        mitk::Image::Pointer sliIvc = fourch_tools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPoints::SLICERS, ivcSlicerPath);
 
         if (!sliSvc || !sliIvc) {
             Warn("Attention - Missing Slicers", "Slicers for SVC and IVC were not created. Check LOG.");
             return;
         }
 
-        QDir tmp(Path(SDIR.SEG+"/tmp"));
-        if (!tmp.exists()) {
-            tmp.mkpath(".");
-        }
-
+        
 
 
 
@@ -983,7 +982,7 @@ void FourChamberView::SelectPointsSlicers() {
 void FourChamberView::SelectPointsValvePlains(){
     
     if (m_Controls.button_select_pts_c->text().contains("Check Valve Plains")) {
-        if (!CheckPointsInJsonFile(ManualPointsType::VALVE_PLAINS)) {
+        if (!CheckPointsInJsonFile(ManualPoints::VALVE_PLAINS)) {
             Warn("Attention - Missing Points", "All points need to be defined before running the script.");
             SelectPointsCheck();
             return;
@@ -996,7 +995,7 @@ void FourChamberView::SelectPointsValvePlains(){
     }
 }
 
-bool FourChamberView::CheckPointsInJsonFile(ManualPointsType mpt){
+bool FourChamberView::CheckPointsInJsonFile(ManualPoints mpt){
     // reload json file
     ReloadJsonPoints();
 
@@ -1172,9 +1171,9 @@ void FourChamberView::Inform(std::string title, std::string msg){
 
 void FourChamberView::InitialiseJsonObjects() {
 
-    QStringList pt_keys = SegPointIds.GetPointLabelOptions(ManualPointsType::CYLINDERS);
-    pt_keys.append(SegPointIds.GetPointLabelOptions(ManualPointsType::SLICERS));
-    pt_keys.append(SegPointIds.GetPointLabelOptions(ManualPointsType::VALVE_PLAINS));
+    QStringList pt_keys = SegPointIds.GetPointLabelOptions(ManualPoints::CYLINDERS);
+    pt_keys.append(SegPointIds.GetPointLabelOptions(ManualPoints::SLICERS));
+    pt_keys.append(SegPointIds.GetPointLabelOptions(ManualPoints::VALVE_PLAINS));
 
     QStringList values = QStringList(), types = QStringList();
     InitialiseQStringListsFromSize(pt_keys.size(), values, types);
@@ -1264,16 +1263,16 @@ void FourChamberView::LoadMeshingParametersFromJson(QString dir, QString json_fi
     meshing_parameters.out_potential = json["out_potential"].toBool();
 }
 
-QString FourChamberView::GetPointTypeString(ManualPointsType mpt) {
+QString FourChamberView::GetPointTypeString(ManualPoints mpt) {
     QString res;
     switch (mpt) {
-        case ManualPointsType::CYLINDERS :
+        case ManualPoints::CYLINDERS :
             res = "Cylinders";
             break;
-        case ManualPointsType::SLICERS :
+        case ManualPoints::SLICERS :
             res = "Slicers";
             break;
-        case ManualPointsType::VALVE_PLAINS :
+        case ManualPoints::VALVE_PLAINS :
             res = "ValvePlains";
             break;
         default:
@@ -1386,7 +1385,7 @@ bool FourChamberView::UserSelectIdentifyLabels(int index, unsigned int label, QC
     if (dialogCode == QDialog::Accepted) {
         pickedLabelName = m_IdLabels.combo_id_label->currentText();
 
-        SegmentationTagsStruct defaultLabelHandler;
+        DefaultLabelsStruct defaultLabelHandler;
         defaultLabelHandler.SetTagFromString(pickedLabelName);
         defaultLabel = defaultLabelHandler.GetTag();
 

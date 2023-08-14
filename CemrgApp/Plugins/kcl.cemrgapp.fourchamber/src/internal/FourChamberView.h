@@ -85,10 +85,10 @@ public:
     void Inform(std::string title, std::string msg);
     void PrintMeshingParameters(QString path_to_par);
     void LoadMeshingParametersFromJson(QString dir, QString json_file);
-    QString GetPointTypeString(ManualPointsType mpt);
+    QString GetPointTypeString(ManualPoints mpt);
     bool ArrayEqual(double *arr1, double *arr2, int size, double tol=0.0001);
     void ParseJsonArray(QJsonObject json, QString key, double *arr, int size=3);
-    bool CheckPointsInJsonFile(ManualPointsType mpt);
+    bool CheckPointsInJsonFile(ManualPoints mpt);
     void ReloadJsonPoints();
     std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
 
@@ -106,8 +106,8 @@ public:
     inline void SetButtonsEnableToOff() { SetButtonsEnable(false); };
 
     void InitialiseJsonObjects();
-    QStringList GetPointLabelOptions(ManualPointsType mpt);
-    CemrgDataInteractor::Pointer CreateInteractorWithOptions(ManualPointsType mpt);
+    QStringList GetPointLabelOptions(ManualPoints mpt);
+    CemrgDataInteractor::Pointer CreateInteractorWithOptions(ManualPoints mpt);
     void InitialiseQStringListsFromSize(int num, QStringList &values, QStringList &types);
 
     // User Select Functions
@@ -180,7 +180,7 @@ private:
     M3DParameters meshing_parameters;
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
     FourChamberSegmentationNames sname; // helps set access segmentation names
-    SegmentationPointsIds SegPointIds; // keeps track of the segmentation points
+    ManualPointsStruct SegPointIds; // keeps track of the segmentation points
     double origin[3], spacing[3];
 
     // members handling the current label of the segmentation being handled

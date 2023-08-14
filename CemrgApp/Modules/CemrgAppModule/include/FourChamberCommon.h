@@ -5,8 +5,8 @@
 #include <QJsonObject>
 #include <QJsonArray>
 
-enum ManualPointsType { CYLINDERS, SLICERS, VALVE_PLAINS };
-enum SegmentationTagsType {  
+enum ManualPoints { CYLINDERS, SLICERS, VALVE_PLAINS };
+enum LabelsType {  
     BACKGROUND = 0,
     BLOODPOOL = 1, 
     LEFT_VENTRICLE = 2, 
@@ -24,49 +24,111 @@ enum SegmentationTagsType {
     IVC = 14
 };
 
-struct SegmentationTagsStruct {
-    SegmentationTagsType stt;
-    SegmentationTagsStruct() : stt(SegmentationTagsType::BACKGROUND) {}
-    SegmentationTagsStruct(SegmentationTagsType usrStt) : stt(usrStt) {}
+enum SegmentationStep { NONE, S2A, S2B, S2C, S2D, S2E, S2F };
+
+struct LabelsStruct {
+    int bloodpool, lv, rv, la, ra, aorta, pulmonary_artery, lspv, lipv, rspv, ripv, laa, svc, ivc;
+    LabelsStruct()
+        :bloodpool(1), 
+         lv(2), 
+         rv(3), 
+         la(4),    
+         ra(5), 
+         aorta(6), 
+         pulmonary_artery(7), 
+         lspv(8), 
+         lipv(9), 
+         rspv(10),
+         ripv(11), 
+         laa(12), 
+         svc(13), 
+         ivc(14) {}
+    
+    int Get(LabelsType stt) { 
+        switch (stt) {
+        case LabelsType::BACKGROUND: return 0;
+        case LabelsType::BLOODPOOL: return bloodpool;
+        case LabelsType::LEFT_VENTRICLE: return lv;
+        case LabelsType::RIGHT_VENTRICLE: return rv;
+        case LabelsType::LEFT_ATRIUM: return la;
+        case LabelsType::RIGHT_ATRIUM: return ra;
+        case LabelsType::AORTA: return aorta;
+        case LabelsType::PULMONARY_ARTERY: return pulmonary_artery;
+        case LabelsType::LSPV: return lspv;
+        case LabelsType::LIPV: return lipv;
+        case LabelsType::RSPV: return rspv;
+        case LabelsType::RIPV: return ripv;
+        case LabelsType::LAA: return laa;
+        case LabelsType::SVC: return svc;
+        case LabelsType::IVC: return ivc;
+        default: return 0;
+        }
+    }
+
+    void Set(LabelsType stt, int value) {
+        switch (stt) {
+        case LabelsType::BLOODPOOL: bloodpool = value; break;
+        case LabelsType::LEFT_VENTRICLE: lv = value; break;
+        case LabelsType::RIGHT_VENTRICLE: rv = value; break;
+        case LabelsType::LEFT_ATRIUM: la = value; break;
+        case LabelsType::RIGHT_ATRIUM: ra = value; break;
+        case LabelsType::AORTA: aorta = value; break;
+        case LabelsType::PULMONARY_ARTERY: pulmonary_artery = value; break;
+        case LabelsType::LSPV: lspv = value; break;
+        case LabelsType::LIPV: lipv = value; break;
+        case LabelsType::RSPV: rspv = value; break;
+        case LabelsType::RIPV: ripv = value; break;
+        case LabelsType::LAA: laa = value; break;
+        case LabelsType::SVC: svc = value; break;
+        case LabelsType::IVC: ivc = value; break;
+        default: break;
+        }
+    }
+};
+
+struct DefaultLabelsStruct {
+    LabelsType stt;
+    DefaultLabelsStruct() : stt(LabelsType::BACKGROUND) {}
+    DefaultLabelsStruct(LabelsType usrStt) : stt(usrStt) {}
 
     int GetTag() { return static_cast<int>(stt); } 
-    void SetTag(SegmentationTagsType usrStt) { stt = usrStt; }
+    void SetTag(LabelsType usrStt) { stt = usrStt; }
 
     void SetTagFromString(QString tagName) { 
-        if (tagName.compare("BACKGROUND", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::BACKGROUND); return; }
-        if (tagName.compare("BLOODPOOL", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::BLOODPOOL); return; }
-        if (tagName.compare("LEFT_VENTRICLE", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::LEFT_VENTRICLE); return; }
-        if (tagName.compare("RIGHT_VENTRICLE", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::RIGHT_VENTRICLE); return; }
-        if (tagName.compare("LEFT_ATRIUM", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::LEFT_ATRIUM); return; }
-        if (tagName.compare("RIGHT_ATRIUM", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::RIGHT_ATRIUM); return; }
-        if (tagName.compare("AORTA", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::AORTA); return; }
-        if (tagName.compare("PULMONARY_ARTERY", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::PULMONARY_ARTERY); return; }
-        if (tagName.compare("LSPV", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::LSPV); return; }
-        if (tagName.compare("LIPV", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::LIPV); return; }
-        if (tagName.compare("RSPV", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::RSPV); return; }
-        if (tagName.compare("RIPV", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::RIPV); return; }
-        if (tagName.compare("LAA", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::LAA); return; }
-        if (tagName.compare("SVC", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::SVC); return; }
-        if (tagName.compare("IVC", Qt::CaseInsensitive) == 0) { SetTag(SegmentationTagsType::IVC); return; }
+        if (tagName.compare("BACKGROUND", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::BACKGROUND); return; }
+        if (tagName.compare("BLOODPOOL", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::BLOODPOOL); return; }
+        if (tagName.compare("LEFT_VENTRICLE", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::LEFT_VENTRICLE); return; }
+        if (tagName.compare("RIGHT_VENTRICLE", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::RIGHT_VENTRICLE); return; }
+        if (tagName.compare("LEFT_ATRIUM", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::LEFT_ATRIUM); return; }
+        if (tagName.compare("RIGHT_ATRIUM", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::RIGHT_ATRIUM); return; }
+        if (tagName.compare("AORTA", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::AORTA); return; }
+        if (tagName.compare("PULMONARY_ARTERY", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::PULMONARY_ARTERY); return; }
+        if (tagName.compare("LSPV", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::LSPV); return; }
+        if (tagName.compare("LIPV", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::LIPV); return; }
+        if (tagName.compare("RSPV", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::RSPV); return; }
+        if (tagName.compare("RIPV", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::RIPV); return; }
+        if (tagName.compare("LAA", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::LAA); return; }
+        if (tagName.compare("SVC", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::SVC); return; }
+        if (tagName.compare("IVC", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::IVC); return; }
     }
 
     QString TagName() {
         switch (stt) {
-        case SegmentationTagsType::BACKGROUND: return "BACKGROUND";
-        case SegmentationTagsType::BLOODPOOL: return "BLOODPOOL";
-        case SegmentationTagsType::LEFT_VENTRICLE: return "LEFT_VENTRICLE";
-        case SegmentationTagsType::RIGHT_VENTRICLE: return "RIGHT_VENTRICLE";
-        case SegmentationTagsType::LEFT_ATRIUM: return "LEFT_ATRIUM";
-        case SegmentationTagsType::RIGHT_ATRIUM: return "RIGHT_ATRIUM";
-        case SegmentationTagsType::AORTA: return "AORTA";
-        case SegmentationTagsType::PULMONARY_ARTERY: return "PULMONARY_ARTERY";
-        case SegmentationTagsType::LSPV: return "LSPV";
-        case SegmentationTagsType::LIPV: return "LIPV";
-        case SegmentationTagsType::RSPV: return "RSPV";
-        case SegmentationTagsType::RIPV: return "RIPV";
-        case SegmentationTagsType::LAA: return "LAA";
-        case SegmentationTagsType::SVC: return "SVC";
-        case SegmentationTagsType::IVC: return "IVC";
+        case LabelsType::BACKGROUND: return "BACKGROUND";
+        case LabelsType::BLOODPOOL: return "BLOODPOOL";
+        case LabelsType::LEFT_VENTRICLE: return "LEFT_VENTRICLE";
+        case LabelsType::RIGHT_VENTRICLE: return "RIGHT_VENTRICLE";
+        case LabelsType::LEFT_ATRIUM: return "LEFT_ATRIUM";
+        case LabelsType::RIGHT_ATRIUM: return "RIGHT_ATRIUM";
+        case LabelsType::AORTA: return "AORTA";
+        case LabelsType::PULMONARY_ARTERY: return "PULMONARY_ARTERY";
+        case LabelsType::LSPV: return "LSPV";
+        case LabelsType::LIPV: return "LIPV";
+        case LabelsType::RSPV: return "RSPV";
+        case LabelsType::RIPV: return "RIPV";
+        case LabelsType::LAA: return "LAA";
+        case LabelsType::SVC: return "SVC";
+        case LabelsType::IVC: return "IVC";
         default: return "BACKGROUND";
         }
     }
@@ -142,10 +204,9 @@ struct FourChamberSegmentationNames {
 
 };
 
-struct SegmentationPointsIds
-{
+struct ManualPointsStruct {
     QStringList cylinders, slicers, valve_plains;
-    SegmentationPointsIds(){
+    ManualPointsStruct(){
         cylinders << "SVC_1" << "SVC_2" << "SVC_3" << "IVC_1" << "IVC_2" << "IVC_3"  
                  << "Ao_1"  << "Ao_2"  << "Ao_3" << "PArt_1" << "PArt_2" << "PArt_3";
         slicers << "SVC_slicer_1" << "SVC_slicer_2" << "SVC_slicer_3" << "SVC_tip"
@@ -158,19 +219,19 @@ struct SegmentationPointsIds
     QStringList SLICERS(){ return slicers; };
     QStringList VALVE_PLAINS() { return valve_plains; };
 
-    QStringList GetPointLabelOptions(ManualPointsType mpt){
+    QStringList GetPointLabelOptions(ManualPoints mpt){
         QStringList res = QStringList();
 
         switch (mpt) {
-            case ManualPointsType::CYLINDERS :
+            case ManualPoints::CYLINDERS :
                 res = CYLINDERS();
                 break;
 
-            case ManualPointsType::SLICERS : 
+            case ManualPoints::SLICERS : 
                 res = SLICERS();
                 break;
 
-            case ManualPointsType::VALVE_PLAINS :
+            case ManualPoints::VALVE_PLAINS :
                 res = VALVE_PLAINS();
                 break;
             default:
@@ -180,18 +241,18 @@ struct SegmentationPointsIds
         return res;
     }
 
-    QString title(ManualPointsType mpt) {
+    QString title(ManualPoints mpt) {
         QString res = QString();
         switch (mpt) {
-            case ManualPointsType::CYLINDERS :
+            case ManualPoints::CYLINDERS :
                 res = "Cylinders";
                 break;
 
-            case ManualPointsType::SLICERS : 
+            case ManualPoints::SLICERS : 
                 res = "Slicers";
                 break;
 
-            case ManualPointsType::VALVE_PLAINS :
+            case ManualPoints::VALVE_PLAINS :
                 res = "Valve Plains";
                 break;
             default:
@@ -367,7 +428,7 @@ public:
     BasePointsType(int numEnumValues)
         : points(3 * numEnumValues), pointsSet(false) {}
     
-    BasePointsType(ManualPointsType mpt)
+    BasePointsType(ManualPoints mpt)
         : points(3 * GetNumEnumValues(mpt)), pointsSet(false) {}
 
     double GetPointAt(PointsNamesType ptType, unsigned int index) {
@@ -407,13 +468,13 @@ protected:
     bool pointsSet;
 
 private: 
-    int GetNumEnumValues(ManualPointsType mpt) {
+    int GetNumEnumValues(ManualPoints mpt) {
         switch (mpt) {
-            case ManualPointsType::CYLINDERS:
+            case ManualPoints::CYLINDERS:
                 return static_cast<int>(PArt3) - static_cast<int>(SVC1) + 1; // Or any calculation that fits your needs
-            case ManualPointsType::SLICERS:
+            case ManualPoints::SLICERS:
                 return static_cast<int>(PArt_TIP) - static_cast<int>(SVC_SLICER1) + 1; // Calculate for SlicersPointsType
-            case ManualPointsType::VALVE_PLAINS:
+            case ManualPoints::VALVE_PLAINS:
                 return static_cast<int>(PArt_WT_TIP) - static_cast<int>(Ao_WT_TIP) + 1; // Calculate for ValvePlainsPointsType
         }
     }

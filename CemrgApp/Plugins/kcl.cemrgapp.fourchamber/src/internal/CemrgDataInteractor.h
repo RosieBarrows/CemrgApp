@@ -46,7 +46,7 @@ public:
     void Initialise(QString path_to_file = "");
     mitk::Point3D GetLastPoint(mitk::InteractionEvent *interactionEvent);
 
-    QStringList PrepareListForComboBox(ManualPointsType mpt);
+    QStringList PrepareListForComboBox(ManualPoints mpt);
     QStringList FillOptions();
 
     virtual ~CemrgDataInteractor();
@@ -58,5 +58,5 @@ private:
     Ui::FourChamberViewPointLabelSelect m_ptset_controls;
     std::unique_ptr<QDialog> m_dialog;
     QString path_to_json;
-    SegmentationPointsIds SegPointIds;
+    ManualPointsStruct SegPointIds;
 };

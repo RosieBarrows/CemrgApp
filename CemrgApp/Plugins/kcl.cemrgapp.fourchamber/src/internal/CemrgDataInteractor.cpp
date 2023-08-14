@@ -121,7 +121,7 @@ mitk::Point3D CemrgDataInteractor::GetLastPoint(mitk::InteractionEvent *interact
     return res;
 }
 
-QStringList CemrgDataInteractor::PrepareListForComboBox(ManualPointsType mpt){
+QStringList CemrgDataInteractor::PrepareListForComboBox(ManualPoints mpt){
     QStringList res = SegPointIds.GetPointLabelOptions(mpt);
     QString title = SegPointIds.title(mpt);
     for (int ix = 0; ix < res.size(); ix++) {
@@ -131,8 +131,8 @@ QStringList CemrgDataInteractor::PrepareListForComboBox(ManualPointsType mpt){
 }
 QStringList CemrgDataInteractor::FillOptions(){
     QStringList res;
-    res << PrepareListForComboBox(ManualPointsType::CYLINDERS);
-    res << PrepareListForComboBox(ManualPointsType::SLICERS);
-    res << PrepareListForComboBox(ManualPointsType::VALVE_PLAINS);
+    res << PrepareListForComboBox(ManualPoints::CYLINDERS);
+    res << PrepareListForComboBox(ManualPoints::SLICERS);
+    res << PrepareListForComboBox(ManualPoints::VALVE_PLAINS);
     return res;
 }
