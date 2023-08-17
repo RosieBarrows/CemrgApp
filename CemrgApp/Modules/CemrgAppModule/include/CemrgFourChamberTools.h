@@ -46,8 +46,62 @@ PURPOSE.  See the above copyright notices for more information.
 #include <itkImage.h>
 #include <itkImageRegionIterator.h>
 
+#include "CemrgMultilabelSegmentationUtils.h"
 #include "FourChamberCommon.h"
 #include "CemrgCommandLine.h"
+
+struct Step {
+    std::string name;
+    std::string imageFilename;
+    mitk::Image::Pointer image;
+
+    Step(std::string stepName) : name(stepName), imageFilename("") {
+        image = nullptr;
+    }
+
+    inline void SetImageFileName(std::string dir) { imageFilename = dir + "/" + name + ".nii"; };
+
+    inline void SetImage(mitk::Image::Pointer img) { image = img; };
+    inline void DropImage() { image = nullptr; }; 
+    inline void SaveImage() { mitk::IOUtil::Save(image, imageFilename); };
+};
+
+struct Stage {
+    std::string name;
+    std::vector<Step> steps;
+
+    Stage() : name(""){};
+    Stage(std::string stageName) : name(stageName){};
+
+    inline int StepsInStage() { return steps.size(); };
+};
+
+class SegmentationStepManager {
+public:
+    SegmentationStepManager();
+    SegmentationStepManager(std::string path);
+    ~SegmentationStepManager();
+
+    void SetPathToImages(std::string path);
+
+    void NextStep();
+    void NextStage();
+    inline Step* GetCurrentStep() { return &(stages[stageIndx].steps[stepIndx]); };
+    inline Stage* GetCurrentStage() { return &(stages[stageIndx]); };
+    void saveCurrentStepImage();
+
+    inline QString GetStepName() { return QString::fromStdString( GetCurrentStep()->name); };
+    inline mitk::Image::Pointer GetStepImage() { return GetCurrentStep()->image; };
+
+    void UpdateStepWithImage(mitk::Image::Pointer image, bool debug);
+
+private:
+    std::vector<Stage> stages;
+    std::string pathToImages;
+    size_t stageIndx;
+    size_t stepIndx;
+    bool started;
+};
 
 class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
     typedef itk::Image<uint8_t, 3> ImageType;
@@ -57,66 +111,57 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         CemrgFourChamberTools();
         ~CemrgFourChamberTools();
 
-        inline void SetDebug(bool debug, std::string debugDirectory) { debug = debug; debugDir = debugDirectory; };
-        inline void SetDebugOn(std::string debugDirectory) { SetDebug(true, debugDirectory); };
+        inline void SetDebug(bool value) { debug = value; };
+        inline void SetDebugOn() { SetDebug(true); };
 
-        inline void SetDebugDir(std::string debugDirectory) { debugDir = debugDirectory; };
+        inline void SetSegDir(std::string segDirectory) { 
+            segDir = segDirectory; 
+            debugDir = segDir + "/tmp";
+            segStepManager.SetPathToImages(debugDir);
+            segUtils->SetDebugDir(QString::fromStdString(debugDir));
+        };
+
+        inline std::string GetSegDir() { return segDir; };
+        inline QString QGetSegDir() { return QString::fromStdString(segDir); };
         inline std::string GetDebugDir() { return debugDir; };
-        inline QString QGetDebugDir() { return QString::fromStdString(debugDir); };
 
-        inline void UpdateStep(mitk::Image::Pointer image, SegmentationStep step) { currentImage = image; currentStep = step; };
         inline void SetLabel(LabelsType stt, int label) { chosenLabels.Set(stt, label); };
-
-        // Segmentation Utilities
-        bool CheckExisting(mitk::Image::Pointer seg, int queryLabel);
-        void ExploreLabelsToSplit(mitk::Image::Pointer seg, std::vector<int>& labels); 
-        mitk::Image::Pointer SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label, unsigned int radius=3);
         
-        mitk::Image::Pointer ReplaceLabel(mitk::Image::Pointer seg, int oldLabel, int newLabel);
-        inline mitk::Image::Pointer RemoveLabel(mitk::Image::Pointer seg, int label) { return ReplaceLabel(seg, label, 0); };
+        // Functions passed to segUtils
+        inline void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0) { segUtils->GetLabels(seg, labels, background); };
+        inline mitk::Image::Pointer ReplaceLabel(mitk::Image::Pointer seg, int oldLabel, int newLabel) { return segUtils->ReplaceLabel(seg, oldLabel, newLabel); };
+        inline mitk::Image::Pointer SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label, unsigned int radius=3) { return segUtils->SplitLabelsOnRepeat(seg, label, radius); };
+        inline bool GetLabelCentreOfMass(mitk::Image::Pointer seg, int label, std::vector<double>& com) { return segUtils->GetLabelCentreOfMass(seg, label, com); };
+        inline mitk::Image::Pointer RemoveLabel(mitk::Image::Pointer seg, int label) { return segUtils->RemoveLabel(seg, label); };
 
-        enum MaskLabelBehaviour { ZEROS, ONLY, REPLACE, FORBID };
-        mitk::Image::Pointer AddMaskToSegmentation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel, MaskLabelBehaviour mlb, std::vector<int> labelsToProcess = std::vector<int>());
-        inline mitk::Image::Pointer AddMask(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel) { return AddMaskToSegmentation(seg, mask, newLabel, MaskLabelBehaviour::ZEROS); };
-        inline mitk::Image::Pointer AddMaskReplace(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel) { return AddMaskToSegmentation(seg, mask, newLabel, MaskLabelBehaviour::REPLACE); };
-        inline mitk::Image::Pointer AddMaskReplaceOnly(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel, std::vector<int> labelsToProcess) { return AddMaskToSegmentation(seg, mask, newLabel, MaskLabelBehaviour::REPLACE, labelsToProcess); };
-        inline mitk::Image::Pointer AddMaskReplaceExcept(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel, std::vector<int> labelsToProcess) { return AddMaskToSegmentation(seg, mask, newLabel, MaskLabelBehaviour::FORBID, labelsToProcess); };
-
-        mitk::Image::Pointer LabelMaskAndOperation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int oldLabel, int newLabel);
-        mitk::Image::Pointer ConnectedComponent(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int label, bool keep=false);
-        inline mitk::Image::Pointer ConnectedComponentKeep(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int label) { return ConnectedComponent(seg, seedIdx, label, true); };
-
-        // helper functions
-        void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0);
-        mitk::Image::Pointer ExtractSingleLabel(mitk::Image::Pointer seg, int label, bool binarise=true);
-        mitk::Image::Pointer BwLabelN(mitk::Image::Pointer seg, std::vector<int>& labels);
-
-        bool GetLabelCentreOfMassIndex(mitk::Image::Pointer seg, int label, std::vector<unsigned int> &cogIndx);
-        bool GetLabelCentreOfMass(mitk::Image::Pointer seg, int label, std::vector<double> &cog);
-
-        void WorldToIndex(mitk::Image::Pointer image, std::vector<double> world, std::vector<unsigned int>& index);
-        void IndexToWorld(mitk::Image::Pointer image, std::vector<unsigned int> index, std::vector<double> &world);
+        // tools to manipulate segStepManager
+        inline void UpdateSegmentationStep(mitk::Image::Pointer newImage) { segStepManager.UpdateStepWithImage(newImage, debug); };
+        inline std::string StepName() { return segStepManager.GetStepName().toStdString(); };
 
         // Manipulation utilities
-        void SetCylinders(QJsonObject json);
-        void SetSlicers(QJsonObject json);
-        void SetValvePoints(QJsonObject json);
+        inline void SetCylinders(QJsonObject json){ _cylinders.SetPointsFromJson(json); };
+        inline void SetSlicers(QJsonObject json) { _slicers.SetPointsFromJson(json); };
+        inline void SetValvePoints(QJsonObject json) { _valvePoints.SetPointsFromJson(json); };
 
         inline bool CylindersSet() { return _cylinders.IsPointSet(); };
         inline bool SlicersSet() { return _slicers.IsPointSet(); };
         inline bool ValvePointsSet() { return _valvePoints.IsPointSet(); };
+
+        inline void UpdateCurrentImage() { currentImage = segStepManager.GetStepImage(); };
 
         mitk::Image::Pointer Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, ManualPoints mpl, QString saveAs = "");
         mitk::Image::Pointer CreateSvcIvc(std::vector<mitk::Image::Pointer> images, int RspvLabel=10, int SvcLabel=13, int IvcLabel=14);
         mitk::Image::Pointer CropSvcIvc(std::vector<mitk::Image::Pointer> images,
                                         std::vector<unsigned int> seedSVC,
                                         std::vector<unsigned int> seedIVC,
-                                        int aortaSlicerLabel,
-                                        int PArtSlicerLabel);
+                                        int aortaSlicerLabel = 0 ,
+                                        int PArtSlicerLabel = 0);
 
     protected:
-        mitk::Image::Pointer S2B(std::vector<unsigned int> seedSVC);
-        mitk::Image::Pointer S2C(std::vector<unsigned int> seedIVC);
+        mitk::Image::Pointer S2(std::vector<unsigned int> seeds, QString checkPrevious, LabelsType lt);
+        inline mitk::Image::Pointer S2B(std::vector<unsigned int> seedSVC) { return S2(seedSVC, "s2a", LabelsType::SVC); };
+        inline mitk::Image::Pointer S2C(std::vector<unsigned int> seedIVC) { return S2(seedIVC, "s2b", LabelsType::IVC); };
+
         mitk::Image::Pointer S2D(mitk::Image::Pointer aorta, mitk::Image::Pointer PArt, mitk::Image::Pointer svc_slicer, mitk::Image::Pointer ivc_slicer, int aortaSlicerLabel, int PArtSlicerLabel);
         mitk::Image::Pointer S2E(std::vector<unsigned int> seedSVC);
         mitk::Image::Pointer S2F(std::vector<unsigned int> seedIVC);
@@ -127,10 +172,12 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         ValvePlainsPointsType _valvePoints;
 
         bool debug;
-        std::string debugDir;
+        std::string segDir, debugDir;
 
         mitk::Image::Pointer currentImage;
-        SegmentationStep currentStep;
+        SegmentationStepManager segStepManager;
         LabelsStruct chosenLabels;
+
+        std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils;
 };
 #endif // CemrgFourChamberTools_h

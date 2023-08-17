@@ -186,8 +186,8 @@ void FourChamberView::SetWorkingFolder(){
         for (int ix=0; ix < qsl.size(); ix++) {
             MITK_INFO(QDir().mkpath(Path(qsl.at(ix)))) << ("Folder created: [" + qsl.at(ix) + "]");
         }
-        fourch_tools->SetDebugDir(StdStringPath(SDIR.SEG + "/tmp"));
-        QDir().mkpath(fourch_tools->QGetDebugDir());
+        fourch_tools->SetSegDir(StdStringPath(SDIR.SEG));
+        QDir().mkpath(QString::fromStdString(fourch_tools->GetDebugDir()));
 
         bool load_geometry_file = CheckForExistingFile(directory, FourChamberView::GEOMETRY_FILE);
         if (load_geometry_file) {
@@ -904,19 +904,13 @@ void FourChamberView::SelectPointsCylinders() {
         int RspvLabel = 10, SvcLabel = 13, IvcLabel = 14; // check values based on image and user choices
         mitk::Image::Pointer s2a = fourch_tools->CreateSvcIvc(images, RspvLabel, SvcLabel, IvcLabel);
 
-        if (!s2a) {
-            Warn("Attention - SVC/IVC", "SVC and IVC added to segmentation.");
-            return;
-        }
-
-        mitk::IOUtil::Save(s2a, StdStringPath(SDIR.SEG + "/" + sname.Qs2aNii()));
-        fourch_tools->UpdateStep(s2a, SegmentationStep::S2A);
+        fourch_tools->UpdateSegmentationStep(s2a);
 
         mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
         mlseg->InitializeByLabeledImage(s2a);
         mlseg->SetGeometry(s2a->GetGeometry());
 
-        CemrgCommonUtils::AddToStorage(mlseg, sname.s2a(), this->GetDataStorage());
+        CemrgCommonUtils::AddToStorage(mlseg, fourch_tools->StepName(), this->GetDataStorage());
         mlseg->Modified();
 
         this->GetDataStorage()->Remove(nodes[0]);

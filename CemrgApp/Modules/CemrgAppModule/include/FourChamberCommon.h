@@ -2,6 +2,7 @@
 #define FOURCHAMBERCOMMON_H
 
 #include <QString>
+#include <QStringList>
 #include <QJsonObject>
 #include <QJsonArray>
 
@@ -24,7 +25,7 @@ enum LabelsType {
     IVC = 14
 };
 
-enum SegmentationStep { NONE, S2A, S2B, S2C, S2D, S2E, S2F };
+enum CylinderProcessStep { NONE, S2A, S2B, S2C, S2D, S2E, S2F };
 
 struct LabelsStruct {
     int bloodpool, lv, rv, la, ra, aorta, pulmonary_artery, lspv, lipv, rspv, ripv, laa, svc, ivc;
@@ -455,6 +456,14 @@ public:
 
         for (int ix = 0; ix < 3; ix++) {
             SetPointAt(FromKey(key), ix, json[key].toArray().at(ix).toDouble());
+        }
+    }
+
+    void SetPointsFromJson(QJsonObject json) {
+        QStringList keys = json.keys();
+        foreach (QString key, keys) {
+            SetPoint(json, key);
+
         }
     }
 
