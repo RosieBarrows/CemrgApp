@@ -114,6 +114,15 @@ const QString FourChamberView::GEOMETRY_FILE = "geometry.json";
 const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL", "BLOODPOOL", "LEFT_VENTRICLE", "RIGHT_VENTRICLE", "LEFT_ATRIUM", "RIGHT_ATRIUM", "AORTA", "PULMONARY_ARTERY","LSPV", "LIPV", "RSPV", "RIPV", "LAA", "DELETE"};
 const QString FourChamberView::LABELS_FILE = "segmentation_labels.json";
 
+std::vector<LabelsType> LabelsTypeRange(LabelsType begin, LabelsType end) {
+    std::vector<LabelsType> result;
+    for (LabelsType value = begin; value <= end; value = static_cast<LabelsType>(static_cast<int>(value) + 1)) {
+        result.push_back(value);
+    }
+    return result;
+}
+
+
 void FourChamberView::SetFocus() {
     m_Controls.button_setfolder->setFocus();
 }
@@ -168,6 +177,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     carpless = false;
 
     fourch_tools = std::unique_ptr<CemrgFourChamberTools>(new CemrgFourChamberTools());
+    fourch_tools->SetDebugOn();
     meshing_parameters = M3DParameters();
 }
 
@@ -621,7 +631,6 @@ void FourChamberView::CorrectionGetLabels() {
 
             // find which labels need splitting
             fourch_tools->GetLabels(seg, labelsInSegmentation);
-            fourch_tools->GetLabels(seg, labelsToUse);
             foreach (int label, labelsInSegmentation) {
                 QString cbox_label = QString::number(label);
                 m_Controls.combo_corrections_id->addItem(QString::number(label));
@@ -648,48 +657,35 @@ void FourChamberView::CorrectionConfirmLabels() {
     mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
     if (!seg) return;
 
-    QStringList labelKeys = QStringList() << FourChamberView::SEGMENTATION_LIST;
-    labelKeys.removeFirst(); // removed 'MIXED_LABELS'
-    labelKeys.removeLast();  // removed 'DELETE'
-
     if (labelsToSplit.size() == 0) { // All labels have been selected - applying to segmentation
         Inform("Confirm Labels", "User-selected labels will be applied to the segmentation");
-        for (unsigned int indx = 0; indx < labelsToUse.size(); indx++) {
-            int newLabelToUse = labelsToUse.at(indx);
-            int oldLabelInSeg = labelsInSegmentation.at(indx);
+        for (LabelsType ltt : LabelsTypeRange(LabelsType::BACKGROUND, LabelsType::IVC)) {
+            int usrLabel = userLabels.Get(ltt);
+            int segLabel = segmentationLabels.Get(ltt);
 
-            if (newLabelToUse != oldLabelInSeg) { // labels need to be swapped
-                // check if newLabelToUse is already in labelsInSegmentation
-                auto test = std::find(labelsInSegmentation.begin(), labelsInSegmentation.end(), newLabelToUse);
-                if (test != labelsInSegmentation.end()) { // newLabelToUse is already in labelsInSegmentation
-                    
-                    int testIndex = std::distance(labelsInSegmentation.begin(), test);
-                    int auxLabel = *std::max_element(labelsInSegmentation.begin(), labelsInSegmentation.end()) + 1;
+            if (usrLabel != segLabel) {
+                if (segmentationLabels.LabelExists(usrLabel)) {
+                    int auxLabel = segmentationLabels.GenerateNewLabel();
 
-                    MITK_INFO << "Swapping labels: (" + QString::number(newLabelToUse) + "->" + QString::number(auxLabel) + "), then (" + QString::number(oldLabelInSeg) + "->" + QString::number(newLabelToUse) + ")\n";
-                    seg = fourch_tools->ReplaceLabel(seg, newLabelToUse, auxLabel); 
-                    seg = fourch_tools->ReplaceLabel(seg, oldLabelInSeg, newLabelToUse); 
+                    MITK_INFO << "Swapping labels: (" + QString::number(usrLabel) + "->" + QString::number(auxLabel) + "), then (" + QString::number(segLabel) + "->" + QString::number(usrLabel) + ")\n";
+                    seg = fourch_tools->ReplaceLabel(seg, usrLabel, auxLabel);
+                    seg = fourch_tools->ReplaceLabel(seg, segLabel, usrLabel);
 
-                    labelsInSegmentation.at(testIndex) = auxLabel;
-                    
+                    segmentationLabels.Set(ltt, auxLabel);
                 } else {
-                    MITK_INFO << "Replacing labels (" + QString::number(oldLabelInSeg) + "->" + QString::number(newLabelToUse) + ")\n";
-                    seg = fourch_tools->ReplaceLabel(seg, oldLabelInSeg, newLabelToUse);
+                    MITK_INFO << "Replacing labels (" + QString::number(segLabel) + "->" + QString::number(usrLabel) + ")\n";
+                    seg = fourch_tools->ReplaceLabel(seg, segLabel, usrLabel);
                 }
             } // _if
         } // _for
+
         m_Controls.combo_corrections_id->setEnabled(false);
         m_Controls.button_confirm_labels->setEnabled(false);
 
-
-        QStringList labelsValues;
-        QStringList labelsTypes;
-        for (unsigned int ix = 0; ix < labelsToUse.size(); ix++) {
-            labelsValues << QString::number(labelsToUse.at(ix));
-            labelsTypes << "int";
-        }
-
+        QStringList labelKeys, labelsValues, labelsTypes;
+        userLabels.LabelInfoLists(labelKeys, labelsValues, labelsTypes);
         json_segmentation = CemrgCommonUtils::CreateJSONObject(labelKeys, labelsValues, labelsTypes);
+
         CemrgCommonUtils::WriteJSONFile(json_segmentation, Path(SDIR.SEG), FourChamberView::LABELS_FILE);
 
     } else {
@@ -701,38 +697,41 @@ void FourChamberView::CorrectionConfirmLabels() {
             MITK_INFO << ("Splitting label: " + QString::number(label)).toStdString();
             seg = fourch_tools->SplitLabelsOnRepeat(seg, label, radius);
         }
-        // update labelsInSegmentation and labelsToUse with new labels in aux 
+        // update labelsInSegmentation with new labels in aux 
         std::vector<int> auxLabelsInSeg;
         fourch_tools->GetLabels(seg, auxLabelsInSeg);
         foreach (int label, auxLabelsInSeg) {
             auto test =  std::find(labelsInSegmentation.begin(), labelsInSegmentation.end(), label);
             if (test == labelsInSegmentation.end()) {
                 labelsInSegmentation.push_back(label);
-                labelsToUse.push_back(label);
                 m_Controls.combo_corrections_id->addItem(QString::number(label));
             }
         }
         labelsToSplit.clear();
     }
 
-    QString path = Path(SDIR.SEG + "/" + sname.Qs1Nii());
+    QString path = Path(SDIR.SEG + "/seg_corrected.nii");
     std::string name = path.left(path.length() - 4).toStdString();
 
     mitk::IOUtil::Save(seg, path.toStdString());
-    
+    std::cout << "Saved...";
+
     mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
     mlseg->InitializeByLabeledImage(seg);
     mlseg->SetGeometry(seg->GetGeometry());
+    std::cout << "mlseg initialised...";
 
     if (labelsToSplit.size() == 0) {
-        for (int ix=0; ix<labelsToUse.size(); ix++) {
-            mlseg->GetLabel(labelsToUse.at(ix))->SetName(labelKeys.at(ix).toStdString());
+        for (LabelsType ltt : LabelsTypeRange(LabelsType::BLOODPOOL, LabelsType::IVC)) {
+            mlseg->GetLabel(userLabels.Get(ltt))->SetName(userLabels.LabelName(ltt));
         }
     }
 
-    CemrgCommonUtils::AddToStorage(mlseg, sname.s1(), this->GetDataStorage());
+    CemrgCommonUtils::AddToStorage(mlseg, name, this->GetDataStorage());
     mlseg->Modified();
+    std::cout << "added to storage...";
     this->GetDataStorage()->Remove(nodes[0]);
+    std::cout << "node removed...";
 }
 
 void FourChamberView::CorrectionIdLabels(int index) {
@@ -793,8 +792,9 @@ void FourChamberView::CorrectionIdLabels(int index) {
 
                     MITK_INFO << ("[" + QString::number(index) + "] Label: " + QString::number(userLabel) + " Name: " + pickedLabelName).toStdString();
 
-                    labelsToUse.at(index) = userLabel;
-                    
+                    segmentationLabels.SetLabelFromString(pickedLabelName.toStdString(), imageLabel);
+                    userLabels.SetLabelFromString(pickedLabelName.toStdString(), userLabel);
+
                     mlseg->GetLabel(label)->SetName(pickedLabelName.toStdString());
                     mitk::IOUtil::Save(mlseg, StdStringPath(SDIR.SEG + "/" + sname.Qs1Nii()));
                 }
@@ -1367,7 +1367,7 @@ bool FourChamberView::UserSelectIdentifyLabels(int index, unsigned int label, QC
     bool userInputAccepted = false;
     m_IdLabels.setupUi(inputs);
 
-    m_IdLabels.label_colour->setStyleSheet("background-color: " + qc.name() + ";");
+    m_IdLabels.label_colour->setStyleSheet("background-color: " + qc.name() + "; text-color: black;");
     m_IdLabels.combo_id_label->addItems(FourChamberView::SEGMENTATION_LIST);
     m_IdLabels.lineEdit_current_label->setText(QString::number(label));
 
@@ -1379,9 +1379,8 @@ bool FourChamberView::UserSelectIdentifyLabels(int index, unsigned int label, QC
     if (dialogCode == QDialog::Accepted) {
         pickedLabelName = m_IdLabels.combo_id_label->currentText();
 
-        DefaultLabelsStruct defaultLabelHandler;
-        defaultLabelHandler.SetTagFromString(pickedLabelName);
-        defaultLabel = defaultLabelHandler.GetTag();
+        SegmentationLabels dslHandler;
+        defaultLabel = dslHandler.GetLabelFromString(pickedLabelName.toStdString());
 
         bool ok;
         imageLabel = label;

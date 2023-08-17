@@ -236,15 +236,26 @@ CemrgFourChamberTools::~CemrgFourChamberTools(){
     segStepManager.~SegmentationStepManager();
 }
 
+void CemrgFourChamberTools::SetSegDir(std::string segDirectory) {
+    segDir = segDirectory;
+    debugDir = segDir + "/tmp";
+    segStepManager.SetPathToImages(debugDir);
+    segUtils->SetDebugDir(QString::fromStdString(debugDir));
+    
+}
 
-/// @brief 
+void CemrgFourChamberTools::UpdateSegmentationStep(mitk::Image::Pointer newImage) {
+    segStepManager.UpdateStepWithImage(newImage, debug);
+}
+
+/// @brief
 /// @param seg - input segmentation
 /// @param ptPrefix - prefix of the points to be used CYLINDERS(SVC, IVC, ...) SLICERS(SVC_slicer, IVC_Slicer)
-/// @param slicerRadius 
-/// @param slicerHeight 
+/// @param slicerRadius
+/// @param slicerHeight
 /// @param mpl - ManualPoints
-/// @param saveAs 
-/// @return 
+/// @param saveAs
+/// @return
 mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, ManualPoints mpl, QString saveAs) {
 
     // Get keys whether it is cylinders, slicers, or valve_plains

@@ -176,6 +176,7 @@ private:
 
     mitk::PointSet::Pointer pset;
     std::unique_ptr<CemrgFourChamberTools> fourch_tools;
+    SegmentationLabels userLabels, segmentationLabels;
 
     M3DParameters meshing_parameters;
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
@@ -185,7 +186,7 @@ private:
 
     // members handling the current label of the segmentation being handled
     int imageLabel, userLabel, defaultLabel; // keeps track of the label in the image, the id selected by user and the default label
-    std::vector<int> labelsInSegmentation, labelsToSplit, labelsToUse;
+    std::vector<int> labelsInSegmentation, labelsToSplit;
     QString pickedLabelName; // keeps track of the name of the label selected by the user
     bool splitCurrentLabel, deleteCurrentLabel; // if true, the current label will be split into two labels
 };

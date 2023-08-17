@@ -24,6 +24,141 @@ enum LabelsType {
     SVC = 13,
     IVC = 14
 };
+class SegmentationLabels {
+    private:
+        std::unordered_map<LabelsType, int> labelMap;
+
+        void UpdateLabels(const SegmentationLabels& other) {
+        for (const auto& pair : other.labelMap) {
+            labelMap[pair.first] = pair.second; // Update the labelMap
+        }
+    }
+
+
+    public:
+        SegmentationLabels() {
+            labelMap = {
+                {BACKGROUND, 0},
+                {BLOODPOOL, 1},
+                {LEFT_VENTRICLE, 2},
+                {RIGHT_VENTRICLE, 3},
+                {LEFT_ATRIUM, 4},
+                {RIGHT_ATRIUM, 5},
+                {AORTA, 6},
+                {PULMONARY_ARTERY, 7},
+                {LSPV, 8},
+                {LIPV, 9},
+                {RSPV, 10},
+                {RIPV, 11},
+                {LAA, 12},
+                {SVC, 13},
+                {IVC, 14}};
+        }
+
+        int Get(LabelsType labelType) const {
+            auto it = labelMap.find(labelType);
+            if (it != labelMap.end()) {
+                return it->second;
+            }
+            return 0; // Default to BACKGROUND
+        }
+
+        int GetLabelFromString(const std::string &labelNameString) const {
+            for (const auto &pair : labelMap) {
+                if (LabelName(pair.first) == labelNameString) {
+                    return pair.second;
+                }
+            }
+            return 0; // Default to BACKGROUND
+        }
+
+        void Set(LabelsType labelType, int value) {
+            labelMap[labelType] = value;
+        }
+
+        void SetLabelFromString(const std::string &labelNameString, int newTag) {
+            for (auto &pair : labelMap) {
+                if (LabelName(pair.first) == labelNameString) {
+                    pair.second = newTag;
+                    return; // Exit the loop once the label is found and updated
+                }
+            }
+        }
+
+        void SyncWith(const SegmentationLabels& other) {
+            std::unordered_map<LabelsType, int> otherMap;
+            other.GetMap(otherMap); // Retrieve the labelMap from the other instance
+            labelMap = otherMap;    // Synchronize the maps
+        }
+
+        void GetMap(std::unordered_map<LabelsType, int>& map) const {
+            map = labelMap; // Fill the provided map with the internal labelMap
+        }
+
+        std::string LabelName(LabelsType labelType) const {
+            switch (labelType) {
+            case BACKGROUND: return "BACKGROUND";
+            case BLOODPOOL: return "BLOODPOOL";
+            case LEFT_VENTRICLE: return "LEFT_VENTRICLE";
+            case LabelsType::RIGHT_VENTRICLE: return "RIGHT_VENTRICLE";
+            case LabelsType::LEFT_ATRIUM: return "LEFT_ATRIUM";
+            case LabelsType::RIGHT_ATRIUM: return "RIGHT_ATRIUM";
+            case LabelsType::AORTA: return "AORTA";
+            case LabelsType::PULMONARY_ARTERY: return "PULMONARY_ARTERY";
+            case LabelsType::LSPV: return "LSPV";
+            case LabelsType::LIPV: return "LIPV";
+            case LabelsType::RSPV: return "RSPV";
+            case LabelsType::RIPV: return "RIPV";
+            case LabelsType::LAA: return "LAA";
+            case LabelsType::SVC: return "SVC";
+            case LabelsType::IVC: return "IVC";
+            default: return "BACKGROUND";
+            }
+        }
+
+
+        bool LabelExists(int label) const {
+            for (const auto &pair : labelMap) {
+                if (pair.second == label) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        int GenerateNewLabel() const {
+            int newLabel = 1;
+            while (LabelExists(newLabel)) {
+                newLabel++;
+            }
+            return newLabel;
+        }
+
+        // functions to convert to json
+        void LabelInfoLists(QStringList& labelsKeys, QStringList& labelsValues, QStringList& labelsTypes) {
+            for (const auto &pair : labelMap) {
+                labelsKeys << QString::fromStdString(LabelName(pair.first));
+                labelsValues << QString::number(pair.second);
+                labelsTypes << "int";
+            }
+        }
+
+        QStringList LabelNames() const {
+            QStringList labelNames;
+            for (const auto &pair : labelMap) {
+                labelNames << QString::fromStdString(LabelName(pair.first));
+            }
+            return labelNames;
+        }
+
+        QStringList LabelTags() const {
+            QStringList labelTags;
+            for (const auto &pair : labelMap) {
+                labelTags << QString::number(pair.second);
+            }
+            return labelTags;
+        }
+};
 
 enum CylinderProcessStep { NONE, S2A, S2B, S2C, S2D, S2E, S2F };
 

@@ -113,13 +113,9 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
 
         inline void SetDebug(bool value) { debug = value; };
         inline void SetDebugOn() { SetDebug(true); };
+        inline void SetDebugOff() { SetDebug(false); };
 
-        inline void SetSegDir(std::string segDirectory) { 
-            segDir = segDirectory; 
-            debugDir = segDir + "/tmp";
-            segStepManager.SetPathToImages(debugDir);
-            segUtils->SetDebugDir(QString::fromStdString(debugDir));
-        };
+        void SetSegDir(std::string segDirectory);
 
         inline std::string GetSegDir() { return segDir; };
         inline QString QGetSegDir() { return QString::fromStdString(segDir); };
@@ -135,7 +131,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         inline mitk::Image::Pointer RemoveLabel(mitk::Image::Pointer seg, int label) { return segUtils->RemoveLabel(seg, label); };
 
         // tools to manipulate segStepManager
-        inline void UpdateSegmentationStep(mitk::Image::Pointer newImage) { segStepManager.UpdateStepWithImage(newImage, debug); };
+        void UpdateSegmentationStep(mitk::Image::Pointer newImage);
         inline std::string StepName() { return segStepManager.GetStepName().toStdString(); };
 
         // Manipulation utilities
@@ -177,6 +173,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         mitk::Image::Pointer currentImage;
         SegmentationStepManager segStepManager;
         LabelsStruct chosenLabels;
+        SegmentationLabels segmentationLabels;
 
         std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils;
 };
