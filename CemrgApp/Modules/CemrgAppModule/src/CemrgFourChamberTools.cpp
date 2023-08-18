@@ -164,16 +164,16 @@ SegmentationStepManager::SegmentationStepManager(std::string path) {
 }
 
 SegmentationStepManager::~SegmentationStepManager() {
-    for (int ix = 0; ix < stages.size(); ix++) {
-        for (int jx = 0; jx < stages.at(ix).steps.size(); jx++) {
+    for (size_t ix = 0; ix < stages.size(); ix++) {
+        for (size_t jx = 0; jx < stages.at(ix).steps.size(); jx++) {
             stages.at(ix).steps.at(jx).DropImage();
         }
     }
 }
 
 void SegmentationStepManager::SetPathToImages(std::string path) {
-    for (int ix = 0; ix < stages.size(); ix++) {
-        for (int jx = 0; jx < stages.at(ix).steps.size(); jx++) {
+    for (size_t ix = 0; ix < stages.size(); ix++) {
+        for (size_t jx = 0; jx < stages.at(ix).steps.size(); jx++) {
             stages.at(ix).steps.at(jx).SetImageFileName(path);
         }
     }
@@ -227,8 +227,7 @@ CemrgFourChamberTools::CemrgFourChamberTools(){
     _slicers = SlicersPointsType();
     _valvePoints = ValvePlainsPointsType();
     debug = false;
-    debugDir = "";
-    segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
+    directory = "";
     segStepManager = SegmentationStepManager();
 }
 
@@ -238,10 +237,8 @@ CemrgFourChamberTools::~CemrgFourChamberTools(){
 
 void CemrgFourChamberTools::SetSegDir(std::string segDirectory) {
     segDir = segDirectory;
-    debugDir = segDir + "/tmp";
-    segStepManager.SetPathToImages(debugDir);
-    segUtils->SetDebugDir(QString::fromStdString(debugDir));
-    
+    directory = segDir + "/tmp";
+    segStepManager.SetPathToImages(directory);    
 }
 
 void CemrgFourChamberTools::UpdateSegmentationStep(mitk::Image::Pointer newImage) {
@@ -426,6 +423,7 @@ mitk::Image::Pointer CemrgFourChamberTools::CreateSvcIvc(std::vector<mitk::Image
 
     std::vector<int> labelsToProcess;
     labelsToProcess.push_back(RspvLabel);
+    std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
     mitk::Image::Pointer svcIvc = segUtils->AddMaskReplaceOnly(seg, svc, SvcLabel, labelsToProcess);
 
     if (svcIvc == nullptr) {
@@ -441,6 +439,8 @@ mitk::Image::Pointer CemrgFourChamberTools::S2(std::vector<unsigned int> seeds, 
         return nullptr;
     }
 
+    std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
+    
     mitk::Image::Pointer s2 = segUtils->ConnectedComponent(segStepManager.GetStepImage(), seeds, chosenLabels.Get(lt));
     segStepManager.UpdateStepWithImage(s2, debug);
 
@@ -464,6 +464,7 @@ mitk::Image::Pointer CemrgFourChamberTools::S2D(mitk::Image::Pointer aorta,  mit
     std::vector<int> labelsToProcess;
     labelsToProcess.push_back(aortaLabel);
 
+    std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
     mitk::Image::Pointer s2d = segUtils->AddMaskReplaceOnly(segStepManager.GetStepImage(), aorta, aortaSlicerLabel, labelsToProcess);
 
     labelsToProcess.clear();
@@ -498,13 +499,15 @@ mitk::Image::Pointer CemrgFourChamberTools::S2E(std::vector<unsigned int> seedSV
     int svcLabel = chosenLabels.Get(LabelsType::SVC);
     int RALabel = chosenLabels.Get(LabelsType::RIGHT_ATRIUM);
 
+    std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
+    segUtils->SetDebugDir(QString::fromStdString(directory));
     mitk::Image::Pointer s2e = segUtils->ConnectedComponent(segStepManager.GetStepImage(), seedSVC, svcLabel);
 
     std::vector<int> labelsToProcess;
     labelsToProcess.push_back(svcLabel);
     s2e = segUtils->AddMaskReplaceOnly(s2e, s2e, RALabel, labelsToProcess);
 
-    mitk::Image::Pointer cc = mitk::IOUtil::Load<mitk::Image>(debugDir + "/CC.nii");
+    mitk::Image::Pointer cc = mitk::IOUtil::Load<mitk::Image>(directory + "/CC.nii");
     if (!cc) {
         MITK_WARN << "Could not load CC.nii";
         return nullptr;
@@ -525,9 +528,10 @@ mitk::Image::Pointer CemrgFourChamberTools::S2F(std::vector<unsigned int> seedIV
     int ivcLabel = chosenLabels.Get(LabelsType::IVC);
     int RALabel = chosenLabels.Get(LabelsType::RIGHT_ATRIUM);
 
+    std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
     mitk::Image::Pointer s2f = segUtils->ConnectedComponent(segStepManager.GetStepImage(), seedIVC, ivcLabel);
 
-    mitk::Image::Pointer cc = mitk::IOUtil::Load<mitk::Image>(debugDir + "/CC.nii");
+    mitk::Image::Pointer cc = mitk::IOUtil::Load<mitk::Image>(directory + "/CC.nii");
     if (!cc) {
         MITK_WARN << "Could not load CC.nii";
         return nullptr;

@@ -118,17 +118,18 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         void SetSegDir(std::string segDirectory);
 
         inline std::string GetSegDir() { return segDir; };
+        inline std::string GetDebugDir() { return directory; };
         inline QString QGetSegDir() { return QString::fromStdString(segDir); };
-        inline std::string GetDebugDir() { return debugDir; };
+        inline QString QGetDebugDir() { return QString::fromStdString(directory); };
 
         inline void SetLabel(LabelsType stt, int label) { chosenLabels.Set(stt, label); };
         
         // Functions passed to segUtils
-        inline void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0) { segUtils->GetLabels(seg, labels, background); };
-        inline mitk::Image::Pointer ReplaceLabel(mitk::Image::Pointer seg, int oldLabel, int newLabel) { return segUtils->ReplaceLabel(seg, oldLabel, newLabel); };
-        inline mitk::Image::Pointer SplitLabelsOnRepeat(mitk::Image::Pointer seg, int label, unsigned int radius=3) { return segUtils->SplitLabelsOnRepeat(seg, label, radius); };
-        inline bool GetLabelCentreOfMass(mitk::Image::Pointer seg, int label, std::vector<double>& com) { return segUtils->GetLabelCentreOfMass(seg, label, com); };
-        inline mitk::Image::Pointer RemoveLabel(mitk::Image::Pointer seg, int label) { return segUtils->RemoveLabel(seg, label); };
+        // inline void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0) { segUtils->GetLabels(seg, labels, background); };
+        // inline void ReplaceLabel(mitk::Image::Pointer& seg, int oldLabel, int newLabel) { seg = segUtils->ReplaceLabel(seg, oldLabel, newLabel); };
+        // inline void SplitLabelsOnRepeat(mitk::Image::Pointer& seg, int label, unsigned int radius=3) { seg = segUtils->SplitLabelsOnRepeat(seg, label, radius); };
+        // inline bool GetLabelCentreOfMass(mitk::Image::Pointer seg, int label, std::vector<double>& com) { return segUtils->GetLabelCentreOfMass(seg, label, com); };
+        // inline mitk::Image::Pointer RemoveLabel(mitk::Image::Pointer seg, int label) { seg = segUtils->RemoveLabel(seg, label); };
 
         // tools to manipulate segStepManager
         void UpdateSegmentationStep(mitk::Image::Pointer newImage);
@@ -168,13 +169,11 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         ValvePlainsPointsType _valvePoints;
 
         bool debug;
-        std::string segDir, debugDir;
+        std::string segDir, directory;
 
         mitk::Image::Pointer currentImage;
         SegmentationStepManager segStepManager;
         LabelsStruct chosenLabels;
         SegmentationLabels segmentationLabels;
-
-        std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils;
 };
 #endif // CemrgFourChamberTools_h

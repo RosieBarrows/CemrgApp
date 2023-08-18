@@ -112,7 +112,7 @@ class SegmentationLabels {
             case LabelsType::LAA: return "LAA";
             case LabelsType::SVC: return "SVC";
             case LabelsType::IVC: return "IVC";
-            default: return "BACKGROUND";
+            default: return "UNKNOWN";
             }
         }
 

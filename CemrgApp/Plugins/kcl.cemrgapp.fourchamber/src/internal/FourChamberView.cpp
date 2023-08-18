@@ -176,8 +176,8 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     InitialiseJsonObjects();
     carpless = false;
 
-    fourch_tools = std::unique_ptr<CemrgFourChamberTools>(new CemrgFourChamberTools());
-    fourch_tools->SetDebugOn();
+    fourchTools = std::unique_ptr<CemrgFourChamberTools>(new CemrgFourChamberTools());
+    fourchTools->SetDebugOn();
     meshing_parameters = M3DParameters();
 }
 
@@ -196,8 +196,9 @@ void FourChamberView::SetWorkingFolder(){
         for (int ix=0; ix < qsl.size(); ix++) {
             MITK_INFO(QDir().mkpath(Path(qsl.at(ix)))) << ("Folder created: [" + qsl.at(ix) + "]");
         }
-        fourch_tools->SetSegDir(StdStringPath(SDIR.SEG));
-        QDir().mkpath(QString::fromStdString(fourch_tools->GetDebugDir()));
+        fourchTools->SetSegDir(StdStringPath(SDIR.SEG));
+
+        QDir().mkpath(QString::fromStdString(fourchTools->GetDebugDir()));
 
         bool load_geometry_file = CheckForExistingFile(directory, FourChamberView::GEOMETRY_FILE);
         if (load_geometry_file) {
@@ -628,9 +629,9 @@ void FourChamberView::CorrectionGetLabels() {
     if (data) {
         mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
         if (seg) {
-
             // find which labels need splitting
-            fourch_tools->GetLabels(seg, labelsInSegmentation);
+            std::unique_ptr<CemrgMultilabelSegmentationUtils> multilabelUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
+            multilabelUtils->GetLabels(seg, labelsInSegmentation);
             foreach (int label, labelsInSegmentation) {
                 QString cbox_label = QString::number(label);
                 m_Controls.combo_corrections_id->addItem(QString::number(label));
@@ -652,11 +653,20 @@ void FourChamberView::CorrectionConfirmLabels() {
     }//_if
 
     mitk::BaseData::Pointer data = nodes[0]->GetData();
-    if (!data) return;
+    mitk::Image::Pointer seg = mitk::Image::New();
+    if (data) {
+        seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (seg) {
+            MITK_INFO << "Confirming segmentation";
+        } else {
+            return;
+        }
+    }
+    else {
+        return;
+    }
 
-    mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
-    if (!seg) return;
-
+    std::unique_ptr<CemrgMultilabelSegmentationUtils> multilabelUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
     if (labelsToSplit.size() == 0) { // All labels have been selected - applying to segmentation
         Inform("Confirm Labels", "User-selected labels will be applied to the segmentation");
         for (LabelsType ltt : LabelsTypeRange(LabelsType::BACKGROUND, LabelsType::IVC)) {
@@ -668,13 +678,13 @@ void FourChamberView::CorrectionConfirmLabels() {
                     int auxLabel = segmentationLabels.GenerateNewLabel();
 
                     MITK_INFO << "Swapping labels: (" + QString::number(usrLabel) + "->" + QString::number(auxLabel) + "), then (" + QString::number(segLabel) + "->" + QString::number(usrLabel) + ")\n";
-                    seg = fourch_tools->ReplaceLabel(seg, usrLabel, auxLabel);
-                    seg = fourch_tools->ReplaceLabel(seg, segLabel, usrLabel);
+                    seg = multilabelUtils->ReplaceLabel(seg, usrLabel, auxLabel);
+                    seg = multilabelUtils->ReplaceLabel(seg, segLabel, usrLabel);
 
                     segmentationLabels.Set(ltt, auxLabel);
                 } else {
                     MITK_INFO << "Replacing labels (" + QString::number(segLabel) + "->" + QString::number(usrLabel) + ")\n";
-                    seg = fourch_tools->ReplaceLabel(seg, segLabel, usrLabel);
+                    seg = multilabelUtils->ReplaceLabel(seg, segLabel, usrLabel);
                 }
             } // _if
         } // _for
@@ -695,11 +705,11 @@ void FourChamberView::CorrectionConfirmLabels() {
         foreach (int label, labelsToSplit) {
             int radius = 5;
             MITK_INFO << ("Splitting label: " + QString::number(label)).toStdString();
-            seg = fourch_tools->SplitLabelsOnRepeat(seg, label, radius);
+            seg = multilabelUtils->SplitLabelsOnRepeat(seg, label, radius);
         }
         // update labelsInSegmentation with new labels in aux 
         std::vector<int> auxLabelsInSeg;
-        fourch_tools->GetLabels(seg, auxLabelsInSeg);
+        multilabelUtils->GetLabels(seg, auxLabelsInSeg);
         foreach (int label, auxLabelsInSeg) {
             auto test =  std::find(labelsInSegmentation.begin(), labelsInSegmentation.end(), label);
             if (test == labelsInSegmentation.end()) {
@@ -713,25 +723,34 @@ void FourChamberView::CorrectionConfirmLabels() {
     QString path = Path(SDIR.SEG + "/seg_corrected.nii");
     std::string name = path.left(path.length() - 4).toStdString();
 
-    mitk::IOUtil::Save(seg, path.toStdString());
-    std::cout << "Saved...";
+    // try {
+    //     std::cout << "Saving segmentation to: " << path.toStdString() << '\n';
+    //     mitk::IOUtil::Save(seg, path.toStdString());
+    //     std::cerr << "Error: " << strerror(errno) << '\n';
+    // } catch (const std::exception& ex) {
+    //     std::cerr << "Exception caught: " << ex.what() << std::endl;
+    // }
+    if (seg) {
+        mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
+        mlseg->InitializeByLabeledImage(seg);
+        mlseg->SetGeometry(seg->GetGeometry());
+        std::cout << "mlseg initialised...";
 
-    mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
-    mlseg->InitializeByLabeledImage(seg);
-    mlseg->SetGeometry(seg->GetGeometry());
-    std::cout << "mlseg initialised...";
-
-    if (labelsToSplit.size() == 0) {
-        for (LabelsType ltt : LabelsTypeRange(LabelsType::BLOODPOOL, LabelsType::IVC)) {
-            mlseg->GetLabel(userLabels.Get(ltt))->SetName(userLabels.LabelName(ltt));
+        if (labelsToSplit.size() == 0) {
+            for (LabelsType ltt : LabelsTypeRange(LabelsType::BLOODPOOL, LabelsType::IVC)) {
+                mlseg->GetLabel(userLabels.Get(ltt))->SetName(userLabels.LabelName(ltt));
+            }
         }
+
+        CemrgCommonUtils::AddToStorage(mlseg, name, this->GetDataStorage());
+        mlseg->Modified();
+        std::cout << "added to storage...";
+        this->GetDataStorage()->Remove(nodes[0]);
+        std::cout << "node removed...";
+    } else {
+        std::cout << "seg is null";
     }
 
-    CemrgCommonUtils::AddToStorage(mlseg, name, this->GetDataStorage());
-    mlseg->Modified();
-    std::cout << "added to storage...";
-    this->GetDataStorage()->Remove(nodes[0]);
-    std::cout << "node removed...";
 }
 
 void FourChamberView::CorrectionIdLabels(int index) {
@@ -753,7 +772,8 @@ void FourChamberView::CorrectionIdLabels(int index) {
         if (mlseg) {
             std::string nodeName = nodes[0]->GetName();
             std::vector<double> labelCog;
-            fourch_tools->GetLabelCentreOfMass((mitk::Image::Pointer) mlseg, label, labelCog);
+            std::unique_ptr<CemrgMultilabelSegmentationUtils> multilabelUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
+            multilabelUtils->GetLabelCentreOfMass((mitk::Image::Pointer) mlseg, label, labelCog);
             mitk::Point3D cog;
             cog[0] = labelCog[0];
             cog[1] = labelCog[1];
@@ -780,7 +800,7 @@ void FourChamberView::CorrectionIdLabels(int index) {
 
                 } else if (deleteCurrentLabel) {
                     m_Controls.combo_corrections_id->removeItem(index);
-                    fourch_tools->RemoveLabel((mitk::Image::Pointer) mlseg, label);
+                    multilabelUtils->RemoveLabel((mitk::Image::Pointer) mlseg, label);
                     mitk::IOUtil::Save(mlseg, StdStringPath(SDIR.SEG + "/" + sname.Qs1Nii()));
 
                     CemrgCommonUtils::UpdateFromStorage(mlseg, nodes[0]->GetName(), this->GetDataStorage());
@@ -862,13 +882,13 @@ void FourChamberView::SelectPointsCylinders() {
             return;
         }
 
-        fourch_tools->SetCylinders(json_points);
+        fourchTools->SetCylinders(json_points);
         m_Controls.button_select_pts_a->setText("Run Scripts for Cylinders");
     } else {
         // Run cylinders script
         Inform("Attention", "Running Scripts for Cylinders");
-        if (!fourch_tools->CylindersSet()) {
-            fourch_tools->SetCylinders(json_points);
+        if (!fourchTools->CylindersSet()) {
+            fourchTools->SetCylinders(json_points);
         }
 
         QString svcPath = Path(SDIR.SEG + "/SVC.nii");
@@ -884,13 +904,13 @@ void FourChamberView::SelectPointsCylinders() {
 
         int slicerRadius = 10, slicerHeight = 30;
 
-        mitk::Image::Pointer cylSvc = fourch_tools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, svcPath);
-        mitk::Image::Pointer cylIvc = fourch_tools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, ivcPath);
+        mitk::Image::Pointer cylSvc = fourchTools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, svcPath);
+        mitk::Image::Pointer cylIvc = fourchTools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, ivcPath);
 
         slicerRadius = 30;
         slicerHeight = 2;
-        mitk::Image::Pointer cylAo = fourch_tools->Cylinder(seg, "Ao", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, aortaPath);
-        mitk::Image::Pointer cylPArt = fourch_tools->Cylinder(seg, "PArt", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, pArtPath);
+        mitk::Image::Pointer cylAo = fourchTools->Cylinder(seg, "Ao", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, aortaPath);
+        mitk::Image::Pointer cylPArt = fourchTools->Cylinder(seg, "PArt", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, pArtPath);
 
         if (!cylSvc || !cylIvc) {
             Warn("Attention - Missing Cylinders", "Cylinders for SVC and IVC were not created. Check LOG.");
@@ -902,15 +922,15 @@ void FourChamberView::SelectPointsCylinders() {
         images.push_back(cylSvc);
         images.push_back(cylIvc);
         int RspvLabel = 10, SvcLabel = 13, IvcLabel = 14; // check values based on image and user choices
-        mitk::Image::Pointer s2a = fourch_tools->CreateSvcIvc(images, RspvLabel, SvcLabel, IvcLabel);
+        mitk::Image::Pointer s2a = fourchTools->CreateSvcIvc(images, RspvLabel, SvcLabel, IvcLabel);
 
-        fourch_tools->UpdateSegmentationStep(s2a);
+        fourchTools->UpdateSegmentationStep(s2a);
 
         mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
         mlseg->InitializeByLabeledImage(s2a);
         mlseg->SetGeometry(s2a->GetGeometry());
 
-        CemrgCommonUtils::AddToStorage(mlseg, fourch_tools->StepName(), this->GetDataStorage());
+        CemrgCommonUtils::AddToStorage(mlseg, fourchTools->StepName(), this->GetDataStorage());
         mlseg->Modified();
 
         this->GetDataStorage()->Remove(nodes[0]);
@@ -937,13 +957,13 @@ void FourChamberView::SelectPointsSlicers() {
             return;
         }
 
-        fourch_tools->SetSlicers(json_points);
+        fourchTools->SetSlicers(json_points);
         m_Controls.button_select_pts_b->setText("Run Scripts for Slicers");
     } else {
         // Run Slicers script
         Inform("Attention", "Running Scripts for Slicers");
-        if (!fourch_tools->SlicersSet()) {
-            fourch_tools->SetSlicers(json_points);
+        if (!fourchTools->SlicersSet()) {
+            fourchTools->SetSlicers(json_points);
         }
 
         mitk::BaseData::Pointer data = nodes[0]->GetData();
@@ -957,8 +977,8 @@ void FourChamberView::SelectPointsSlicers() {
 
         int slicerRadius = 30, slicerHeight = 2;
 
-        mitk::Image::Pointer sliSvc = fourch_tools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPoints::SLICERS, svcSlicerPath);
-        mitk::Image::Pointer sliIvc = fourch_tools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPoints::SLICERS, ivcSlicerPath);
+        mitk::Image::Pointer sliSvc = fourchTools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPoints::SLICERS, svcSlicerPath);
+        mitk::Image::Pointer sliIvc = fourchTools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPoints::SLICERS, ivcSlicerPath);
 
         if (!sliSvc || !sliIvc) {
             Warn("Attention - Missing Slicers", "Slicers for SVC and IVC were not created. Check LOG.");

@@ -175,7 +175,7 @@ private:
     bool carpless;           // true if user does not have CARP installed
 
     mitk::PointSet::Pointer pset;
-    std::unique_ptr<CemrgFourChamberTools> fourch_tools;
+    std::unique_ptr<CemrgFourChamberTools> fourchTools;
     SegmentationLabels userLabels, segmentationLabels;
 
     M3DParameters meshing_parameters;

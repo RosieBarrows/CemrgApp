@@ -87,9 +87,6 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::SplitLabelsOnRepeat(mitk:
     // remove label from labelsInSeg
     labelsInSeg.erase(std::remove(labelsInSeg.begin(), labelsInSeg.end(), label), labelsInSeg.end());
 
-    std::unique_ptr<CemrgAtrialTools> imatools = std::unique_ptr<CemrgAtrialTools>(new CemrgAtrialTools());
-    imatools->SetDebugModeOff();
-
     mitk::Image::Pointer imageLabel = ExtractSingleLabel(seg, label, true);
     ImageType::Pointer itkLabel = ImageType::New();
     CastToItkImage(imageLabel, itkLabel);
@@ -108,6 +105,7 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::SplitLabelsOnRepeat(mitk:
     mitk::Image::Pointer ccImLabel = BwLabelN(mitk::ImportItkImage(imopen->GetOutput()) , tagsInLabel);
 
     if (tagsInLabel.size() == 1) {
+        MITK_INFO << "No repeated labels found";
         return seg;
     }
 
