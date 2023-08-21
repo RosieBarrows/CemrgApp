@@ -349,6 +349,18 @@ void FourChamberView::SegmentImgs() {
 
     if (path.isEmpty()) return;
 
+    // find, navigate, or create steps file
+    // bool steps_file_loaded = CheckForExistingFile(Path(SDIR.SEG), "steps.json");
+    // if (steps_file_loaded) {
+    //     MITK_INFO << "Loading points.json file";
+    //     json_points = CemrgCommonUtils::ReadJSONFile(Path(SDIR.SEG), "steps.json");
+    //     // iterate over json file keys. Unlock buttons if keys are all zeros
+    // } else {
+    //     MITK_INFO << "Creating points.json file";
+    //     CemrgCommonUtils::WriteJSONFile(json_points, Path(SDIR.SEG), "steps.json");   
+    // }
+
+
     sname.SetBase(QFileInfo(path).baseName());
 
     double seg_origin[3], seg_spacing[3];
@@ -666,6 +678,8 @@ void FourChamberView::CorrectionConfirmLabels() {
         return;
     }
 
+    bool splittinglabels = false;
+
     std::unique_ptr<CemrgMultilabelSegmentationUtils> multilabelUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
     if (labelsToSplit.size() == 0) { // All labels have been selected - applying to segmentation
         Inform("Confirm Labels", "User-selected labels will be applied to the segmentation");
@@ -700,6 +714,7 @@ void FourChamberView::CorrectionConfirmLabels() {
 
     } else {
         Inform ("Attention", "Splitting labels. This may take a while.");
+        splittinglabels = true;
     
         MITK_INFO << "Splitting labels";
         foreach (int label, labelsToSplit) {
@@ -720,37 +735,28 @@ void FourChamberView::CorrectionConfirmLabels() {
         labelsToSplit.clear();
     }
 
-    QString path = Path(SDIR.SEG + "/seg_corrected.nii");
-    std::string name = path.left(path.length() - 4).toStdString();
+    std::string name = "seg_corrected";
+    QString path = Path(SDIR.SEG + "/" + QString::fromStdString(name) + ".nii" );
 
-    // try {
-    //     std::cout << "Saving segmentation to: " << path.toStdString() << '\n';
-    //     mitk::IOUtil::Save(seg, path.toStdString());
-    //     std::cerr << "Error: " << strerror(errno) << '\n';
-    // } catch (const std::exception& ex) {
-    //     std::cerr << "Exception caught: " << ex.what() << std::endl;
-    // }
-    if (seg) {
-        mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
-        mlseg->InitializeByLabeledImage(seg);
-        mlseg->SetGeometry(seg->GetGeometry());
-        std::cout << "mlseg initialised...";
+    mitk::IOUtil::Save(seg, path.toStdString());
 
-        if (labelsToSplit.size() == 0) {
-            for (LabelsType ltt : LabelsTypeRange(LabelsType::BLOODPOOL, LabelsType::IVC)) {
-                mlseg->GetLabel(userLabels.Get(ltt))->SetName(userLabels.LabelName(ltt));
-            }
-        }
+    mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
+    mlseg->InitializeByLabeledImage(seg);
+    mlseg->SetGeometry(seg->GetGeometry());
+    std::cout << "mlseg initialised...";
 
-        CemrgCommonUtils::AddToStorage(mlseg, name, this->GetDataStorage());
-        mlseg->Modified();
-        std::cout << "added to storage...";
-        this->GetDataStorage()->Remove(nodes[0]);
-        std::cout << "node removed...";
-    } else {
-        std::cout << "seg is null";
-    }
-
+    // TODO: debug this to work with SegmentationLabels class
+    // if (!splittinglabels) {
+    //     for (LabelsType ltt : LabelsTypeRange(LabelsType::BLOODPOOL, LabelsType::IVC)) {
+    //         mlseg->GetLabel(userLabels.Get(ltt))->SetName(userLabels.LabelName(ltt));
+    //     }
+    // } 
+    
+    CemrgCommonUtils::AddToStorage(mlseg, name, this->GetDataStorage());
+    mlseg->Modified();
+    std::cout << "added to storage...";
+    this->GetDataStorage()->Remove(nodes[0]);
+    std::cout << "node removed...";
 }
 
 void FourChamberView::CorrectionIdLabels(int index) {

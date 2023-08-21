@@ -26,7 +26,7 @@ enum LabelsType {
 };
 class SegmentationLabels {
     private:
-        std::unordered_map<LabelsType, int> labelMap;
+        std::unordered_map<LabelsType, unsigned int> labelMap;
 
         void UpdateLabels(const SegmentationLabels& other) {
         for (const auto& pair : other.labelMap) {
@@ -55,7 +55,7 @@ class SegmentationLabels {
                 {IVC, 14}};
         }
 
-        int Get(LabelsType labelType) const {
+        unsigned int Get(LabelsType labelType) const {
             auto it = labelMap.find(labelType);
             if (it != labelMap.end()) {
                 return it->second;
@@ -63,7 +63,7 @@ class SegmentationLabels {
             return 0; // Default to BACKGROUND
         }
 
-        int GetLabelFromString(const std::string &labelNameString) const {
+        unsigned int GetLabelFromString(const std::string &labelNameString) const {
             for (const auto &pair : labelMap) {
                 if (LabelName(pair.first) == labelNameString) {
                     return pair.second;
@@ -72,11 +72,11 @@ class SegmentationLabels {
             return 0; // Default to BACKGROUND
         }
 
-        void Set(LabelsType labelType, int value) {
+        void Set(LabelsType labelType, unsigned int value) {
             labelMap[labelType] = value;
         }
 
-        void SetLabelFromString(const std::string &labelNameString, int newTag) {
+        void SetLabelFromString(const std::string &labelNameString, unsigned int newTag) {
             for (auto &pair : labelMap) {
                 if (LabelName(pair.first) == labelNameString) {
                     pair.second = newTag;
@@ -86,13 +86,13 @@ class SegmentationLabels {
         }
 
         void SyncWith(const SegmentationLabels& other) {
-            std::unordered_map<LabelsType, int> otherMap;
+            std::unordered_map<LabelsType, unsigned int> otherMap;
             other.GetMap(otherMap); // Retrieve the labelMap from the other instance
             labelMap = otherMap;    // Synchronize the maps
         }
 
-        void GetMap(std::unordered_map<LabelsType, int>& map) const {
-            map = labelMap; // Fill the provided map with the internal labelMap
+        void GetMap(std::unordered_map<LabelsType, unsigned int>& map) const {
+            map = labelMap; // Fill the provided map with the unsigned internal labelMap
         }
 
         std::string LabelName(LabelsType labelType) const {
@@ -100,24 +100,24 @@ class SegmentationLabels {
             case BACKGROUND: return "BACKGROUND";
             case BLOODPOOL: return "BLOODPOOL";
             case LEFT_VENTRICLE: return "LEFT_VENTRICLE";
-            case LabelsType::RIGHT_VENTRICLE: return "RIGHT_VENTRICLE";
-            case LabelsType::LEFT_ATRIUM: return "LEFT_ATRIUM";
-            case LabelsType::RIGHT_ATRIUM: return "RIGHT_ATRIUM";
-            case LabelsType::AORTA: return "AORTA";
-            case LabelsType::PULMONARY_ARTERY: return "PULMONARY_ARTERY";
-            case LabelsType::LSPV: return "LSPV";
-            case LabelsType::LIPV: return "LIPV";
-            case LabelsType::RSPV: return "RSPV";
-            case LabelsType::RIPV: return "RIPV";
-            case LabelsType::LAA: return "LAA";
-            case LabelsType::SVC: return "SVC";
-            case LabelsType::IVC: return "IVC";
+            case RIGHT_VENTRICLE: return "RIGHT_VENTRICLE";
+            case LEFT_ATRIUM: return "LEFT_ATRIUM";
+            case RIGHT_ATRIUM: return "RIGHT_ATRIUM";
+            case AORTA: return "AORTA";
+            case PULMONARY_ARTERY: return "PULMONARY_ARTERY";
+            case LSPV: return "LSPV";
+            case LIPV: return "LIPV";
+            case RSPV: return "RSPV";
+            case RIPV: return "RIPV";
+            case LAA: return "LAA";
+            case SVC: return "SVC";
+            case IVC: return "IVC";
             default: return "UNKNOWN";
             }
         }
 
 
-        bool LabelExists(int label) const {
+        bool LabelExists(unsigned int label) const {
             for (const auto &pair : labelMap) {
                 if (pair.second == label) {
                     return true;
@@ -126,8 +126,8 @@ class SegmentationLabels {
             return false;
         }
 
-        int GenerateNewLabel() const {
-            int newLabel = 1;
+        unsigned int GenerateNewLabel() const {
+            unsigned int newLabel = 1;
             while (LabelExists(newLabel)) {
                 newLabel++;
             }

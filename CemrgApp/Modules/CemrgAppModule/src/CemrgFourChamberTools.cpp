@@ -33,6 +33,7 @@ PURPOSE.  See the above copyright notices for more information.
 #include <QStringList>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 
 // MITK
 #include <mitkIOUtil.h>
@@ -197,7 +198,7 @@ void SegmentationStepManager::NextStage() {
     MITK_INFO(stageIndx >= stages.size()) << "Segmentation steps complete";
 }
 
-void SegmentationStepManager::saveCurrentStepImage() {
+void SegmentationStepManager::SaveCurrentStepImage() {
     GetCurrentStep()->SaveImage();
 }
 
@@ -216,9 +217,67 @@ void SegmentationStepManager::UpdateStepWithImage(mitk::Image::Pointer image, bo
     GetCurrentStep()->SetImage(image);
 
     if (debug) {
-        saveCurrentStepImage();
+        SaveCurrentStepImage();
     }
 
+}
+
+void SegmentationStepManager::NavigateToStep(const std::string &stageName, const std::string &stepName) {
+    for (size_t stagex = 0; stagex < stages.size(); ++stagex) {
+        if (stages.at(stagex).name == stageName) {
+            stageIndx = stagex;
+            for (size_t stepx = 0; stepx < stages.at(stagex).steps.size(); ++stepx) {
+                if (stages.at(stagex).steps.at(stepx).name == stepName) {
+                    stepIndx = stepx;
+                    return;
+                }
+            }
+        }
+        return;
+    }
+}
+
+void SegmentationStepManager::NavigateToStepFromFile(const QString &filename) {
+    QFileInfo fi(filename);
+    QJsonObject json = CemrgCommonUtils::ReadJSONFile(fi.absolutePath(), fi.fileName());
+
+    pathToImages = json["pathToImages"].toString().toStdString();
+    started = json["started"].toBool();
+    stageIndx = json["stageIndx"].toInt();
+    stepIndx = json["stepIndx"].toInt();
+
+    stages.at(stageIndx).steps.at(stepIndx).SetImageFileName(pathToImages);
+    stages.at(stageIndx).steps.at(stepIndx).LoadImage();
+}
+
+void SegmentationStepManager::SaveStages(const QString &filename) {
+    QJsonObject json;
+    QJsonArray stagesArray;
+    for (const Stage& stage : stages) {
+        QJsonObject stageJson;
+        stageJson["name"] = QString::fromStdString(stage.name);
+
+        QJsonArray stepsArray;
+        for (const Step& step : stage.steps) {
+            QJsonObject stepJson;
+            stepJson["name"] = QString::fromStdString(step.name);
+            stepJson["imageFilename"] = QString::fromStdString(step.imageFilename);
+            stepsArray.append(stepJson);
+        }
+        stageJson["steps"] = stepsArray;
+        stagesArray.append(stageJson);
+    }
+
+    json["stages"] = stagesArray;
+    json["pathToImages"] = QString::fromStdString(pathToImages);
+    json["stageIndx"] = QJsonValue::fromVariant( (int) stageIndx);
+    json["stepIndx"] = QJsonValue::fromVariant( (int) stepIndx);
+
+    QString boolstr = (started) ? "true" : "false";
+    json["started"] = QJsonValue::fromVariant(boolstr);
+
+    QFileInfo fi(filename);
+    CemrgCommonUtils::WriteJSONFile(json, fi.absolutePath(), fi.baseName()+".json");
 }
 
 // CemrgFourChamberTools
@@ -238,7 +297,7 @@ CemrgFourChamberTools::~CemrgFourChamberTools(){
 void CemrgFourChamberTools::SetSegDir(std::string segDirectory) {
     segDir = segDirectory;
     directory = segDir + "/tmp";
-    segStepManager.SetPathToImages(directory);    
+    segStepManager.SetPathToImages(directory);  
 }
 
 void CemrgFourChamberTools::UpdateSegmentationStep(mitk::Image::Pointer newImage) {

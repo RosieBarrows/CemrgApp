@@ -64,6 +64,7 @@ struct Step {
     inline void SetImage(mitk::Image::Pointer img) { image = img; };
     inline void DropImage() { image = nullptr; }; 
     inline void SaveImage() { mitk::IOUtil::Save(image, imageFilename); };
+    inline void LoadImage() { image = mitk::IOUtil::Load<mitk::Image>(imageFilename); };
 };
 
 struct Stage {
@@ -88,16 +89,21 @@ public:
     void NextStage();
     inline Step* GetCurrentStep() { return &(stages[stageIndx].steps[stepIndx]); };
     inline Stage* GetCurrentStage() { return &(stages[stageIndx]); };
-    void saveCurrentStepImage();
+    void SaveCurrentStepImage();
 
     inline QString GetStepName() { return QString::fromStdString( GetCurrentStep()->name); };
     inline mitk::Image::Pointer GetStepImage() { return GetCurrentStep()->image; };
 
     void UpdateStepWithImage(mitk::Image::Pointer image, bool debug);
 
+    void NavigateToStep(const std::string &stageName, const std::string &stepName);
+    void NavigateToStepFromFile(const QString& filename);
+    void SaveStages(const QString& filename);
+
 private:
     std::vector<Stage> stages;
     std::string pathToImages;
+    
     size_t stageIndx;
     size_t stepIndx;
     bool started;
@@ -123,17 +129,14 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         inline QString QGetDebugDir() { return QString::fromStdString(directory); };
 
         inline void SetLabel(LabelsType stt, int label) { chosenLabels.Set(stt, label); };
-        
-        // Functions passed to segUtils
-        // inline void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0) { segUtils->GetLabels(seg, labels, background); };
-        // inline void ReplaceLabel(mitk::Image::Pointer& seg, int oldLabel, int newLabel) { seg = segUtils->ReplaceLabel(seg, oldLabel, newLabel); };
-        // inline void SplitLabelsOnRepeat(mitk::Image::Pointer& seg, int label, unsigned int radius=3) { seg = segUtils->SplitLabelsOnRepeat(seg, label, radius); };
-        // inline bool GetLabelCentreOfMass(mitk::Image::Pointer seg, int label, std::vector<double>& com) { return segUtils->GetLabelCentreOfMass(seg, label, com); };
-        // inline mitk::Image::Pointer RemoveLabel(mitk::Image::Pointer seg, int label) { seg = segUtils->RemoveLabel(seg, label); };
 
         // tools to manipulate segStepManager
         void UpdateSegmentationStep(mitk::Image::Pointer newImage);
         inline std::string StepName() { return segStepManager.GetStepName().toStdString(); };
+        inline void UpdateCurrentImage() { currentImage = segStepManager.GetStepImage(); };
+        inline void SaveSteps() { segStepManager.SaveStages(QString::fromStdString(segDir) + "/steps.json"); };
+        inline void NavigateToStep() { segStepManager.NavigateToStepFromFile(QString::fromStdString(segDir) + "/steps.json"); };
+
 
         // Manipulation utilities
         inline void SetCylinders(QJsonObject json){ _cylinders.SetPointsFromJson(json); };
@@ -144,7 +147,6 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         inline bool SlicersSet() { return _slicers.IsPointSet(); };
         inline bool ValvePointsSet() { return _valvePoints.IsPointSet(); };
 
-        inline void UpdateCurrentImage() { currentImage = segStepManager.GetStepImage(); };
 
         mitk::Image::Pointer Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, ManualPoints mpl, QString saveAs = "");
         mitk::Image::Pointer CreateSvcIvc(std::vector<mitk::Image::Pointer> images, int RspvLabel=10, int SvcLabel=13, int IvcLabel=14);
