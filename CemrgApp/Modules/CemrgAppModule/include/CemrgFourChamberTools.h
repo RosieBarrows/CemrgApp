@@ -60,6 +60,7 @@ struct Step {
     }
 
     inline void SetImageFileName(std::string dir) { imageFilename = dir + "/" + name + ".nii"; };
+    inline std::string GetImageFileName() { return imageFilename; };
 
     inline void SetImage(mitk::Image::Pointer img) { image = img; };
     inline void DropImage() { image = nullptr; }; 
@@ -90,19 +91,23 @@ public:
     inline Step* GetCurrentStep() { return &(stages[stageIndx].steps[stepIndx]); };
     inline Stage* GetCurrentStage() { return &(stages[stageIndx]); };
     void SaveCurrentStepImage();
+    std::string PrintCurrentStepInfo();
 
     inline QString GetStepName() { return QString::fromStdString( GetCurrentStep()->name); };
     inline mitk::Image::Pointer GetStepImage() { return GetCurrentStep()->image; };
+    inline void LoadImageForCurrentStep() { GetCurrentStep()->LoadImage(); };
 
     void UpdateStepWithImage(mitk::Image::Pointer image, bool debug);
 
     void NavigateToStep(const std::string &stageName, const std::string &stepName);
     void NavigateToStepFromFile(const QString& filename);
-    void SaveStages(const QString& filename);
+    QJsonObject GetJson();
+    void SaveToJson(const QString& filename);
+    void ModifyJson(); 
 
 private:
     std::vector<Stage> stages;
-    std::string pathToImages;
+    std::string pathToImages, pathStepsJson;
     
     size_t stageIndx;
     size_t stepIndx;
@@ -132,11 +137,12 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
 
         // tools to manipulate segStepManager
         void UpdateSegmentationStep(mitk::Image::Pointer newImage);
+        void SaveSegmentationStage(QString pathname) { segStepManager.SaveToJson(pathname); };
         inline std::string StepName() { return segStepManager.GetStepName().toStdString(); };
+        inline std::string StepFileImage() { return segStepManager.GetCurrentStep()->GetImageFileName(); };
         inline void UpdateCurrentImage() { currentImage = segStepManager.GetStepImage(); };
-        inline void SaveSteps() { segStepManager.SaveStages(QString::fromStdString(segDir) + "/steps.json"); };
-        inline void NavigateToStep() { segStepManager.NavigateToStepFromFile(QString::fromStdString(segDir) + "/steps.json"); };
-
+        inline void NavigateToStep(QString filepath) { segStepManager.NavigateToStepFromFile(filepath); };
+        inline mitk::Image::Pointer GetCurrentImage() { return currentImage; };
 
         // Manipulation utilities
         inline void SetCylinders(QJsonObject json){ _cylinders.SetPointsFromJson(json); };
@@ -150,11 +156,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
 
         mitk::Image::Pointer Cylinder(mitk::Image::Pointer seg, QString ptPrefix, double slicerRadius, double slicerHeight, ManualPoints mpl, QString saveAs = "");
         mitk::Image::Pointer CreateSvcIvc(std::vector<mitk::Image::Pointer> images, int RspvLabel=10, int SvcLabel=13, int IvcLabel=14);
-        mitk::Image::Pointer CropSvcIvc(std::vector<mitk::Image::Pointer> images,
-                                        std::vector<unsigned int> seedSVC,
-                                        std::vector<unsigned int> seedIVC,
-                                        int aortaSlicerLabel = 0 ,
-                                        int PArtSlicerLabel = 0);
+        mitk::Image::Pointer CropSvcIvc(std::vector<mitk::Image::Pointer> images, int aortaSlicerLabel = 0 , int PArtSlicerLabel = 0);
 
     protected:
         mitk::Image::Pointer S2(std::vector<unsigned int> seeds, QString checkPrevious, LabelsType lt);

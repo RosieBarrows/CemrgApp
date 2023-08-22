@@ -51,13 +51,14 @@ PURPOSE.  See the above copyright notices for more information.
 #include <itkGrayscaleDilateImageFilter.h>
 #include <itkRelabelComponentImageFilter.h>
 #include <itkLabelStatisticsImageFilter.h>
+#include <itkDanielssonDistanceMapImageFilter.h>
+#include <itkBinaryThresholdImageFilter.h>
 
 #include "CemrgCommonUtils.h"
 #include "CemrgAtrialTools.h"
 #include "CemrgMultilabelSegmentationUtils.h"
 
-CemrgMultilabelSegmentationUtils::CemrgMultilabelSegmentationUtils(){
-    
+CemrgMultilabelSegmentationUtils::CemrgMultilabelSegmentationUtils() : debugDir(""), scaleFactor(1 / 0.39844) {
 }
 
 CemrgMultilabelSegmentationUtils::~CemrgMultilabelSegmentationUtils(){
@@ -406,4 +407,45 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ConnectedComponent(mitk::
 
     return AddMaskReplace(seg, ccImage, replaceValue);
 
+}
+
+mitk::Image::Pointer CemrgMultilabelSegmentationUtils::DistanceMap(mitk::Image::Pointer seg, int label) {
+    using DistanceMapType = itk::DanielssonDistanceMapImageFilter<ImageType, ImageType>;
+    
+    mitk::Image::Pointer labelImage = ExtractSingleLabel(seg, label, true);
+
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(labelImage, itkImage);
+
+    DistanceMapType::Pointer distanceMap = DistanceMapType::New();
+    distanceMap->InputIsBinaryOn(); // ask/test this (default OFF)
+    distanceMap->SquaredDistanceOff();
+    distanceMap->UseImageSpacingOn(); // ask/test this (default OFF)
+    distanceMap->SetInput(itkImage);
+    distanceMap->Update();
+
+    mitk::Image::Pointer outImage = mitk::ImportItkImage(distanceMap->GetOutput())->Clone();
+    outImage->SetGeometry(seg->GetGeometry());
+
+    return outImage;
+}
+
+mitk::Image::Pointer CemrgMultilabelSegmentationUtils::Threshold(mitk::Image::Pointer seg, int label, int lower, int upper) {
+    using ThresholdType = itk::BinaryThresholdImageFilter<ImageType, ImageType>;
+    
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(seg, itkImage);
+
+    ThresholdType::Pointer threshold = ThresholdType::New();
+    threshold->SetInput(itkImage);
+    threshold->SetLowerThreshold(lower);
+    threshold->SetUpperThreshold(upper);
+    // threshold->SetInsideValue(1);
+    threshold->SetOutsideValue(0);
+    threshold->Update();
+
+    mitk::Image::Pointer outImage = mitk::ImportItkImage(threshold->GetOutput())->Clone();
+    outImage->SetGeometry(seg->GetGeometry());
+
+    return outImage;
 }

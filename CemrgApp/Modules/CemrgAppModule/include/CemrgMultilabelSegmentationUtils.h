@@ -79,6 +79,9 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgMultilabelSegmentationUtils {
         mitk::Image::Pointer ConnectedComponent(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int label, bool keep=false);
         inline mitk::Image::Pointer ConnectedComponentKeep(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int label) { return ConnectedComponent(seg, seedIdx, label, true); };
 
+        mitk::Image::Pointer DistanceMap(mitk::Image::Pointer seg, int label);
+        mitk::Image::Pointer Threshold(mitk::Image::Pointer seg, int label, int lower, int upper);
+
         // helper functions
         void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0);
         mitk::Image::Pointer ExtractSingleLabel(mitk::Image::Pointer seg, int label, bool binarise=true);
@@ -94,6 +97,6 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgMultilabelSegmentationUtils {
 
     private : 
         QString debugDir;
-       
+        double scaleFactor;
 };
 #endif // CemrgMultilabelSegmentationUtils_h

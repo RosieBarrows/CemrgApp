@@ -75,6 +75,7 @@ public:
     static const QString GEOMETRY_FILE; // origin and spacing
     static const QStringList SEGMENTATION_LIST; // list of possible segmentation tags
     static const QString LABELS_FILE; // labels for the segmentation
+    static const QString SEGMENTATION_STEPS; // segmentation file
 
     // helper functions
     bool
@@ -91,6 +92,7 @@ public:
     bool CheckPointsInJsonFile(ManualPoints mpt);
     void ReloadJsonPoints();
     std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
+    void UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer &node);
 
     template <typename T = double>
     QString ArrayToString(T *arr, int size, const QString &title);

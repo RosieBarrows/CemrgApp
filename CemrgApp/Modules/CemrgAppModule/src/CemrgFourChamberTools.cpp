@@ -127,8 +127,11 @@ struct PointList {
     }
 };
 
-SegmentationStepManager::SegmentationStepManager() : stageIndx(0), stepIndx(0), started(false) {
+SegmentationStepManager::SegmentationStepManager() : stageIndx(0), stepIndx(0), started(false), pathStepsJson("") {
     // Define and populate stages and steps
+    Stage segmentationStage("Segmentation");
+    segmentationStage.steps.push_back(Step("s1"));
+
     Stage cylindersStage("Cylinders");
     QStringList stgs = QStringList() << "a" << "b"  << "c" << "d" << "e" << "f";
     for (int ix = 0; ix < stgs.size(); ix++) {
@@ -202,6 +205,12 @@ void SegmentationStepManager::SaveCurrentStepImage() {
     GetCurrentStep()->SaveImage();
 }
 
+std::string SegmentationStepManager::PrintCurrentStepInfo() {
+    std::string msg = "Stage: " + stages[stageIndx].name + "\n";
+    msg += "Step: " + stages[stageIndx].steps[stepIndx].name;
+    return msg;
+}
+
 void SegmentationStepManager::UpdateStepWithImage(mitk::Image::Pointer image, bool debug) {
     if (!image) {
         MITK_WARN << "Image for update was NULL. Step not updated.";
@@ -246,11 +255,20 @@ void SegmentationStepManager::NavigateToStepFromFile(const QString &filename) {
     stageIndx = json["stageIndx"].toInt();
     stepIndx = json["stepIndx"].toInt();
 
-    stages.at(stageIndx).steps.at(stepIndx).SetImageFileName(pathToImages);
-    stages.at(stageIndx).steps.at(stepIndx).LoadImage();
+    GetCurrentStep()->SetImageFileName(pathToImages);
+    GetCurrentStep()->LoadImage();
+
+    MITK_INFO << PrintCurrentStepInfo();
 }
 
-void SegmentationStepManager::SaveStages(const QString &filename) {
+void SegmentationStepManager::SaveToJson(const QString &filename) {
+    QJsonObject json = GetJson();
+    QFileInfo fi(filename);
+    CemrgCommonUtils::WriteJSONFile(json, fi.absolutePath(), fi.baseName()+".json");
+    pathStepsJson = filename.toStdString();
+}
+
+QJsonObject SegmentationStepManager::GetJson() {
     QJsonObject json;
     QJsonArray stagesArray;
     for (const Stage& stage : stages) {
@@ -276,8 +294,12 @@ void SegmentationStepManager::SaveStages(const QString &filename) {
     QString boolstr = (started) ? "true" : "false";
     json["started"] = QJsonValue::fromVariant(boolstr);
 
-    QFileInfo fi(filename);
-    CemrgCommonUtils::WriteJSONFile(json, fi.absolutePath(), fi.baseName()+".json");
+    return json;
+}
+
+void SegmentationStepManager::ModifyJson() {
+    QJsonObject json = GetJson();
+    SaveToJson(QString::fromStdString(pathStepsJson));
 }
 
 // CemrgFourChamberTools
@@ -301,7 +323,9 @@ void CemrgFourChamberTools::SetSegDir(std::string segDirectory) {
 }
 
 void CemrgFourChamberTools::UpdateSegmentationStep(mitk::Image::Pointer newImage) {
+    MITK_INFO << "Updating segmentation step: " + segStepManager.PrintCurrentStepInfo();
     segStepManager.UpdateStepWithImage(newImage, debug);
+    UpdateCurrentImage();
 }
 
 /// @brief
@@ -484,15 +508,16 @@ mitk::Image::Pointer CemrgFourChamberTools::CreateSvcIvc(std::vector<mitk::Image
     labelsToProcess.push_back(RspvLabel);
     std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
     mitk::Image::Pointer svcIvc = segUtils->AddMaskReplaceOnly(seg, svc, SvcLabel, labelsToProcess);
+    if (svcIvc == nullptr) return nullptr;
 
-    if (svcIvc == nullptr) {
-        return nullptr;
-    }
+    svcIvc = segUtils->AddMask(svcIvc, ivc, IvcLabel);
+    if (svcIvc == nullptr) return nullptr;
 
-    return segUtils->AddMask(svcIvc, ivc, IvcLabel);
+    return svcIvc;
 }
 
 mitk::Image::Pointer CemrgFourChamberTools::S2(std::vector<unsigned int> seeds, QString checkPrevious, LabelsType lt){
+    // used for S2B and S2C
     if (segStepManager.GetStepName() != checkPrevious) {
         MITK_WARN << ("Need to run " + checkPrevious.toUpper() + " first").toStdString();
         return nullptr;
@@ -606,7 +631,20 @@ mitk::Image::Pointer CemrgFourChamberTools::S2F(std::vector<unsigned int> seedIV
     return s2f;
 }
 
-mitk::Image::Pointer CemrgFourChamberTools::CropSvcIvc(std::vector<mitk::Image::Pointer> images, std::vector<unsigned int> seedSVC, std::vector<unsigned int> seedIVC, int aortaSlicerLabel, int PArtSlicerLabel) {
+mitk::Image::Pointer CemrgFourChamberTools::CropSvcIvc(std::vector<mitk::Image::Pointer> images, int aortaSlicerLabel, int PArtSlicerLabel) {
+
+    std::vector<double> seedSVCWorld(3), seedIVCWorld(3);
+    std::vector<unsigned int> seedSVC(3), seedIVC(3);
+
+    for (int ix = 0; ix < 3; ix++) {
+        seedSVCWorld.at(ix) = _slicers.GetPointAt(PointsNamesType::SVC_TIP, ix);
+        seedIVCWorld.at(ix) = _slicers.GetPointAt(PointsNamesType::IVC_TIP, ix);
+    }
+
+    std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
+    segUtils->WorldToIndex(images.at(0), seedSVCWorld, seedSVC);
+    segUtils->WorldToIndex(images.at(0), seedIVCWorld, seedIVC);
+
 
     if (images.size() != 5) {
         MITK_WARN << "Need 5 images to crop SVC/IVC: seg_s2a, aorta_slicer, PArt_slicer, SVC_slicer and IVC_slicer images";

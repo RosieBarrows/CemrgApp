@@ -113,6 +113,7 @@ const QString FourChamberView::POINTS_FILE_INDEX = "points.json";
 const QString FourChamberView::GEOMETRY_FILE = "geometry.json";
 const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL", "BLOODPOOL", "LEFT_VENTRICLE", "RIGHT_VENTRICLE", "LEFT_ATRIUM", "RIGHT_ATRIUM", "AORTA", "PULMONARY_ARTERY","LSPV", "LIPV", "RSPV", "RIPV", "LAA", "DELETE"};
 const QString FourChamberView::LABELS_FILE = "segmentation_labels.json";
+const QString FourChamberView::SEGMENTATION_STEPS = "steps.json";
 
 std::vector<LabelsType> LabelsTypeRange(LabelsType begin, LabelsType end) {
     std::vector<LabelsType> result;
@@ -329,10 +330,19 @@ void FourChamberView::GetOriginSpacing() {
 }
 
 void FourChamberView::SegmentImgs() {
+    QString stepsPath = Path(SDIR.SEG) + "/" + FourChamberView::SEGMENTATION_STEPS;
+    bool steps_file_found = false;
+
     int reply_load = Ask("Question", "Do you have a segmentation to load?");
-    QString path = "";
+    int reply_steps = QMessageBox::No;
+        QString path = "";
     if (reply_load == QMessageBox::Yes) {
         path = QFileDialog::getOpenFileName(NULL, "Open Segmentation File", StdStringPath(SDIR.SEG).c_str(), QmitkIOUtil::GetFileOpenFilterString());
+        // find, navigate, or create steps file
+        steps_file_found = CheckForExistingFile(Path(SDIR.SEG), FourChamberView::SEGMENTATION_STEPS);
+        if (steps_file_found) {
+            reply_steps = Ask("Segmentation Steps File Found", "Do you want to load the segmentation file up to the latest step?");
+        }  
 
     } else if (reply_load == QMessageBox::No) {
         Inform("Attention", "Creating Multilabel Segmentation From CT data.\nSelect DICOM folder");
@@ -349,23 +359,10 @@ void FourChamberView::SegmentImgs() {
 
     if (path.isEmpty()) return;
 
-    // find, navigate, or create steps file
-    // bool steps_file_loaded = CheckForExistingFile(Path(SDIR.SEG), "steps.json");
-    // if (steps_file_loaded) {
-    //     MITK_INFO << "Loading points.json file";
-    //     json_points = CemrgCommonUtils::ReadJSONFile(Path(SDIR.SEG), "steps.json");
-    //     // iterate over json file keys. Unlock buttons if keys are all zeros
-    // } else {
-    //     MITK_INFO << "Creating points.json file";
-    //     CemrgCommonUtils::WriteJSONFile(json_points, Path(SDIR.SEG), "steps.json");   
-    // }
 
-
-    sname.SetBase(QFileInfo(path).baseName());
+    mitk::Image::Pointer segmentation = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
 
     double seg_origin[3], seg_spacing[3];
-    mitk::Image::Pointer segmentation = mitk::IOUtil::Load<mitk::Image>(path.toStdString());
-        
     segmentation->GetVtkImageData()->GetSpacing(seg_spacing);
     segmentation->GetGeometry()->GetOrigin().ToArray(seg_origin);
 
@@ -375,12 +372,8 @@ void FourChamberView::SegmentImgs() {
     mitk_origin[2] = origin[2];
         
     if (!ArrayEqual(seg_origin, origin, 3)) {
-        std::cout << "Origin is different" << '\n';
         segmentation->SetOrigin(mitk_origin);
     }
-
-    std::cout << ArrayToString(spacing, 3, "Spacing").toStdString();
-    std::cout << ArrayToString(origin, 3, "Origin").toStdString() ;
 
     mitk::Vector3D mitk_spacing;
     mitk_spacing[0] = spacing[0];
@@ -388,13 +381,17 @@ void FourChamberView::SegmentImgs() {
     mitk_spacing[2] = spacing[2];
 
     if (!ArrayEqual(seg_spacing, spacing, 3)){
-        // spacing is different
-        std::cout << "Spacing is different" << '\n';
         segmentation->SetSpacing(mitk_spacing);
     }
 
-    std::cout << ArrayToString(seg_spacing, 3, "SEG Spacing").toStdString();
-    std::cout << ArrayToString(seg_origin, 3, "SEG Origin").toStdString();
+    if (reply_steps == QMessageBox::Yes) { 
+        MITK_INFO << "Loading steps.json file";
+        fourchTools->NavigateToStep(stepsPath);
+        fourchTools->UpdateCurrentImage();
+    } else {
+        fourchTools->UpdateSegmentationStep(segmentation);
+    }
+    fourchTools->SaveSegmentationStage(stepsPath);   
 
     QFileInfo fi(path);
     try {
@@ -536,7 +533,7 @@ void FourChamberView::Meshing(){
 
         visualisation_surf->SetVtkPolyData(transformFilter->GetOutput());
 
-            CemrgCommonUtils::AddToStorage(visualisation_surf, fvtk.baseName().toStdString(), this->GetDataStorage());
+        CemrgCommonUtils::AddToStorage(visualisation_surf, fvtk.baseName().toStdString(), this->GetDataStorage());
     }
 }
 
@@ -740,10 +737,7 @@ void FourChamberView::CorrectionConfirmLabels() {
 
     mitk::IOUtil::Save(seg, path.toStdString());
 
-    mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
-    mlseg->InitializeByLabeledImage(seg);
-    mlseg->SetGeometry(seg->GetGeometry());
-    std::cout << "mlseg initialised...";
+    UpdateDataManager(seg, name, nodes[0]);
 
     // TODO: debug this to work with SegmentationLabels class
     // if (!splittinglabels) {
@@ -751,12 +745,6 @@ void FourChamberView::CorrectionConfirmLabels() {
     //         mlseg->GetLabel(userLabels.Get(ltt))->SetName(userLabels.LabelName(ltt));
     //     }
     // } 
-    
-    CemrgCommonUtils::AddToStorage(mlseg, name, this->GetDataStorage());
-    mlseg->Modified();
-    std::cout << "added to storage...";
-    this->GetDataStorage()->Remove(nodes[0]);
-    std::cout << "node removed...";
 }
 
 void FourChamberView::CorrectionIdLabels(int index) {
@@ -928,21 +916,13 @@ void FourChamberView::SelectPointsCylinders() {
         images.push_back(cylSvc);
         images.push_back(cylIvc);
         int RspvLabel = 10, SvcLabel = 13, IvcLabel = 14; // check values based on image and user choices
-        mitk::Image::Pointer s2a = fourchTools->CreateSvcIvc(images, RspvLabel, SvcLabel, IvcLabel);
 
+        mitk::Image::Pointer s2a = fourchTools->CreateSvcIvc(images, RspvLabel, SvcLabel, IvcLabel);
         fourchTools->UpdateSegmentationStep(s2a);
 
-        mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
-        mlseg->InitializeByLabeledImage(s2a);
-        mlseg->SetGeometry(s2a->GetGeometry());
-
-        CemrgCommonUtils::AddToStorage(mlseg, fourchTools->StepName(), this->GetDataStorage());
-        mlseg->Modified();
-
-        this->GetDataStorage()->Remove(nodes[0]);
+        UpdateDataManager(s2a, fourchTools->StepName(), nodes[0]);
 
         Inform("Success", "Created SVC/IVC Cylinders correctly.");
-
         m_Controls.button_select_pts_a->setEnabled(false);
 
     }
@@ -990,17 +970,33 @@ void FourChamberView::SelectPointsSlicers() {
             Warn("Attention - Missing Slicers", "Slicers for SVC and IVC were not created. Check LOG.");
             return;
         }
+        mitk::Image::Pointer aortaSlicer = mitk::IOUtil::Load<mitk::Image>(StdStringPath(SDIR.SEG + "/aorta_slicer.nii"));
+        mitk::Image::Pointer PArtSlicer = mitk::IOUtil::Load<mitk::Image>(StdStringPath(SDIR.SEG + "/PArt_slicer.nii"));
 
-        
+        std::vector<mitk::Image::Pointer> images(5);
+        MITK_INFO << "Current step: " + fourchTools->StepName();
+        fourchTools->UpdateCurrentImage(); 
+        images.push_back(fourchTools->GetCurrentImage()); // seg_s2a
+        images.push_back(aortaSlicer); 
+        images.push_back(PArtSlicer);
+        images.push_back(sliSvc);
+        images.push_back(sliIvc);
 
+        mitk::Image::Pointer s2f = fourchTools->CropSvcIvc(images);
 
-
+        UpdateDataManager(s2f, fourchTools->StepName(), nodes[0]);
         m_Controls.button_select_pts_b->setEnabled(false);
     }
 }
 
 void FourChamberView::SelectPointsValvePlains(){
-    
+
+    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+    if (nodes.size() != 1) {
+        Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
+        return;
+    } //_if
+
     if (m_Controls.button_select_pts_c->text().contains("Check Valve Plains")) {
         if (!CheckPointsInJsonFile(ManualPoints::VALVE_PLAINS)) {
             Warn("Attention - Missing Points", "All points need to be defined before running the script.");
@@ -1118,6 +1114,23 @@ std::string FourChamberView::PrintPoints(QJsonObject json, QStringList keysList,
     }
 
     return output;
+}
+
+void FourChamberView::UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer& node) {
+    try {
+        mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
+        mlseg->InitializeByLabeledImage(segmentation);
+        mlseg->SetGeometry(segmentation->GetGeometry());
+
+        CemrgCommonUtils::AddToStorage(mlseg, name, this->GetDataStorage());
+        mlseg->Modified();
+    } catch (mitk::Exception &e) {
+        MITK_ERROR << "Exception caught: " << e.GetDescription();
+        CemrgCommonUtils::AddToStorage(segmentation, name, this->GetDataStorage());
+    }
+    if (node) {
+        this->GetDataStorage()->Remove(node);
+    }
 }
 
 // helper`
