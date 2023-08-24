@@ -94,7 +94,7 @@ public:
     void UpdatePointsIndexFile(QJsonObject json); 
     void ReloadJsonPoints();
     std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
-    void UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer &node);
+    void UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer &node, bool confirmLabels=false);
 
     template <typename T = double>
     QString ArrayToString(T *arr, int size, const QString &title);

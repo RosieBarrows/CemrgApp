@@ -246,7 +246,8 @@ void SegmentationStepManager::NavigateToStep(const std::string &stageName, const
     }
 }
 
-void SegmentationStepManager::NavigateToStepFromFile(const QString &filename) {
+void SegmentationStepManager::NavigateToStepFromFile(QString filename) {
+    
     QFileInfo fi(filename);
     QJsonObject json = CemrgCommonUtils::ReadJSONFile(fi.absolutePath(), fi.fileName());
 
@@ -261,7 +262,7 @@ void SegmentationStepManager::NavigateToStepFromFile(const QString &filename) {
     MITK_INFO << PrintCurrentStepInfo();
 }
 
-void SegmentationStepManager::SaveToJson(const QString &filename) {
+void SegmentationStepManager::SaveToJson(QString filename) {
     QJsonObject json = GetJson();
     QFileInfo fi(filename);
     CemrgCommonUtils::WriteJSONFile(json, fi.absolutePath(), fi.baseName()+".json");
@@ -326,6 +327,14 @@ void CemrgFourChamberTools::UpdateSegmentationStep(mitk::Image::Pointer newImage
     MITK_INFO << "Updating segmentation step: " + segStepManager.PrintCurrentStepInfo();
     segStepManager.UpdateStepWithImage(newImage, debug);
     UpdateCurrentImage();
+}
+
+void CemrgFourChamberTools::SaveSegmentationStage(QString pathname) { 
+    segStepManager.SaveToJson(pathname); 
+}
+
+void CemrgFourChamberTools::NavigateToStep(QString filepath) { 
+    segStepManager.NavigateToStepFromFile(filepath); 
 }
 
 /// @brief

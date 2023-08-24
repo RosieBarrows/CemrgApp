@@ -100,9 +100,9 @@ public:
     void UpdateStepWithImage(mitk::Image::Pointer image, bool debug);
 
     void NavigateToStep(const std::string &stageName, const std::string &stepName);
-    void NavigateToStepFromFile(const QString& filename);
+    void NavigateToStepFromFile(QString filename);
     QJsonObject GetJson();
-    void SaveToJson(const QString& filename);
+    void SaveToJson(QString filename);
     void ModifyJson(); 
 
 private:
@@ -134,14 +134,15 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
         inline QString QGetDebugDir() { return QString::fromStdString(directory); };
 
         inline void SetLabel(LabelsType stt, int label) { chosenLabels.Set(stt, label); };
+        inline void UpdateChosenLabels(SegmentationLabels newLabels) { chosenLabels = newLabels; };
 
         // tools to manipulate segStepManager
         void UpdateSegmentationStep(mitk::Image::Pointer newImage);
-        void SaveSegmentationStage(QString pathname) { segStepManager.SaveToJson(pathname); };
+        void SaveSegmentationStage(QString pathname);
+        void NavigateToStep(QString filepath);
         inline std::string StepName() { return segStepManager.GetStepName().toStdString(); };
         inline std::string StepFileImage() { return segStepManager.GetCurrentStep()->GetImageFileName(); };
         inline void UpdateCurrentImage() { currentImage = segStepManager.GetStepImage(); };
-        inline void NavigateToStep(QString filepath) { segStepManager.NavigateToStepFromFile(filepath); };
         inline mitk::Image::Pointer GetCurrentImage() { return currentImage; };
 
         // Manipulation utilities
@@ -177,7 +178,6 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberTools {
 
         mitk::Image::Pointer currentImage;
         SegmentationStepManager segStepManager;
-        LabelsStruct chosenLabels;
-        SegmentationLabels segmentationLabels;
+        SegmentationLabels chosenLabels;
 };
 #endif // CemrgFourChamberTools_h

@@ -29,10 +29,10 @@ class SegmentationLabels {
         std::unordered_map<LabelsType, unsigned int> labelMap;
 
         void UpdateLabels(const SegmentationLabels& other) {
-        for (const auto& pair : other.labelMap) {
-            labelMap[pair.first] = pair.second; // Update the labelMap
+            for (const auto& pair : other.labelMap) {
+                labelMap[pair.first] = pair.second; // Update the labelMap
+            }
         }
-    }
 
 
     public:
@@ -53,6 +53,10 @@ class SegmentationLabels {
                 {LAA, 12},
                 {SVC, 13},
                 {IVC, 14}};
+        }
+
+        SegmentationLabels(const SegmentationLabels& other) {
+            Update(other);
         }
 
         unsigned int Get(LabelsType labelType) const {
@@ -85,7 +89,7 @@ class SegmentationLabels {
             }
         }
 
-        void SyncWith(const SegmentationLabels& other) {
+        void Update(const SegmentationLabels& other) {
             std::unordered_map<LabelsType, unsigned int> otherMap;
             other.GetMap(otherMap); // Retrieve the labelMap from the other instance
             labelMap = otherMap;    // Synchronize the maps
@@ -175,119 +179,12 @@ class SegmentationLabels {
             return labelTags;
         }
 
-        // void operator=(const SegmentationLabels& other) {
-        //     UpdateLabels(other);
-        // }
-};
-
-enum CylinderProcessStep { NONE, S2A, S2B, S2C, S2D, S2E, S2F };
-
-struct LabelsStruct {
-    int bloodpool, lv, rv, la, ra, aorta, pulmonary_artery, lspv, lipv, rspv, ripv, laa, svc, ivc;
-    LabelsStruct()
-        :bloodpool(1), 
-         lv(2), 
-         rv(3), 
-         la(4),    
-         ra(5), 
-         aorta(6), 
-         pulmonary_artery(7), 
-         lspv(8), 
-         lipv(9), 
-         rspv(10),
-         ripv(11), 
-         laa(12), 
-         svc(13), 
-         ivc(14) {}
-    
-    int Get(LabelsType stt) { 
-        switch (stt) {
-        case LabelsType::BACKGROUND: return 0;
-        case LabelsType::BLOODPOOL: return bloodpool;
-        case LabelsType::LEFT_VENTRICLE: return lv;
-        case LabelsType::RIGHT_VENTRICLE: return rv;
-        case LabelsType::LEFT_ATRIUM: return la;
-        case LabelsType::RIGHT_ATRIUM: return ra;
-        case LabelsType::AORTA: return aorta;
-        case LabelsType::PULMONARY_ARTERY: return pulmonary_artery;
-        case LabelsType::LSPV: return lspv;
-        case LabelsType::LIPV: return lipv;
-        case LabelsType::RSPV: return rspv;
-        case LabelsType::RIPV: return ripv;
-        case LabelsType::LAA: return laa;
-        case LabelsType::SVC: return svc;
-        case LabelsType::IVC: return ivc;
-        default: return 0;
+        SegmentationLabels& operator=(const SegmentationLabels& other) {
+            if (this != &other) {
+                Update(other);
+            }
+            return *this;
         }
-    }
-
-    void Set(LabelsType stt, int value) {
-        switch (stt) {
-        case LabelsType::BLOODPOOL: bloodpool = value; break;
-        case LabelsType::LEFT_VENTRICLE: lv = value; break;
-        case LabelsType::RIGHT_VENTRICLE: rv = value; break;
-        case LabelsType::LEFT_ATRIUM: la = value; break;
-        case LabelsType::RIGHT_ATRIUM: ra = value; break;
-        case LabelsType::AORTA: aorta = value; break;
-        case LabelsType::PULMONARY_ARTERY: pulmonary_artery = value; break;
-        case LabelsType::LSPV: lspv = value; break;
-        case LabelsType::LIPV: lipv = value; break;
-        case LabelsType::RSPV: rspv = value; break;
-        case LabelsType::RIPV: ripv = value; break;
-        case LabelsType::LAA: laa = value; break;
-        case LabelsType::SVC: svc = value; break;
-        case LabelsType::IVC: ivc = value; break;
-        default: break;
-        }
-    }
-};
-
-struct DefaultLabelsStruct {
-    LabelsType stt;
-    DefaultLabelsStruct() : stt(LabelsType::BACKGROUND) {}
-    DefaultLabelsStruct(LabelsType usrStt) : stt(usrStt) {}
-
-    int GetTag() { return static_cast<int>(stt); } 
-    void SetTag(LabelsType usrStt) { stt = usrStt; }
-
-    void SetTagFromString(QString tagName) { 
-        if (tagName.compare("BACKGROUND", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::BACKGROUND); return; }
-        if (tagName.compare("BLOODPOOL", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::BLOODPOOL); return; }
-        if (tagName.compare("LEFT_VENTRICLE", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::LEFT_VENTRICLE); return; }
-        if (tagName.compare("RIGHT_VENTRICLE", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::RIGHT_VENTRICLE); return; }
-        if (tagName.compare("LEFT_ATRIUM", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::LEFT_ATRIUM); return; }
-        if (tagName.compare("RIGHT_ATRIUM", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::RIGHT_ATRIUM); return; }
-        if (tagName.compare("AORTA", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::AORTA); return; }
-        if (tagName.compare("PULMONARY_ARTERY", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::PULMONARY_ARTERY); return; }
-        if (tagName.compare("LSPV", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::LSPV); return; }
-        if (tagName.compare("LIPV", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::LIPV); return; }
-        if (tagName.compare("RSPV", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::RSPV); return; }
-        if (tagName.compare("RIPV", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::RIPV); return; }
-        if (tagName.compare("LAA", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::LAA); return; }
-        if (tagName.compare("SVC", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::SVC); return; }
-        if (tagName.compare("IVC", Qt::CaseInsensitive) == 0) { SetTag(LabelsType::IVC); return; }
-    }
-
-    QString TagName() {
-        switch (stt) {
-        case LabelsType::BACKGROUND: return "BACKGROUND";
-        case LabelsType::BLOODPOOL: return "BLOODPOOL";
-        case LabelsType::LEFT_VENTRICLE: return "LEFT_VENTRICLE";
-        case LabelsType::RIGHT_VENTRICLE: return "RIGHT_VENTRICLE";
-        case LabelsType::LEFT_ATRIUM: return "LEFT_ATRIUM";
-        case LabelsType::RIGHT_ATRIUM: return "RIGHT_ATRIUM";
-        case LabelsType::AORTA: return "AORTA";
-        case LabelsType::PULMONARY_ARTERY: return "PULMONARY_ARTERY";
-        case LabelsType::LSPV: return "LSPV";
-        case LabelsType::LIPV: return "LIPV";
-        case LabelsType::RSPV: return "RSPV";
-        case LabelsType::RIPV: return "RIPV";
-        case LabelsType::LAA: return "LAA";
-        case LabelsType::SVC: return "SVC";
-        case LabelsType::IVC: return "IVC";
-        default: return "BACKGROUND";
-        }
-    }
 };
 
 struct FourChamberSubfolders {

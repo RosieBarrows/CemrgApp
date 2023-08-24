@@ -644,6 +644,7 @@ void FourChamberView::CorrectionGetLabels() {
                     MITK_INFO << "Loading segmentation labels";
                     json_segmentation = CemrgCommonUtils::ReadJSONFile(Path(SDIR.SEG), FourChamberView::LABELS_FILE);
                     userLabels.LoadJsonObject(json_segmentation);
+                    UpdateDataManager(seg, nodeName, nodes[0], true);
                 }
             }
             m_Controls.combo_corrections_id->setVisible(true);
@@ -675,7 +676,7 @@ void FourChamberView::CorrectionConfirmLabels() {
         return;
     }
 
-    bool splittinglabels = false;
+    bool confirmLabels = false;
 
     std::unique_ptr<CemrgMultilabelSegmentationUtils> multilabelUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
     if (labelsToSplit.size() == 0) { // All labels have been selected - applying to segmentation
@@ -711,6 +712,8 @@ void FourChamberView::CorrectionConfirmLabels() {
             seg = multilabelUtils->ReplaceLabel(seg, segLabel, usrLabel);
         }
 
+        confirmLabels = true;
+
         m_Controls.combo_corrections_id->setEnabled(false);
         m_Controls.button_confirm_labels->setEnabled(false);
 
@@ -718,11 +721,12 @@ void FourChamberView::CorrectionConfirmLabels() {
         userLabels.LabelInfoLists(labelKeys, labelsValues, labelsTypes);
         json_segmentation = CemrgCommonUtils::CreateJSONObject(labelKeys, labelsValues, labelsTypes);
 
+        fourchTools->UpdateChosenLabels(userLabels);
+
         CemrgCommonUtils::WriteJSONFile(json_segmentation, Path(SDIR.SEG), FourChamberView::LABELS_FILE);
 
     } else {
         Inform ("Attention", "Splitting labels. This may take a while.");
-        splittinglabels = true;
     
         MITK_INFO << "Splitting labels";
         foreach (int label, labelsToSplit) {
@@ -748,14 +752,7 @@ void FourChamberView::CorrectionConfirmLabels() {
 
     mitk::IOUtil::Save(seg, path.toStdString());
 
-    UpdateDataManager(seg, name, nodes[0]);
-
-    // TODO: debug this to work with SegmentationLabels class
-    // if (!splittinglabels) {
-    //     for (LabelsType ltt : LabelsTypeRange(LabelsType::BLOODPOOL, LabelsType::IVC)) {
-    //         mlseg->GetLabel(userLabels.Get(ltt))->SetName(userLabels.LabelName(ltt));
-    //     }
-    // } 
+    UpdateDataManager(seg, name, nodes[0], confirmLabels);
 }
 
 void FourChamberView::CorrectionIdLabels(int index) {
@@ -854,10 +851,11 @@ void FourChamberView::SelectPoints() {
         MITK_INFO << "Loading points.json file";
         json_points = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
         // iterate over json file keys. Unlock buttons if keys are all zeros
-    } else {
-        MITK_INFO << "Creating points.json file";
-        CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);   
-    }
+    } 
+    // else {
+    //     MITK_INFO << "Creating points.json file";
+    //     CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);   
+    // }
 
     if (!m_Controls.button_select_pts_a->isVisible()) {
         m_Controls.button_select_pts_a->setVisible(true);
@@ -936,6 +934,7 @@ void FourChamberView::SelectPointsCylinders() {
 
         int slicerRadius = 10, slicerHeight = 30;
 
+        // start here 
         mitk::Image::Pointer cylSvc = fourchTools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, svcPath);
         mitk::Image::Pointer cylIvc = fourchTools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, ivcPath);
 
@@ -1086,7 +1085,7 @@ void FourChamberView::SetJsonPointsFromIndex(QJsonObject json) {
         unsigned int arr[3] = {0,0,0};
         ParseJsonArray<unsigned int>(json, Key, arr);
 
-        std::vector<double> world(3), originVector(3), spacingVector(3);
+        std::vector<double> world, originVector(3), spacingVector(3);
         std::vector<unsigned int> index(3);
 
         for (unsigned int jx = 0; jx < 3; jx++) {
@@ -1121,7 +1120,7 @@ void FourChamberView::UpdatePointsIndexFile(QJsonObject json) {
         double arr[3];
         ParseJsonArray(json, key, arr);
         
-        std::vector<unsigned int> index(3);
+        std::vector<unsigned int> index;
         std::vector<double> world(3), originVector(3), spacingVector(3);
 
         for (unsigned int jx = 0; jx < 3; jx++) {
@@ -1224,8 +1223,9 @@ std::string FourChamberView::PrintPoints(QJsonObject json, QStringList keysList,
     return output;
 }
 
-void FourChamberView::UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer& node) {
+void FourChamberView::UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer& node, bool confirmLabels) {
     try {
+
         MITK_INFO << "Updating Data Manager";
         mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
         mlseg->InitializeByLabeledImage(segmentation);
@@ -1234,13 +1234,23 @@ void FourChamberView::UpdateDataManager(mitk::Image::Pointer segmentation, std::
         MITK_INFO << "Adding to storage";
         CemrgCommonUtils::AddToStorage(mlseg, name, this->GetDataStorage());
         mlseg->Modified();
+
+        if (confirmLabels) {
+            for (LabelsType ltt : LabelsTypeRange(LabelsType::BLOODPOOL, LabelsType::LAA)) {
+                std::cout << "Label: " << userLabels.Get(ltt) << " Name: " << userLabels.LabelName(ltt) << '\n';
+                mlseg->GetLabel(userLabels.Get(ltt))->SetName(userLabels.LabelName(ltt));
+            }
+        } 
+
     } catch (mitk::Exception &e) {
         MITK_ERROR << "Exception caught: " << e.GetDescription();
         CemrgCommonUtils::AddToStorage(segmentation, name, this->GetDataStorage());
     }
+
     if (node) {
         this->GetDataStorage()->Remove(node);
     }
+
 }
 
 // helper`

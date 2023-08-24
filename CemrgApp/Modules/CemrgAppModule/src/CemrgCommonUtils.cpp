@@ -1168,6 +1168,30 @@ QJsonObject CemrgCommonUtils::CreateJSONObject(QStringList keys_list, QStringLis
     return jsonObj;
 }
 
+template <>
+QJsonArray CemrgCommonUtils::CreateJSONArray<double>(std::vector<double> values) {
+    QJsonArray json_array;
+
+    for (int ix = 0; ix < values.size(); ix++) {
+        json_array.push_back(values.at(ix));
+    }
+
+    return json_array;
+}
+
+template <>
+QJsonArray CemrgCommonUtils::CreateJSONArray<unsigned int>(std::vector<unsigned int> values) {
+    QJsonArray json_array;
+
+    for (int ix = 0; ix < values.size(); ix++) {
+        json_array.push_back(static_cast<int>(values.at(ix)));
+    }
+
+    return json_array;
+}
+
+
+
 mitk::Image::Pointer CemrgCommonUtils::ImageFromSurfaceMesh(mitk::Surface::Pointer surf, double origin[3], double spacing[3]){
     vtkSmartPointer<vtkPolyData> pd = surf->GetVtkPolyData();
     double bounds[6];
