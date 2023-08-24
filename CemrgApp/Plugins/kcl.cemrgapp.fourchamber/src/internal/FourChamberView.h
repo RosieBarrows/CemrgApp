@@ -78,8 +78,7 @@ public:
     static const QString SEGMENTATION_STEPS; // segmentation file
 
     // helper functions
-    bool
-    RequestAnyFolderFromUser(QString &dir, std::string msg, bool project_dir = false);
+    bool RequestAnyFolderFromUser(QString &dir, std::string msg, bool project_dir = false);
     bool CheckForExistingFile(QString dir, QString filename);
     int Ask(std::string title, std::string msg);
     void Warn(std::string title, std::string msg);
@@ -88,8 +87,11 @@ public:
     void LoadMeshingParametersFromJson(QString dir, QString json_file);
     QString GetPointTypeString(ManualPoints mpt);
     bool ArrayEqual(double *arr1, double *arr2, int size, double tol=0.0001);
-    void ParseJsonArray(QJsonObject json, QString key, double *arr, int size=3);
+    template <typename T=double>
+    void ParseJsonArray(QJsonObject json, QString key, T *arr, int size=3);
     bool CheckPointsInJsonFile(ManualPoints mpt);
+    void SetJsonPointsFromIndex(QJsonObject json);
+    void UpdatePointsIndexFile(QJsonObject json); 
     void ReloadJsonPoints();
     std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
     void UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer &node);

@@ -93,6 +93,9 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgMultilabelSegmentationUtils {
         void WorldToIndex(mitk::Image::Pointer image, std::vector<double> world, std::vector<unsigned int>& index);
         void IndexToWorld(mitk::Image::Pointer image, std::vector<unsigned int> index, std::vector<double> &world);
 
+        void WorldToIndexOriginSpacing(std::vector<double> world, std::vector<unsigned int>& index, std::vector<double> origin, std::vector<double> spacing);
+        void IndexToWorldOriginSpacing(std::vector<unsigned int> index, std::vector<double> &world, std::vector<double> origin, std::vector<double> spacing);
+
     protected:
 
     private : 

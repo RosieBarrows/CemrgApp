@@ -412,16 +412,6 @@ void FourChamberView::PrepareSegmentation() {
 
     if (!RequestProjectDirectoryFromUser()) return;
 
-    points_file_loaded = CheckForExistingFile(directory, FourChamberView::POINTS_FILE);
-    if (points_file_loaded) {
-        MITK_INFO << "Loading points.json file";
-        json_points = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
-        // iterate over json file keys. Unlock buttons if keys are all zeros
-    } else {
-        MITK_INFO << "Creating points.json file";
-        CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);   
-    }
-
     if (m_Controls.button_select_pts->isVisible()){
 
         m_Controls.button_corrections->setVisible(false);
@@ -633,6 +623,7 @@ void FourChamberView::CorrectionGetLabels() {
         return;
     }//_if
 
+
     mitk::BaseData::Pointer data = nodes[0]->GetData();
     std::string nodeName = nodes[0]->GetName();
     if (data) {
@@ -646,6 +637,15 @@ void FourChamberView::CorrectionGetLabels() {
                 m_Controls.combo_corrections_id->addItem(QString::number(label));
             }
            
+            bool segmentation_labels_loaded = CheckForExistingFile(Path(SDIR.SEG), FourChamberView::LABELS_FILE);
+            if (segmentation_labels_loaded) {
+                int replySegLabels = Ask("Segmentation labels found", "Do you want to load the segmentation labels?");
+                if (replySegLabels == QMessageBox::Yes) {
+                    MITK_INFO << "Loading segmentation labels";
+                    json_segmentation = CemrgCommonUtils::ReadJSONFile(Path(SDIR.SEG), FourChamberView::LABELS_FILE);
+                    userLabels.LoadJsonObject(json_segmentation);
+                }
+            }
             m_Controls.combo_corrections_id->setVisible(true);
             m_Controls.button_confirm_labels->setVisible(true);
             connect(m_Controls.combo_corrections_id, SIGNAL(activated(int)), this, SLOT(CorrectionIdLabels(int)));
@@ -680,12 +680,15 @@ void FourChamberView::CorrectionConfirmLabels() {
     std::unique_ptr<CemrgMultilabelSegmentationUtils> multilabelUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
     if (labelsToSplit.size() == 0) { // All labels have been selected - applying to segmentation
         Inform("Confirm Labels", "User-selected labels will be applied to the segmentation");
+        std::vector<LabelsType> labelsToReprocess;
         for (LabelsType ltt : LabelsTypeRange(LabelsType::BACKGROUND, LabelsType::IVC)) {
             int usrLabel = userLabels.Get(ltt);
             int segLabel = segmentationLabels.Get(ltt);
 
             if (usrLabel != segLabel) {
+                std::cout << "User label: " << usrLabel << " Segmentation label: " << segLabel << '\n';
                 if (segmentationLabels.LabelExists(usrLabel)) {
+                    
                     int auxLabel = segmentationLabels.GenerateNewLabel();
 
                     MITK_INFO << "Swapping labels: (" + QString::number(usrLabel) + "->" + QString::number(auxLabel) + "), then (" + QString::number(segLabel) + "->" + QString::number(usrLabel) + ")\n";
@@ -693,12 +696,20 @@ void FourChamberView::CorrectionConfirmLabels() {
                     seg = multilabelUtils->ReplaceLabel(seg, segLabel, usrLabel);
 
                     segmentationLabels.Set(ltt, auxLabel);
+                    labelsToReprocess.push_back(ltt);
                 } else {
                     MITK_INFO << "Replacing labels (" + QString::number(segLabel) + "->" + QString::number(usrLabel) + ")\n";
                     seg = multilabelUtils->ReplaceLabel(seg, segLabel, usrLabel);
                 }
             } // _if
         } // _for
+
+        for (LabelsType ltt : labelsToReprocess) {
+            int usrLabel = userLabels.Get(ltt);
+            int segLabel = segmentationLabels.Get(ltt);
+            MITK_INFO << "Reprocessing auxiliary labels: (" + QString::number(segLabel) + "->" + QString::number(usrLabel) + ")\n";
+            seg = multilabelUtils->ReplaceLabel(seg, segLabel, usrLabel);
+        }
 
         m_Controls.combo_corrections_id->setEnabled(false);
         m_Controls.button_confirm_labels->setEnabled(false);
@@ -822,6 +833,32 @@ void FourChamberView::SelectPoints() {
 
     if (!RequestProjectDirectoryFromUser()) return;
 
+    points_file_loaded = CheckForExistingFile(directory, FourChamberView::POINTS_FILE);
+
+    int replyIndexFileAvailable = Ask("Question", "Do you have a points index file?");
+    if (replyIndexFileAvailable == QMessageBox::Yes) {
+        QString path = QFileDialog::getOpenFileName(NULL, "Open Points Index File", StdStringPath().c_str(), tr("Points index file (*.json)"));
+        QFileInfo fi(path);
+        
+        if (!fi.exists()) return;
+
+        QJsonObject json_index = CemrgCommonUtils::ReadJSONFile(fi.absolutePath(), fi.fileName());
+        SetJsonPointsFromIndex(json_index); // updates json_points
+        CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);
+
+        points_file_loaded = true;
+
+    }
+
+    if (points_file_loaded) {
+        MITK_INFO << "Loading points.json file";
+        json_points = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
+        // iterate over json file keys. Unlock buttons if keys are all zeros
+    } else {
+        MITK_INFO << "Creating points.json file";
+        CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);   
+    }
+
     if (!m_Controls.button_select_pts_a->isVisible()) {
         m_Controls.button_select_pts_a->setVisible(true);
         m_Controls.button_select_pts_b->setVisible(true);
@@ -868,6 +905,11 @@ void FourChamberView::SelectPointsCylinders() {
         return;
     }//_if
 
+    mitk::BaseData::Pointer data = nodes[0]->GetData();
+    if (!data) return; 
+
+    mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+    if (!seg) return;
     
     if (m_Controls.button_select_pts_a->text().contains("Check Cylinder")) {
         if (!CheckPointsInJsonFile(ManualPoints::CYLINDERS)) {
@@ -877,6 +919,7 @@ void FourChamberView::SelectPointsCylinders() {
         }
 
         fourchTools->SetCylinders(json_points);
+        UpdatePointsIndexFile(json_points);
         m_Controls.button_select_pts_a->setText("Run Scripts for Cylinders");
     } else {
         // Run cylinders script
@@ -890,11 +933,6 @@ void FourChamberView::SelectPointsCylinders() {
         QString aortaPath = Path(SDIR.SEG + "/aorta_slicer.nii");
         QString pArtPath = Path(SDIR.SEG + "/PArt_slicer.nii");
 
-        mitk::BaseData::Pointer data = nodes[0]->GetData();
-        if (!data) return; 
-
-        mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
-        if (!seg) return;
 
         int slicerRadius = 10, slicerHeight = 30;
 
@@ -935,6 +973,12 @@ void FourChamberView::SelectPointsSlicers() {
         Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
         return;
     }//_if
+    
+    mitk::BaseData::Pointer data = nodes[0]->GetData();
+    if (!data) return; 
+
+    mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+    if (!seg) return;
    
     if (m_Controls.button_select_pts_b->text().contains("Check Slicer")) {
         if (!CheckPointsInJsonFile(ManualPoints::SLICERS)) {
@@ -944,6 +988,7 @@ void FourChamberView::SelectPointsSlicers() {
         }
 
         fourchTools->SetSlicers(json_points);
+        UpdatePointsIndexFile(json_points);
         m_Controls.button_select_pts_b->setText("Run Scripts for Slicers");
     } else {
         // Run Slicers script
@@ -951,12 +996,6 @@ void FourChamberView::SelectPointsSlicers() {
         if (!fourchTools->SlicersSet()) {
             fourchTools->SetSlicers(json_points);
         }
-
-        mitk::BaseData::Pointer data = nodes[0]->GetData();
-        if (!data) return; 
-
-        mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
-        if (!seg) return;
 
         QString svcSlicerPath = Path(SDIR.SEG + "/SVC_slicer.nii");
         QString ivcSlicerPath = Path(SDIR.SEG + "/IVC_slicer.nii");
@@ -997,14 +1036,26 @@ void FourChamberView::SelectPointsValvePlains(){
         return;
     } //_if
 
+    mitk::BaseData::Pointer data = nodes[0]->GetData();
+    if (!data) return; 
+
+    mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+    if (!seg) return;
+
     if (m_Controls.button_select_pts_c->text().contains("Check Valve Plains")) {
         if (!CheckPointsInJsonFile(ManualPoints::VALVE_PLAINS)) {
             Warn("Attention - Missing Points", "All points need to be defined before running the script.");
             SelectPointsCheck();
             return;
         }
+
+        fourchTools->SetValvePoints(json_points);
+        UpdatePointsIndexFile(json_points);
         m_Controls.button_select_pts_c->setText("Run Scripts for Valve Plains");
     } else {
+        if (!fourchTools->ValvePointsSet()) {
+            fourchTools->SetValvePoints(json_points);
+        }
         // Run Valve Plains script
         Inform("Attention", "Running Scripts for Valve Plains");
         m_Controls.button_select_pts_c->setEnabled(false);
@@ -1027,6 +1078,63 @@ bool FourChamberView::CheckPointsInJsonFile(ManualPoints mpt){
         }
     }
     return allPointsExist;
+}
+
+void FourChamberView::SetJsonPointsFromIndex(QJsonObject json) {
+    std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
+    foreach (QString Key, json.keys()) {
+        unsigned int arr[3] = {0,0,0};
+        ParseJsonArray<unsigned int>(json, Key, arr);
+
+        std::vector<double> world(3), originVector(3), spacingVector(3);
+        std::vector<unsigned int> index(3);
+
+        for (unsigned int jx = 0; jx < 3; jx++) {
+            index.at(jx) = arr[jx];
+            originVector.at(jx) = origin[jx];
+            spacingVector.at(jx) = spacing[jx];
+        }
+
+        segUtils->IndexToWorldOriginSpacing(index, world, originVector, spacingVector);
+
+        json_points[Key] = CemrgCommonUtils::CreateJSONArray<double>(world);
+    }
+}
+
+void FourChamberView::UpdatePointsIndexFile(QJsonObject json) {
+    bool indexFileExists = CheckForExistingFile(directory, FourChamberView::POINTS_FILE_INDEX);
+    QJsonObject points_index;
+    if (!indexFileExists) {
+        QStringList pt_keys = SegPointIds.GetPointLabelOptions(ManualPoints::CYLINDERS);
+        pt_keys.append(SegPointIds.GetPointLabelOptions(ManualPoints::SLICERS));
+        pt_keys.append(SegPointIds.GetPointLabelOptions(ManualPoints::VALVE_PLAINS));
+
+        QStringList values = QStringList(), types = QStringList();
+        InitialiseQStringListsFromSize(pt_keys.size(), values, types);
+        points_index = CemrgCommonUtils::CreateJSONObject(pt_keys, values, types);
+    } else {
+        points_index = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE_INDEX);
+    }
+
+    std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
+    foreach (QString key, json.keys()) {
+        double arr[3];
+        ParseJsonArray(json, key, arr);
+        
+        std::vector<unsigned int> index(3);
+        std::vector<double> world(3), originVector(3), spacingVector(3);
+
+        for (unsigned int jx = 0; jx < 3; jx++) {
+            world.at(jx) = arr[jx];
+            originVector.at(jx) = origin[jx];
+            spacingVector.at(jx) = spacing[jx];
+        }
+
+        segUtils->WorldToIndexOriginSpacing(world, index, originVector, spacingVector);
+        points_index[key] = CemrgCommonUtils::CreateJSONArray<unsigned int>(index);
+    }
+
+    CemrgCommonUtils::WriteJSONFile(points_index, directory, FourChamberView::POINTS_FILE_INDEX);
 }
 
 void FourChamberView::ReloadJsonPoints(){
@@ -1118,10 +1226,12 @@ std::string FourChamberView::PrintPoints(QJsonObject json, QStringList keysList,
 
 void FourChamberView::UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer& node) {
     try {
+        MITK_INFO << "Updating Data Manager";
         mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
         mlseg->InitializeByLabeledImage(segmentation);
         mlseg->SetGeometry(segmentation->GetGeometry());
 
+        MITK_INFO << "Adding to storage";
         CemrgCommonUtils::AddToStorage(mlseg, name, this->GetDataStorage());
         mlseg->Modified();
     } catch (mitk::Exception &e) {
@@ -1506,11 +1616,12 @@ bool FourChamberView::ArrayEqual(double *arr1, double *arr2, int size, double to
     return true;
 }
 
-void FourChamberView::ParseJsonArray(QJsonObject json, QString key, double *arr, int size) {
+template <typename T>
+void FourChamberView::ParseJsonArray(QJsonObject json, QString key, T *arr, int size) {
     if (json[key].isUndefined()){
         MITK_WARN << ("Key [" + key + "] is Undefined for JSON object").toStdString();
     }
     for (int ix = 0; ix < size; ix++) {
-        arr[ix] = json[key].toArray().at(ix).toDouble();
+        arr[ix] = (T) json[key].toArray().at(ix).toDouble();
     }
 }

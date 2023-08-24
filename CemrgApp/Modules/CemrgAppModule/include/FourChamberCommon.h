@@ -126,12 +126,28 @@ class SegmentationLabels {
             return false;
         }
 
-        unsigned int GenerateNewLabel() const {
-            unsigned int newLabel = 1;
-            while (LabelExists(newLabel)) {
-                newLabel++;
+        unsigned int GetLargestLabel() const {
+            unsigned int largestLabel = 0;
+            for (const auto &pair : labelMap) {
+                if (pair.second > largestLabel) {
+                    largestLabel = pair.second;
+                }
             }
-            return newLabel;
+            return largestLabel;
+        }
+
+        unsigned int GenerateNewLabel() const {
+            return GetLargestLabel() + 1;
+        }
+
+        void LoadJsonObject(QJsonObject json) {
+            QStringList keys = json.keys();
+            MITK_INFO << "Loading json object.";
+            for (const auto &key : keys) {
+                unsigned int value = json[key].toInt();
+                std::cout << "Key: " << key.toStdString() << " Value: " << value << '\n';
+                SetLabelFromString(key.toStdString(), json[key].toInt());
+            }
         }
 
         // functions to convert to json
@@ -158,6 +174,10 @@ class SegmentationLabels {
             }
             return labelTags;
         }
+
+        // void operator=(const SegmentationLabels& other) {
+        //     UpdateLabels(other);
+        // }
 };
 
 enum CylinderProcessStep { NONE, S2A, S2B, S2C, S2D, S2E, S2F };

@@ -377,6 +377,20 @@ void CemrgMultilabelSegmentationUtils::IndexToWorld(mitk::Image::Pointer image, 
 
 }
 
+void CemrgMultilabelSegmentationUtils::WorldToIndexOriginSpacing(std::vector<double> world, std::vector<unsigned int>& index, std::vector<double> origin, std::vector<double> spacing) {
+    for (unsigned int ix = 0; ix < 3; ix++) {
+        // round value
+        unsigned int value = (unsigned int) std::round( (world[ix] - origin[ix]) / spacing[ix] );
+        index.push_back(value);
+    }
+}
+
+void CemrgMultilabelSegmentationUtils::IndexToWorldOriginSpacing(std::vector<unsigned int> index, std::vector<double> &world, std::vector<double> origin, std::vector<double> spacing) {
+    for (unsigned int ix = 0; ix < 3; ix++) {
+        world.push_back( (index[ix] * spacing[ix]) + origin[ix] );   
+    }
+}
+
 mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ConnectedComponent(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int layer, bool keep) {
     using ConnectedThresholdType = itk::ConnectedThresholdImageFilter<ImageType, ImageType>;
     ImageType::Pointer itkImage = ImageType::New();

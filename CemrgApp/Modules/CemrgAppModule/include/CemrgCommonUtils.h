@@ -36,6 +36,7 @@ PURPOSE.  See the above copyright notices for more information.
 #include <mitkDataStorage.h>
 #include <QString>
 #include <QJsonObject>
+#include <QJsonArray>
 
 class MITKCEMRGAPPMODULE_EXPORT CemrgCommonUtils {
 
@@ -94,6 +95,8 @@ public:
     static mitk::DataNode::Pointer AddToStorage(mitk::BaseData* data, std::string nodeName, mitk::DataStorage::Pointer ds, bool init = true);
     static mitk::DataNode::Pointer UpdateFromStorage(mitk::BaseData *data, std::string nodeName, mitk::DataStorage::Pointer ds);
     static QJsonObject CreateJSONObject(QStringList keys_list, QStringList values_list, QStringList types_list);
+    template <typename T = double>
+    static QJsonArray CreateJSONArray(std::vector<T> values);
     static QJsonObject ReadJSONFile(QString dir, QString fname);
     static bool WriteJSONFile(QJsonObject json, QString dir, QString fname);
     static bool ModifyJSONFile(QString dir, QString fname, QString key, QString value = "", QString type = "");
