@@ -477,7 +477,6 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
                 dot1 = v1.at(0)*normalVector.at(0) + v1.at(1)*normalVector.at(1) + v1.at(2)*normalVector.at(2);
                 dot2 = v2.at(0)*normalVector.at(0) + v2.at(1)*normalVector.at(1) + v2.at(2)*normalVector.at(2);
                 if (dot1 >= 0 && dot2 <= 0) {
-                    std::cout << "======dot product if=====\n";
                     pts.normalise(normalVector);
                     double testRadius = pts.getNorm(pts.getCross(testPts, normalVector));
                     if (testRadius <= slicerRadius) {
