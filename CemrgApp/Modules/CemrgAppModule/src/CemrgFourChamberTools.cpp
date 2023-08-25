@@ -367,20 +367,19 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
             return nullptr;
     }
 
-    if (!keys.contains(ptPrefix)) {
-        MITK_WARN << ("Prefix " + ptPrefix + " not found in segmentation").toStdString();
-        return nullptr;
-    }
-    
-    // remove keys that do not contain the prefix
-    for (int ix = 0; ix < keys.size(); ix++) {
-        if (!keys.at(ix).contains(ptPrefix)) {
-            keys.removeAt(ix);
-            ix--;
+    QStringList keysWithPrefix = QStringList();
+    foreach (QString key, keys) {
+        if (key.contains(ptPrefix, Qt::CaseInsensitive)) {
+            keysWithPrefix.push_back(key);
         }
     }
 
-    if (keys.size() != 3) {
+    if (keysWithPrefix.isEmpty()) {
+        MITK_WARN << ("Prefix " + ptPrefix + " not found in segmentation").toStdString();
+        return nullptr;
+    }
+
+    if (keysWithPrefix.size() != 3) {
         MITK_WARN << ("Prefix " + ptPrefix + " does not have 3 points").toStdString();
         return nullptr;
     }
@@ -400,20 +399,21 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
         ++imIter;
     }
 
-    int numPoints = keys.size(); 
+    int numPoints = keysWithPrefix.size();
 
     std::vector<double> cog(3, 0.0);
     PointList pts;
     int pointId = 1;
 
-    foreach (QString key, keys) {
+    foreach (QString key, keysWithPrefix) {
 
         PointsNamesType pointType = bpt->FromKey(key);
 
-        std::vector<double> thisPoint(3);
+        std::vector<double> thisPoint(3, 0.0);
         for (int ix = 0; ix < 3; ix++) {
-            thisPoint.at(ix) = bpt->GetPointAt(pointType, ix);
-            cog.at(ix) += thisPoint.at(ix);
+            double value = bpt->GetPointAt(pointType, ix);
+            thisPoint.at(ix) = value;
+            cog.at(ix) += value;
         }
         pts.FillPoint(pointId, thisPoint);
         pointId++;
@@ -431,9 +431,9 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
 
     for (int ix = 0; ix < 3; ix++) {
         p1.at(ix) = cog.at(ix) - pts.normal().at(ix) * (slicerHeight/2); 
-        p2.at(ix) = cog.at(ix) + pts.normal().at(ix) * (slicerHeight/2); 
+        p2.at(ix) = cog.at(ix) + pts.normal().at(ix) * (slicerHeight/2);
 
-        normalVector.at(ix) = p2.at(ix) - p1.at(ix);
+        normalVector.at(ix) = pts.normal().at(ix) * slicerHeight;
     }
 
     n_x = seg->GetDimensions()[0];
@@ -461,12 +461,15 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
         }
     }
 
+    MITK_INFO << "Generating Cylinder of height: " + std::to_string(slicerHeight) + " and radius: " + std::to_string(slicerRadius);
+
     foreach (int xcoord, xCubeCoord) {
         foreach (int ycoord, yCubeCoord) { 
             foreach (int zcoord, zCubeCoord) {
                 std::vector<double> testPts(3), v1(3), v2(3);
+                std::vector<double> ijk = {xcoord, ycoord, zcoord};
                 for (int ix = 0; ix<3; ix++) {
-                    testPts.at(ix) = origin[ix] + xcoord * spacing[ix];
+                    testPts.at(ix) = origin[ix] + ijk[ix] * spacing[ix];
                     v1.at(ix) = testPts.at(ix) - p1.at(ix);
                     v2.at(ix) = testPts.at(ix) - p2.at(ix);
                 }
@@ -474,6 +477,7 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
                 dot1 = v1.at(0)*normalVector.at(0) + v1.at(1)*normalVector.at(1) + v1.at(2)*normalVector.at(2);
                 dot2 = v2.at(0)*normalVector.at(0) + v2.at(1)*normalVector.at(1) + v2.at(2)*normalVector.at(2);
                 if (dot1 >= 0 && dot2 <= 0) {
+                    std::cout << "======dot product if=====\n";
                     pts.normalise(normalVector);
                     double testRadius = pts.getNorm(pts.getCross(testPts, normalVector));
                     if (testRadius <= slicerRadius) {
@@ -506,6 +510,7 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
 mitk::Image::Pointer CemrgFourChamberTools::CreateSvcIvc(std::vector<mitk::Image::Pointer> images, int RspvLabel, int SvcLabel, int IvcLabel) {
     if (images.size() != 3) {
         MITK_WARN << "Need 3 images to create SVC/IVC";
+        std::cout << "Image size: " << images.size() << "\n";
         return nullptr;
     }
 

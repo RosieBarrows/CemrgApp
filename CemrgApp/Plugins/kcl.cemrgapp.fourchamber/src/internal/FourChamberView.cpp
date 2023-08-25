@@ -339,10 +339,10 @@ void FourChamberView::SegmentImgs() {
     if (reply_load == QMessageBox::Yes) {
         path = QFileDialog::getOpenFileName(NULL, "Open Segmentation File", StdStringPath(SDIR.SEG).c_str(), QmitkIOUtil::GetFileOpenFilterString());
         // find, navigate, or create steps file
-        steps_file_found = CheckForExistingFile(Path(SDIR.SEG), FourChamberView::SEGMENTATION_STEPS);
-        if (steps_file_found) {
-            reply_steps = Ask("Segmentation Steps File Found", "Do you want to load the segmentation file up to the latest step?");
-        }  
+        // steps_file_found = CheckForExistingFile(Path(SDIR.SEG), FourChamberView::SEGMENTATION_STEPS);
+        // if (steps_file_found) {
+        //     reply_steps = Ask("Segmentation Steps File Found", "Do you want to load the segmentation file up to the latest step?");
+        // }  
 
     } else if (reply_load == QMessageBox::No) {
         Inform("Attention", "Creating Multilabel Segmentation From CT data.\nSelect DICOM folder");
@@ -645,6 +645,7 @@ void FourChamberView::CorrectionGetLabels() {
                     json_segmentation = CemrgCommonUtils::ReadJSONFile(Path(SDIR.SEG), FourChamberView::LABELS_FILE);
                     userLabels.LoadJsonObject(json_segmentation);
                     UpdateDataManager(seg, nodeName, nodes[0], true);
+                    m_Controls.combo_corrections_id->setEnabled(false);
                 }
             }
             m_Controls.combo_corrections_id->setVisible(true);
@@ -831,31 +832,29 @@ void FourChamberView::SelectPoints() {
     if (!RequestProjectDirectoryFromUser()) return;
 
     points_file_loaded = CheckForExistingFile(directory, FourChamberView::POINTS_FILE);
-
-    int replyIndexFileAvailable = Ask("Question", "Do you have a points index file?");
-    if (replyIndexFileAvailable == QMessageBox::Yes) {
-        QString path = QFileDialog::getOpenFileName(NULL, "Open Points Index File", StdStringPath().c_str(), tr("Points index file (*.json)"));
-        QFileInfo fi(path);
-        
-        if (!fi.exists()) return;
-
-        QJsonObject json_index = CemrgCommonUtils::ReadJSONFile(fi.absolutePath(), fi.fileName());
-        SetJsonPointsFromIndex(json_index); // updates json_points
-        CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);
-
-        points_file_loaded = true;
-
-    }
-
     if (points_file_loaded) {
         MITK_INFO << "Loading points.json file";
         json_points = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE);
         // iterate over json file keys. Unlock buttons if keys are all zeros
-    } 
-    // else {
-    //     MITK_INFO << "Creating points.json file";
-    //     CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);   
-    // }
+    } else {
+        int replyIndexFileAvailable = Ask("Question", "Do you have a points index file?");
+        if (replyIndexFileAvailable == QMessageBox::Yes) {
+            QString path = QFileDialog::getOpenFileName(NULL, "Open Points Index File", StdStringPath().c_str(), tr("Points index file (*.json)"));
+            QFileInfo fi(path);
+
+            if (!fi.exists()) return;
+
+            QJsonObject json_index = CemrgCommonUtils::ReadJSONFile(fi.absolutePath(), fi.fileName());
+            SetJsonPointsFromIndex(json_index); // updates json_points
+            CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);
+
+            points_file_loaded = true;
+
+        } else {
+            MITK_INFO << "Creating points.json file";
+            CemrgCommonUtils::WriteJSONFile(json_points, directory, FourChamberView::POINTS_FILE);   
+        }
+    }
 
     if (!m_Controls.button_select_pts_a->isVisible()) {
         m_Controls.button_select_pts_a->setVisible(true);
@@ -887,10 +886,12 @@ void FourChamberView::SelectPoints() {
     if (points_file_loaded) { 
         // load points from json file
         QStringList allKeys = json_points.keys();
+        mitk::PointSet::PointIdentifier id = 0;
         foreach (QString Key, allKeys) {
             double arr[3] = {0,0,0};
             ParseJsonArray(json_points, Key, arr);
-            pset->InsertPoint(atoi(Key.toStdString().c_str()), mitk::Point3D(arr));
+            pset->InsertPoint(id, mitk::Point3D(arr));
+            id++;
         }
     }
 }
@@ -948,7 +949,7 @@ void FourChamberView::SelectPointsCylinders() {
             return;
         }
         
-        std::vector<mitk::Image::Pointer> images(3);
+        std::vector<mitk::Image::Pointer> images;
         images.push_back(seg);
         images.push_back(cylSvc);
         images.push_back(cylIvc);
@@ -1011,7 +1012,7 @@ void FourChamberView::SelectPointsSlicers() {
         mitk::Image::Pointer aortaSlicer = mitk::IOUtil::Load<mitk::Image>(StdStringPath(SDIR.SEG + "/aorta_slicer.nii"));
         mitk::Image::Pointer PArtSlicer = mitk::IOUtil::Load<mitk::Image>(StdStringPath(SDIR.SEG + "/PArt_slicer.nii"));
 
-        std::vector<mitk::Image::Pointer> images(5);
+        std::vector<mitk::Image::Pointer> images;
         MITK_INFO << "Current step: " + fourchTools->StepName();
         fourchTools->UpdateCurrentImage(); 
         images.push_back(fourchTools->GetCurrentImage()); // seg_s2a
@@ -1072,7 +1073,6 @@ bool FourChamberView::CheckPointsInJsonFile(ManualPoints mpt){
         double arr[3] = {0,0,0};
         ParseJsonArray(json_points, Key, arr);
         if (ArrayEqual(arr, testArray, 3)) {
-            std::cout << ArrayToString(arr, 3, Key).toStdString();
             return false;
         }
     }
@@ -1191,7 +1191,6 @@ void FourChamberView::SelectPointsCheck() {
     output += PrintPoints(points, slicers, "Slicers") + '\n';
     output += PrintPoints(points, valve_plains, "Valve Plains") + '\n';
 
-    std::cout << output.c_str();
     QMessageBox::information(nullptr, "Selected Points", output.c_str());
 }
 
@@ -1526,7 +1525,7 @@ bool FourChamberView::UserSelectIdentifyLabels(int index, unsigned int label, QC
     bool userInputAccepted = false;
     m_IdLabels.setupUi(inputs);
 
-    m_IdLabels.label_colour->setStyleSheet("background-color: " + qc.name() + "; text-color: black;");
+    m_IdLabels.label_colour->setStyleSheet("background-color: " + qc.name() + "; color: rgb(0, 0, 0);");
     m_IdLabels.combo_id_label->addItems(FourChamberView::SEGMENTATION_LIST);
     m_IdLabels.lineEdit_current_label->setText(QString::number(label));
 
