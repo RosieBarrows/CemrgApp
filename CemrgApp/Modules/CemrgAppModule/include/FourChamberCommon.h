@@ -384,14 +384,14 @@ struct M3DParameters {
 
 };
 
-struct VFibresParams {
+struct VentricularFibresParams {
     double _alpha_endo, _alpha_epi, _beta_endo, _beta_epi;
     QString _bad_elem, _type, _apex_to_base, _epi, _lv, _rv;
     QString _directory, _meshname, _output;
     int _nonmyo;
-     _nomyo_set;
+    bool _nomyo_set;
 
-    VFibresParams()
+    VentricularFibresParams()
     :_alpha_endo(60),
      _alpha_epi(-60),
      _beta_endo(-65), 
@@ -432,12 +432,12 @@ struct VFibresParams {
     inline QString nonmyo() { return QString::number(_nonmyo); };
     inline QString type() { return _type; };
     inline QString output() { return directory(_output); };
-    inline QString bad_elem(QString dir="") { return directory(_bad_elem); };
-    inline QString apex_to_base(QString dir="") { return directory(_apex_to_base); };
-    inline QString meshname(QString dir="") { return directory(_meshname); };
-    inline QString epi(QString dir="") { return directory(_epi); };
-    inline QString lv(QString dir="") { return directory(_lv); };
-    inline QString rv(QString dir="") { return directory(_rv); };
+    inline QString bad_elem() { return directory(_bad_elem); };
+    inline QString apex_to_base() { return directory(_apex_to_base); };
+    inline QString meshname() { return directory(_meshname); };
+    inline QString epi() { return directory(_epi); };
+    inline QString lv() { return directory(_lv); };
+    inline QString rv() { return directory(_rv); };
 
     inline QString directory(QString fname = "") { return _directory + "/" + fname; };  
 

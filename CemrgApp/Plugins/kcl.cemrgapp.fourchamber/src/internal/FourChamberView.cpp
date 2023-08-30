@@ -1576,6 +1576,27 @@ bool FourChamberView::UserSelectIdentifyLabels(int index, unsigned int label, QC
     return userInputAccepted;
 }
 
+bool FourChamberView::UserSelectVFibresParameters(QString pre_input_path) {
+    QDialog *inputs = new QDialog(0, 0);
+    bool userInputAccepted = false;
+    m_vfibres.setupUi(inputs);
+    // m_vfibres.lineEdit_input_path->setPlaceholderText(pre_input_path);
+    // m_vfibres.lineEdit_input_path->setEnabled(false);
+
+    // m_vfibres.lineEdit_out_dir->setText(directory + "/" + SDIR.VFIBRES);
+    // m_vfibres.lineEdit_out_dir->setEnabled(false);
+
+    // m_vfibres.lineEdit_out_name->setText("meshname");
+
+    // connect(m_vfibres)
+    int dialogCode = inputs->exec();
+    if (dialogCode == QDialog::Accepted) {
+        userInputAccepted = true;
+    }
+    
+    return userInputAccepted;
+}
+
 void FourChamberView::M3dBrowseFile(const QString &dir) {
     QString titlelabel, input = "";
     std::string msg;
@@ -1587,6 +1608,10 @@ void FourChamberView::M3dBrowseFile(const QString &dir) {
 
     QFileInfo fi(input);
     m_m3d.lineEdit_input_path->setText(input);
+}
+
+void FourChamberView::VFibresBrowseFile(const QString &dir) {
+    MITK_INFO << "VFibresBrowseFile";
 }
 
 void FourChamberView::SetButtonsEnable(bool enable) {

@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_FourChamberViewControls.h"
 #include "ui_FourChamberViewIdentifyLabels.h"
 #include "ui_Meshtools3DParameterUI.h"
+#include "ui_VentricularFibresParameter.h"
 
 #include "QmitkRenderWindow.h"
 #include "mitkCommon.h"
@@ -117,6 +118,7 @@ public:
     // User Select Functions
     bool UserSelectMeshtools3DParameters(QString pre_input_path);
     bool UserSelectIdentifyLabels(int index, unsigned int label, QColor qc);
+    bool UserSelectVFibresParameters(QString pre_input_path);
 
     // inline means they're defined here, not in the cpp filemguvc
     inline bool RequestProjectDirectoryFromUser(){ return RequestAnyFolderFromUser(directory, "Project folder", true); };
@@ -154,7 +156,9 @@ protected slots:
     void SelectPointsCheck();
     void SelectPointsReset();
 
+    // secondary slots
     void M3dBrowseFile(const QString &dir);
+    void VFibresBrowseFile(const QString &dir);
 
         protected :
         // this whole block hardly ever changes
@@ -169,6 +173,7 @@ protected slots:
     Ui::FourChamberViewControls m_Controls;
     Ui::FourChamberViewIdentifyLabels m_IdLabels;
     Ui::Meshtools3DParameterUI m_m3d;
+    Ui::VentricularFibresParameter m_vfibres;
 
 private:
     // put here the things which belong to the class, like working folder name, etc

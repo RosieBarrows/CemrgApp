@@ -260,17 +260,17 @@ bool CemrgFourChamberCmd::ExecuteIgbextract(QString directory, QString sdir, dou
     return this->ExecuteCommand(igbextract(), arguments, output_path, true);
 }
 
-    bool CemrgFourChamberCmd::ExecuteGlRuleFibres(QString directory, VFibresParams vfib, QString output_pre)
-{
+bool CemrgFourChamberCmd::ExecuteGlRuleFibres(QString directory, VentricularFibresParams vfib, QString output_pre) {
+    vfib.SetDirectory(directory);
     QString output_path = directory + "/" + output_pre + vfib.a_endo() + "_" + vfib.a_epi() + ".lon";
     QStringList arguments;
 
-    arguments << "--meshname" << vfib.meshname(directory);
+    arguments << "--meshname" << vfib.meshname();
     arguments << "--type" << vfib.type();
-    arguments << "--apex_to_base" << vfib.apex_to_base(directory) ;
-    arguments << "--epi" << vfib.epi(directory) ;
-    arguments << "--lv" << vfib.lv(directory) ;
-    arguments << "--rv" << vfib.rv(directory);
+    arguments << "--apex_to_base" << vfib.apex_to_base() ;
+    arguments << "--epi" << vfib.epi() ;
+    arguments << "--lv" << vfib.lv() ;
+    arguments << "--rv" << vfib.rv();
     arguments << "--alpha_endo" << vfib.a_endo();
     arguments << "--alpha_epi" << vfib.a_epi();
     arguments << "--beta_endo" << vfib.b_endo();
@@ -281,7 +281,7 @@ bool CemrgFourChamberCmd::ExecuteIgbextract(QString directory, QString sdir, dou
 }
 
 bool CemrgFourChamberCmd::ExecuteGlRuleFibres(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre) {
-    VFibresParams vfib;
+    VentricularFibresParams vfib;
     vfib._meshname = m;
     vfib._type = type;
     vfib._apex_to_base = a;
