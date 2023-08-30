@@ -223,6 +223,17 @@ void FourChamberView::SetWorkingFolder(){
         m_Controls.button_origin_spacing->setVisible(true);
         m_Controls.button_segment_image->setVisible(true);
     }
+
+    if (RequestCarpDirectoryFromUser()) { 
+        Inform("Attention", "CARP directory set successfully");
+    } else {
+        Warn("Attention", "CARP directory not set. Some functionality will not work.");
+        carpless = true;
+    }
+
+    m_Controls.button_uvcs->setEnabled(!carpless);
+    m_Controls.button_ventfibres->setEnabled(!carpless);
+    m_Controls.button_simset->setEnabled(!carpless);
 }
 
 void FourChamberView::LoadDICOM() {

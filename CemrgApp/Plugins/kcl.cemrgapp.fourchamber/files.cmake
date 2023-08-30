@@ -13,6 +13,7 @@ set(UI_FILES
   src/internal/FourChamberViewPointLabelSelect.ui
   src/internal/FourChamberViewIdentifyLabels.ui
   src/internal/Meshtools3DParameterUI.ui
+  src/internal/VentricularFibresParameter.ui
 )
 
 set(MOC_H_FILES
