@@ -158,12 +158,12 @@ protected slots:
 
     // secondary slots
     void M3dBrowseFile(const QString &dir);
-    void VFibresBrowseFile(const QString &dir);
+    void VFibresBrowseFile(const QString &idNdir);
 
-        protected :
-        // this whole block hardly ever changes
-        virtual void
-        CreateQtPartControl(QWidget *parent) override;
+protected:
+    // this whole block hardly ever changes
+    virtual void
+    CreateQtPartControl(QWidget *parent) override;
     virtual void SetFocus() override;
 
     /// \brief called by QmitkFunctionality when DataManager's selection has changed
@@ -188,6 +188,8 @@ private:
     SegmentationLabels userLabels, segmentationLabels;
 
     M3DParameters meshing_parameters;
+    VentricularFibresParams vfibres_parameters;
+    
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
     FourChamberSegmentationNames sname; // helps set access segmentation names
     ManualPointsStruct SegPointIds; // keeps track of the segmentation points

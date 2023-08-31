@@ -54,7 +54,11 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
 
         mitkClassMacro(CemrgFourChamberCmd, CemrgCommandLine)
 
-        bool CheckCarpDirectory();
+        static bool CheckCarpDirectory(QString dir);
+        inline bool CheckCarpDirectory() { return CheckCarpDirectory(_carp_dir); };
+        inline void SetCarpless(bool value) { carpless = value; };
+
+        bool ExecuteCarpless(QString executableName, QStringList arguments, QString outputPath, bool isOutputFile = true);
 
         bool CalculateUvcs(QString base_dir, FourChamberSubfolders fourch_sdirs, QString mesh_sdir, QString meshname, QString input_tags_parfile, QString etags_sdir, QString apex_sdir);
         QString CalculateEndoToEpiLaplace(QString base_dir, FourChamberSubfolders fourch_sdirs, QString meshname, QString endo_surf, QString epi_surf, QString parfile, QString outdir);
@@ -62,10 +66,11 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
         // CARP Utilities
         bool ExecuteMguvc(QString directory, QString model_name, QString input_model, QString output_model, QString np, QString tags_file, QString output_dir, bool laplace_solution, bool custom_apex, QString id_solver = "");
         bool ExecuteGlVTKConvert(QString directory, QString model, QStringList n_list, QString output_dir, bool trim_names = false);
-        bool ExecuteGlRuleFibres(QString directory, VentricularFibresParams vfib, QString output_pre);
+        bool ExecuteGlRuleFibres(VentricularFibresParams vfib);
         bool ExecuteGlRuleFibres(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre);
         bool ExecuteCarp_Pt(QString directory, QString meshname, QString par_sdir, QString parfile, QStringList stim_files, QString output_dir);
         bool ExecuteIgbextract(QString directory, QString sdir, double small_f, double big_F, QString outname="", QString name="phie.igb");
+        bool ExecuteGlElemCenters(QString meshPath, QString outputPath); 
 
         // CARP binaries getters
         inline void SetCarpDirectory(QString carpDir) { _carp_dir = carpDir; };
@@ -83,5 +88,6 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
 
     private:
         QString _carp_dir = "";
+        bool carpless;
 };
 #endif // CemrgFourChamberCmd_h

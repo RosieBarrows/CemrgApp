@@ -51,15 +51,17 @@ PURPOSE.  See the above copyright notices for more information.
 #include "CemrgCommonUtils.h"
 #include "CemrgFourChamberCmd.h"
 
-bool CemrgFourChamberCmd::CheckCarpDirectory() {
+bool CemrgFourChamberCmd::CheckCarpDirectory(QString dir) {
     bool success = false;
-    if (_carp_dir == "") {
+    if (dir == "") {
         MITK_ERROR << "CARP directory not set!";
+        return success;
     }
 
-    QDir carpDir(_carp_dir);
+    QDir carpDir(dir);
     if (!carpDir.exists()) {
         MITK_ERROR << "CARP directory does not exist!";
+        return success;
     }
     
     // iterate carpDir and check for required files
@@ -69,12 +71,29 @@ bool CemrgFourChamberCmd::CheckCarpDirectory() {
         QString file = it.next();
         if (requiredFiles.contains(file)) {
             requiredFiles.removeOne(file);
-        }
+        } 
     }
 
+    if (!requiredFiles.isEmpty()) {
+        MITK_WARN << "CARP directory does not contain all required files! Below a list of missing files:";
+        for (int ix = 0; ix < requiredFiles.size(); ix++) {
+            MITK_WARN << requiredFiles.at(ix).toStdString();
+        }
+    }
     success = requiredFiles.isEmpty(); // means all files were found
 
     return success;
+}
+
+bool CemrgFourChamberCmd::ExecuteCarpless(QString executableName, QStringList arguments, QString outputPath, bool isOutputFile) {
+    bool res = false;
+    if (carpless) {
+        MITK_WARN << "CARPless mode!";
+        MITK_INFO << this->PrintFullCommand(executableName, arguments);
+    } else {
+        res = this->ExecuteCommand(executableName, arguments, outputPath, isOutputFile);
+    }
+    return res;
 }
 
 bool CemrgFourChamberCmd::CalculateUvcs(QString base_dir, FourChamberSubfolders fourch_sdirs, QString mesh_sdir, QString meshname, QString input_tags_parfile, QString etags_sdir, QString apex_sdir) {
@@ -199,7 +218,7 @@ bool CemrgFourChamberCmd::ExecuteMguvc(QString directory, QString model_name, QS
         arguments << "--custom-apex";
     }
     
-    return this->ExecuteCommand(mguvc(), arguments, output_path, false);
+    return ExecuteCarpless(mguvc(), arguments, output_path, false);
 }
 
 bool CemrgFourChamberCmd::ExecuteGlVTKConvert(QString directory, QString model, QStringList n_list, QString output_dir, bool trim_names) {
@@ -216,7 +235,7 @@ bool CemrgFourChamberCmd::ExecuteGlVTKConvert(QString directory, QString model, 
             arguments << "--trim-names";
     }
 
-    return this->ExecuteCommand(GlVTKConvert(), arguments, output_path, false);
+    return ExecuteCarpless(GlVTKConvert(), arguments, output_path, false);
 }
 
 bool CemrgFourChamberCmd::ExecuteCarp_Pt(QString directory, QString meshname, QString par_sdir, QString parfile, QStringList stim_files, QString output_dir) {
@@ -230,7 +249,7 @@ bool CemrgFourChamberCmd::ExecuteCarp_Pt(QString directory, QString meshname, QS
     arguments << "-stimulus[0].vtx_file" << stim_files.at(0);
     arguments << "-stimulus[1].vtx_file" << stim_files.at(1);
 
-    return this->ExecuteCommand(carp_pt(), arguments, output_path, false);
+    return ExecuteCarpless(carp_pt(), arguments, output_path, false);
 }
 
 bool CemrgFourChamberCmd::ExecuteIgbextract(QString directory, QString sdir, double small_f, double big_F, QString outname, QString name) {
@@ -257,12 +276,21 @@ bool CemrgFourChamberCmd::ExecuteIgbextract(QString directory, QString sdir, dou
     arguments << "-F" << QString::number(big_F);
     arguments << "-O" << output_path ;
 
-    return this->ExecuteCommand(igbextract(), arguments, output_path, true);
+    return ExecuteCarpless(igbextract(), arguments, output_path, true);
+
 }
 
-bool CemrgFourChamberCmd::ExecuteGlRuleFibres(QString directory, VentricularFibresParams vfib, QString output_pre) {
-    vfib.SetDirectory(directory);
-    QString output_path = directory + "/" + output_pre + vfib.a_endo() + "_" + vfib.a_epi() + ".lon";
+bool CemrgFourChamberCmd::ExecuteGlElemCenters(QString meshPath, QString outputPath) {
+    QStringList arguments;
+
+    arguments << "--meshname" << meshPath;
+    arguments << "--output" << outputPath;
+
+    return ExecuteCarpless(GlElemCenters(), arguments, outputPath, true);
+
+}
+
+bool CemrgFourChamberCmd::ExecuteGlRuleFibres(VentricularFibresParams vfib) {
     QStringList arguments;
 
     arguments << "--meshname" << vfib.meshname();
@@ -275,23 +303,26 @@ bool CemrgFourChamberCmd::ExecuteGlRuleFibres(QString directory, VentricularFibr
     arguments << "--alpha_epi" << vfib.a_epi();
     arguments << "--beta_endo" << vfib.b_endo();
     arguments << "--beta_epi" << vfib.b_epi();
-    arguments << "--output" << output_path;
+    arguments << "--output" << vfib.output();
 
-    return this->ExecuteCommand(GlRuleFibres(), arguments, output_path, true);
+    return ExecuteCarpless(GlRuleFibres(), arguments, vfib.output(), true);
+    
 }
 
 bool CemrgFourChamberCmd::ExecuteGlRuleFibres(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre) {
     VentricularFibresParams vfib;
-    vfib._meshname = m;
-    vfib._type = type;
-    vfib._apex_to_base = a;
-    vfib._epi = e;
-    vfib._lv = l;
-    vfib._rv =r;
-    vfib._alpha_endo = a_endo;
-    vfib._alpha_epi = a_epi;
-    vfib._beta_endo = b_endo;
-    vfib._beta_epi = b_epi;
+    vfib.SetDirectory(directory); 
+    vfib.SetMeshname(m);
+    vfib.SetType(type);
+    vfib.SetApexToBase(a);
+    vfib.SetEpi(e);
+    vfib.SetLV(l);
+    vfib.SetRV(r);
+    vfib.SetAlphaEndo(a_endo);
+    vfib.SetAlphaEpi(a_epi);
+    vfib.SetBetaEndo(b_endo);
+    vfib.SetBetaEpi(b_epi);
+    vfib.SetOutput(output_pre);
 
-    return ExecuteGlRuleFibres(directory, vfib, output_pre);
+    return ExecuteGlRuleFibres(vfib);
 }

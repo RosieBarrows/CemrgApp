@@ -42,7 +42,7 @@
       </font>
      </property>
      <property name="text">
-      <string>Image to Volumetric Mesh User Configuration </string>
+      <string>Ventricular Fibres User Configuration </string>
      </property>
     </widget>
    </item>
@@ -67,6 +67,13 @@
    </item>
    <item>
     <layout class="QGridLayout" name="gridLayout">
+     <item row="3" column="0">
+      <widget class="QLineEdit" name="lineEdit_mesh_name">
+       <property name="placeholderText">
+        <string>Meshname</string>
+       </property>
+      </widget>
+     </item>
      <item row="1" column="0">
       <widget class="QLineEdit" name="lineEdit_out_dir">
        <property name="readOnly">
@@ -80,10 +87,10 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
+     <item row="4" column="0">
       <widget class="QLineEdit" name="lineEdit_out_name">
        <property name="placeholderText">
-        <string>Meshname</string>
+        <string>Output name (leave blank to use default)</string>
        </property>
       </widget>
      </item>
@@ -147,11 +154,6 @@
        <item>
         <property name="text">
          <string>biv</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>lv</string>
         </property>
        </item>
       </widget>

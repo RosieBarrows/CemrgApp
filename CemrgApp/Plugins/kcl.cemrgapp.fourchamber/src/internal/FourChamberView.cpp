@@ -175,11 +175,12 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
 
     SetButtonsEnableToOff();
     InitialiseJsonObjects();
-    carpless = false;
+    carpless = true;
 
     fourchTools = std::unique_ptr<CemrgFourChamberTools>(new CemrgFourChamberTools());
     fourchTools->SetDebugOn();
     meshing_parameters = M3DParameters();
+    vfibres_parameters = VentricularFibresParams();
 }
 
 void FourChamberView::OnSelectionChanged(
@@ -189,51 +190,53 @@ void FourChamberView::OnSelectionChanged(
 // SLOTS
 void FourChamberView::SetWorkingFolder(){
     if (!RequestProjectDirectoryFromUser()){
-        MITK_WARN << "Folder not set. Check LOGFILE."; 
-    } else{ // folder set successfully
-
-        MITK_INFO << "Creating folder structure.";
-        QStringList qsl = SDIR.Subdirectories();
-        for (int ix=0; ix < qsl.size(); ix++) {
-            MITK_INFO(QDir().mkpath(Path(qsl.at(ix)))) << ("Folder created: [" + qsl.at(ix) + "]");
-        }
-        fourchTools->SetSegDir(StdStringPath(SDIR.SEG));
-
-        QDir().mkpath(QString::fromStdString(fourchTools->GetDebugDir()));
-
-        bool load_geometry_file = CheckForExistingFile(directory, FourChamberView::GEOMETRY_FILE);
-        if (load_geometry_file) {
-            MITK_INFO << "Loading geometry.json file";
-            json_geometry = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::GEOMETRY_FILE);
-            if (json_geometry["origin"].isUndefined() || json_geometry["spacing"].isUndefined()) {
-                MITK_INFO << "Origin and/or spacing not defined in geometry.json file";
-                m_Controls.button_origin_spacing->setEnabled(true);
-            } else {
-                ParseJsonArray(json_geometry, "origin", origin);
-                ParseJsonArray(json_geometry, "spacing", spacing);
-
-                std::cout << ArrayToString(origin, 3, "Loaded Origin").toStdString();
-                std::cout << ArrayToString(spacing, 3, "Loaded Spacing").toStdString();
-                m_Controls.button_origin_spacing->setEnabled(false);
-            }
-        }
-
-        SetButtonsEnableToOn();
-        m_Controls.button_loaddicom->setVisible(true);
-        m_Controls.button_origin_spacing->setVisible(true);
-        m_Controls.button_segment_image->setVisible(true);
+        MITK_WARN << "Folder not set. Check LOGFILE.";
+        return;
     }
 
-    if (RequestCarpDirectoryFromUser()) { 
-        Inform("Attention", "CARP directory set successfully");
-    } else {
-        Warn("Attention", "CARP directory not set. Some functionality will not work.");
-        carpless = true;
+    // folder set successfully
+    MITK_INFO << "Creating folder structure.";
+    QStringList qsl = SDIR.Subdirectories();
+    for (int ix=0; ix < qsl.size(); ix++) {
+        MITK_INFO(QDir().mkpath(Path(qsl.at(ix)))) << ("Folder created: [" + qsl.at(ix) + "]");
+    }
+    fourchTools->SetSegDir(StdStringPath(SDIR.SEG));
+    QDir().mkpath(QString::fromStdString(fourchTools->GetDebugDir()));
+
+    int replyCarpless = Ask("Question", "Do you have CARP installed?");
+    if (replyCarpless == QMessageBox::Yes && RequestCarpDirectoryFromUser()) {
+        carpless = !CemrgFourChamberCmd::CheckCarpDirectory(carp_directory);
     }
 
-    m_Controls.button_uvcs->setEnabled(!carpless);
-    m_Controls.button_ventfibres->setEnabled(!carpless);
-    m_Controls.button_simset->setEnabled(!carpless);
+    if (carpless) {
+        Warn("CARP not found", "CARP not found. Some functionality will be disabled.");
+        carp_directory = "";
+    }
+
+    bool load_geometry_file = CheckForExistingFile(directory, FourChamberView::GEOMETRY_FILE);
+    if (load_geometry_file) {
+        MITK_INFO << "Loading geometry.json file";
+        json_geometry = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::GEOMETRY_FILE);
+        if (json_geometry["origin"].isUndefined() || json_geometry["spacing"].isUndefined()) {
+            MITK_INFO << "Origin and/or spacing not defined in geometry.json file";
+            m_Controls.button_origin_spacing->setEnabled(true);
+        } else {
+            ParseJsonArray(json_geometry, "origin", origin);
+            ParseJsonArray(json_geometry, "spacing", spacing);
+            std::cout << ArrayToString(origin, 3, "Loaded Origin").toStdString();
+            std::cout << ArrayToString(spacing, 3, "Loaded Spacing").toStdString();
+            m_Controls.button_origin_spacing->setEnabled(false);
+        }
+    }
+
+    SetButtonsEnableToOn();
+    m_Controls.button_loaddicom->setVisible(true);
+    m_Controls.button_origin_spacing->setVisible(true);
+    m_Controls.button_segment_image->setVisible(true);
+    
+    // m_Controls.button_uvcs->setEnabled(!carpless);
+    // m_Controls.button_ventfibres->setEnabled(!carpless);
+    // m_Controls.button_simset->setEnabled(!carpless);
 }
 
 void FourChamberView::LoadDICOM() {
@@ -567,10 +570,56 @@ void FourChamberView::AtrialFibres(){
 }
 
 void FourChamberView::VentricularFibres(){
-    int reply = Ask("Question", "Placeholder");
-    if(reply==QMessageBox::Yes){
-        Inform("Answer", "OK");
+    if (!RequestProjectDirectoryFromUser()) return;
+
+    QString meshPath = Path(SDIR.UVC + "/BiV");
+
+    QDir().mkpath(meshPath);
+
+    bool success_vfib_params = UserSelectVFibresParameters(meshPath);
+    if (success_vfib_params) {
+        QStringList keys, values, types;
+        vfibres_parameters.KeysAndValues(keys, values, types);
+        for (unsigned int ix = 0; ix < keys.size(); ix++) {
+            std::cout << "[" << keys.at(ix).toStdString() << "] " << values.at(ix).toStdString() << '\n';
+        }
+
+        QJsonObject json = CemrgCommonUtils::CreateJSONObject(keys, values, types);
+        CemrgCommonUtils::WriteJSONFile(json, meshPath, "vfibres_parameters.json");
     }
+
+
+    std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+    fourch_cmd->SetCarpDirectory(carp_directory);
+    fourch_cmd->SetCarpless(carpless);
+
+    bool success = fourch_cmd->ExecuteGlRuleFibres(vfibres_parameters);
+    MITK_INFO(success) << "GlRuleFibres executed successfully";
+
+    if (carpless) {
+        Warn("CARPless mode", "The command will be printed in the LOG file but not executed.");
+        return;
+    }
+
+    if ((!QFile::copy(vfibres_parameters.output(), Path(SDIR.UVC + "/BiV.lon")))) {
+        Warn("Problem with copying", "Problem with copying BiV.lon file");
+        return;
+    }
+    success = false;
+
+    MITK_INFO << "Substituted biv.lon with new fibres";
+    success = fourch_cmd->ExecuteGlElemCenters(Path(SDIR.UVC + "/BiV"), Path(SDIR.UVC + "/BiV_elem_centres.pts"));
+    
+    // run correct_fibres.py from docker
+    Inform("Correct fibres", "Correct fibres docker here! "); 
+
+    // if ((!QFile::copy(Path(SDIR.UVC + "/BiV.lon"), Path(SDIR.UVC + "/BiV_corrected.lon")))) {
+    //     Warn("Problem with copying", "Problem with copying BiV.lon file");
+    //     return;
+    // }
+
+    // some meshtool commands
+    
 }
 
 void FourChamberView::UVCs(){
@@ -1576,21 +1625,87 @@ bool FourChamberView::UserSelectIdentifyLabels(int index, unsigned int label, QC
     return userInputAccepted;
 }
 
-bool FourChamberView::UserSelectVFibresParameters(QString pre_input_path) {
+bool FourChamberView::UserSelectVFibresParameters(QString meshPath) {
     QDialog *inputs = new QDialog(0, 0);
+    QSignalMapper *signalMapper = new QSignalMapper(this);
+
+    // meshPath = Path(SDIR.UVC + "/BiV");
+    vfibres_parameters.SetDirectory(meshPath);
+    QDir dir(meshPath);
+
     bool userInputAccepted = false;
     m_vfibres.setupUi(inputs);
-    // m_vfibres.lineEdit_input_path->setPlaceholderText(pre_input_path);
-    // m_vfibres.lineEdit_input_path->setEnabled(false);
+    m_vfibres.lineEdit_out_dir->setPlaceholderText(meshPath);
+    m_vfibres.lineEdit_out_dir->setEnabled(false);
 
-    // m_vfibres.lineEdit_out_dir->setText(directory + "/" + SDIR.VFIBRES);
-    // m_vfibres.lineEdit_out_dir->setEnabled(false);
+    m_vfibres.lineEdit_mesh_name->setText(dir.relativeFilePath(vfibres_parameters.meshname()));
+    
+    m_vfibres.lineEdit_apex_to_base->setPlaceholderText(dir.relativeFilePath(vfibres_parameters.apex_to_base()));
+    m_vfibres.lineEdit_epi->setPlaceholderText(dir.relativeFilePath(vfibres_parameters.epi()));
+    m_vfibres.lineEdit_lv->setPlaceholderText(dir.relativeFilePath(vfibres_parameters.lv()));
+    m_vfibres.lineEdit_rv->setPlaceholderText(dir.relativeFilePath(vfibres_parameters.rv()));
 
-    // m_vfibres.lineEdit_out_name->setText("meshname");
+    connect(m_vfibres.dialog_button, SIGNAL(accepted()), inputs, SLOT(accept()));
+    connect(m_vfibres.dialog_button, SIGNAL(rejected()), inputs, SLOT(reject()));
 
-    // connect(m_vfibres)
+    connect(m_vfibres.button_load1, SIGNAL(clicked()), signalMapper, SLOT(map()));
+    connect(m_vfibres.button_load2, SIGNAL(clicked()), signalMapper, SLOT(map()));
+    connect(m_vfibres.button_load3, SIGNAL(clicked()), signalMapper, SLOT(map()));
+    connect(m_vfibres.button_load4, SIGNAL(clicked()), signalMapper, SLOT(map()));
+    connect(m_vfibres.button_load5, SIGNAL(clicked()), signalMapper, SLOT(map()));
+
+    signalMapper->setMapping(m_vfibres.button_load1, "1;" + meshPath);
+    signalMapper->setMapping(m_vfibres.button_load2, "2;" + meshPath);
+    signalMapper->setMapping(m_vfibres.button_load3, "3;" + meshPath);
+    signalMapper->setMapping(m_vfibres.button_load4, "4;" + meshPath);
+    signalMapper->setMapping(m_vfibres.button_load5, "5;" + meshPath);
+
+    connect(signalMapper, SIGNAL(mapped(QString)), this, SLOT(VFibresBrowseFile(const QString &)));
     int dialogCode = inputs->exec();
     if (dialogCode == QDialog::Accepted) {
+        bool ok1, ok2, ok3, ok4;
+        double aendo = m_vfibres.lineEdit_alpha_endo->text().toDouble(&ok1);
+        double aepi = m_vfibres.lineEdit_alpha_epi->text().toDouble(&ok2);
+        double bendo = m_vfibres.lineEdit_beta_endo->text().toDouble(&ok3);
+        double bepi = m_vfibres.lineEdit_beta_epi->text().toDouble(&ok4);
+
+        if (ok1) vfibres_parameters.SetAlphaEndo(aendo);
+        if (ok2) vfibres_parameters.SetAlphaEpi(aepi);
+        if (ok3) vfibres_parameters.SetBetaEndo(bendo);
+        if (ok4) vfibres_parameters.SetBetaEpi(bepi);
+
+        vfibres_parameters.SetType(m_vfibres.combo_type->currentText()); 
+
+        if (!m_vfibres.lineEdit_apex_to_base->text().isEmpty()) {
+            vfibres_parameters.SetApexToBase(m_vfibres.lineEdit_apex_to_base->text());
+        }
+
+        if (!m_vfibres.lineEdit_epi->text().isEmpty()) {
+            vfibres_parameters.SetEpi(m_vfibres.lineEdit_epi->text());
+        }
+
+        if (!m_vfibres.lineEdit_lv->text().isEmpty()) {
+            vfibres_parameters.SetLV(m_vfibres.lineEdit_lv->text());
+        }
+
+        if (!m_vfibres.lineEdit_rv->text().isEmpty()) {
+            vfibres_parameters.SetRV(m_vfibres.lineEdit_rv->text());
+        }
+
+        if (!m_vfibres.lineEdit_bad_elem->text().isEmpty()) {
+            vfibres_parameters.SetBadElem(m_vfibres.lineEdit_bad_elem->text());
+        }
+
+        if (!m_vfibres.lineEdit_mesh_name->text().isEmpty()) {
+            vfibres_parameters.SetMeshname(m_vfibres.lineEdit_mesh_name->text());   
+        }
+
+        if (!m_vfibres.lineEdit_out_name->text().isEmpty()) {
+            vfibres_parameters.SetOutput(m_vfibres.lineEdit_out_name->text());
+        } else {
+            vfibres_parameters.SetDefaultOutput();
+        }
+
         userInputAccepted = true;
     }
     
@@ -1606,12 +1721,59 @@ void FourChamberView::M3dBrowseFile(const QString &dir) {
     Inform("Attention", msg.c_str());
     input = QFileDialog::getOpenFileName(NULL, msg.c_str(), dir, QmitkIOUtil::GetFileOpenFilterString());
 
-    QFileInfo fi(input);
     m_m3d.lineEdit_input_path->setText(input);
 }
 
-void FourChamberView::VFibresBrowseFile(const QString &dir) {
-    MITK_INFO << "VFibresBrowseFile";
+void FourChamberView::VFibresBrowseFile(const QString &idNdir) {
+    QString titlelabel, input = "";
+    std::string msg = "Select ";
+
+    QStringList idNdirSplit = idNdir.split(";");
+    int id = idNdirSplit.at(0).toInt();
+    QString dir = idNdirSplit.at(1);
+    QDir d(dir);
+
+    switch (id) {
+        case 1: 
+            msg += "apex_to_base Laplace Solution";
+            break;
+        case 2:
+            msg += "Epi Laplace Solution";
+            break;
+        case 3:
+            msg += "LV Laplace Solution";
+            break;
+        case 4: 
+            msg += "RV Laplace Solution";
+            break; 
+        default: // case 5
+            msg += "Bad Elements Indices File";
+            break;
+    }
+
+    Inform("Attention", msg.c_str());
+    input = QFileDialog::getOpenFileName(NULL, msg.c_str(), idNdir.mid(1), QmitkIOUtil::GetFileOpenFilterString());
+
+    QFileInfo fi(input);
+    switch (id) {
+        case 1:
+            m_vfibres.lineEdit_apex_to_base->setText(d.relativeFilePath(input));
+            break;
+        case 2:
+            m_vfibres.lineEdit_epi->setText(d.relativeFilePath(input));
+            break;
+        case 3:
+            m_vfibres.lineEdit_lv->setText(d.relativeFilePath(input));
+            break;
+        case 4:
+            m_vfibres.lineEdit_rv->setText(d.relativeFilePath(input));
+            break;
+        case 5:
+            m_vfibres.lineEdit_bad_elem->setText(d.relativeFilePath(input));
+            break;
+        default:
+            break;
+    }    
 }
 
 void FourChamberView::SetButtonsEnable(bool enable) {

@@ -398,10 +398,11 @@ struct VentricularFibresParams {
      _beta_epi(25), 
      _bad_elem(""), 
      _type("biv"), 
-     _apex_to_base(""), 
-     _epi(""),
-     _lv(""),
-     _rv(""), 
+     _apex_to_base("uvc/BiV.sol_apba_lap.dat"), 
+     _epi("uvc/BiV.sol_endoepi_lap.dat"),
+     _lv("uvc/BiV.sol_lvendo_lap.dat"),
+     _rv("uvc/BiV.sol_rvendo_lap.dat"), 
+     _meshname("BiV"),
      _nonmyo(-1), 
      _nomyo_set(false)
      {}
@@ -409,6 +410,9 @@ struct VentricularFibresParams {
     inline void SetDirectory(QString dir) { _directory = dir; };
     inline void SetMeshname(QString name) { _meshname = name; };
     inline void SetOutput(QString out) { _output = out; };
+    inline void SetDefaultOutput() { 
+        _output = "fibres_bayer_" + a_endo() + "_" + a_epi() + ".lon"; 
+    }
 
     inline void SetBadElem(QString bad) { _bad_elem = bad; };
     inline void SetApexToBase(QString apex) { _apex_to_base = apex; };
@@ -431,18 +435,20 @@ struct VentricularFibresParams {
     inline QString b_epi() { return QString::number(_beta_epi); };
     inline QString nonmyo() { return QString::number(_nonmyo); };
     inline QString type() { return _type; };
-    inline QString output() { return directory(_output); };
-    inline QString bad_elem() { return directory(_bad_elem); };
-    inline QString apex_to_base() { return directory(_apex_to_base); };
-    inline QString meshname() { return directory(_meshname); };
-    inline QString epi() { return directory(_epi); };
-    inline QString lv() { return directory(_lv); };
-    inline QString rv() { return directory(_rv); };
 
-    inline QString directory(QString fname = "") { return _directory + "/" + fname; };  
+    inline QString output() { return path(_output); };
+    inline QString bad_elem() { return path(_bad_elem); };
+    inline QString apex_to_base() { return path(_apex_to_base); };
+    inline QString meshname() { return path(_meshname); };
+    inline QString epi() { return path(_epi); };
+    inline QString lv() { return path(_lv); };
+    inline QString rv() { return path(_rv); };
+
+    inline QString directory() { return _directory; };
+    inline QString path(QString fname = "") { return fname.isEmpty() ? "" : _directory + "/" + fname; };
 
     void KeysAndValues(QStringList& keys, QStringList& values, QStringList& types) {
-        keys << "a_endo" << "a_epi" << "b_endo" << "b_epi" << "bad_elem" << "type" << "apex_to_base" 
+        keys << "alpha_endo" << "alpha_epi" << "beta_endo" << "beta_epi" << "bad_elem" << "type" << "apex_to_base" 
             << "epi" << "lv" << "rv" << "nonmyo" << "directory" << "meshname" << "output";
         values << a_endo() << a_epi() << b_endo() << b_epi() << bad_elem() << type() << apex_to_base() 
             << epi() << lv() << rv() << nonmyo() << directory() << meshname() << output();

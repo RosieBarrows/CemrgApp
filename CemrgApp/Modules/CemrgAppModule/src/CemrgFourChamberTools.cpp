@@ -467,7 +467,11 @@ mitk::Image::Pointer CemrgFourChamberTools::Cylinder(mitk::Image::Pointer seg, Q
         foreach (int ycoord, yCubeCoord) { 
             foreach (int zcoord, zCubeCoord) {
                 std::vector<double> testPts(3), v1(3), v2(3);
-                std::vector<double> ijk = {xcoord, ycoord, zcoord};
+                std::vector<double> ijk = {
+                    static_cast<double>(xcoord), 
+                    static_cast<double>(ycoord), 
+                    static_cast<double>(zcoord)
+                };
                 for (int ix = 0; ix<3; ix++) {
                     testPts.at(ix) = origin[ix] + ijk[ix] * spacing[ix];
                     v1.at(ix) = testPts.at(ix) - p1.at(ix);
