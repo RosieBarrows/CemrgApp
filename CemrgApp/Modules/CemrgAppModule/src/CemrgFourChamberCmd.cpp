@@ -65,7 +65,7 @@ bool CemrgFourChamberCmd::CheckCarpDirectory(QString dir) {
     }
     
     // iterate carpDir and check for required files
-    QStringList requiredFiles = {"mguvc", "GlVTKConvert", "GlRuleFibres", "GlElemCenters", "carp.pt", "igbextract"};
+    QStringList requiredFiles = {"mguvc", "GlVTKConvert", "GlRuleFibers", "GlElemCenters", "carp.pt", "igbextract"};
     QDirIterator it(carpDir, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString file = it.next();
