@@ -69,9 +69,11 @@ bool CemrgFourChamberCmd::CheckCarpDirectory(QString dir) {
     QDirIterator it(carpDir, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString file = it.next();
-        if (requiredFiles.contains(file)) {
-            requiredFiles.removeOne(file);
-        } 
+        for (int ix = 0; ix < requiredFiles.size(); ix++) {
+            if (file.contains(requiredFiles.at(ix))) {
+                requiredFiles.removeOne(requiredFiles.at(ix));
+            }
+        }
     }
 
     if (!requiredFiles.isEmpty()) {

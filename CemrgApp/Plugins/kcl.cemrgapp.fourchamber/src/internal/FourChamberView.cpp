@@ -211,6 +211,8 @@ void FourChamberView::SetWorkingFolder(){
     if (carpless) {
         Warn("CARP not found", "CARP not found. Some functionality will be disabled.");
         carp_directory = "";
+    } else {
+        Inform("CARP found", "CARP found. All functionality will be enabled.");
     }
 
     bool load_geometry_file = CheckForExistingFile(directory, FourChamberView::GEOMETRY_FILE);
