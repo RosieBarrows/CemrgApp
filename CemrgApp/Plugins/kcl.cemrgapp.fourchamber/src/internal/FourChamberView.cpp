@@ -595,8 +595,8 @@ void FourChamberView::VentricularFibres(){
     fourch_cmd->SetCarpDirectory(carp_directory);
     fourch_cmd->SetCarpless(carpless);
 
-    bool success = fourch_cmd->ExecuteGlRuleFibres(vfibres_parameters);
-    MITK_INFO(success) << "GlRuleFibres executed successfully";
+    bool success = fourch_cmd->ExecuteGlRuleFibers(vfibres_parameters);
+    MITK_INFO(success) << "GlRuleFibers executed successfully";
 
     if (carpless) {
         Warn("CARPless mode", "The command will be printed in the LOG file but not executed.");

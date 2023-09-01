@@ -292,7 +292,7 @@ bool CemrgFourChamberCmd::ExecuteGlElemCenters(QString meshPath, QString outputP
 
 }
 
-bool CemrgFourChamberCmd::ExecuteGlRuleFibres(VentricularFibresParams vfib) {
+bool CemrgFourChamberCmd::ExecuteGlRuleFibers(VentricularFibresParams vfib) {
     QStringList arguments;
 
     arguments << "--meshname" << vfib.meshname();
@@ -307,11 +307,11 @@ bool CemrgFourChamberCmd::ExecuteGlRuleFibres(VentricularFibresParams vfib) {
     arguments << "--beta_epi" << vfib.b_epi();
     arguments << "--output" << vfib.output();
 
-    return ExecuteCarpless(GlRuleFibres(), arguments, vfib.output(), true);
+    return ExecuteCarpless(GlRuleFibers(), arguments, vfib.output(), true);
     
 }
 
-bool CemrgFourChamberCmd::ExecuteGlRuleFibres(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre) {
+bool CemrgFourChamberCmd::ExecuteGlRuleFibers(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre) {
     VentricularFibresParams vfib;
     vfib.SetDirectory(directory); 
     vfib.SetMeshname(m);
@@ -326,5 +326,5 @@ bool CemrgFourChamberCmd::ExecuteGlRuleFibres(QString directory, QString m, QStr
     vfib.SetBetaEpi(b_epi);
     vfib.SetOutput(output_pre);
 
-    return ExecuteGlRuleFibres(vfib);
+    return ExecuteGlRuleFibers(vfib);
 }

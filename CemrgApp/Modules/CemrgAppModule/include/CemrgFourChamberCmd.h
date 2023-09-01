@@ -66,8 +66,8 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
         // CARP Utilities
         bool ExecuteMguvc(QString directory, QString model_name, QString input_model, QString output_model, QString np, QString tags_file, QString output_dir, bool laplace_solution, bool custom_apex, QString id_solver = "");
         bool ExecuteGlVTKConvert(QString directory, QString model, QStringList n_list, QString output_dir, bool trim_names = false);
-        bool ExecuteGlRuleFibres(VentricularFibresParams vfib);
-        bool ExecuteGlRuleFibres(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre);
+        bool ExecuteGlRuleFibers(VentricularFibresParams vfib);
+        bool ExecuteGlRuleFibers(QString directory, QString m, QString type, QString a, QString e, QString l, QString r, double a_endo, double a_epi, double b_endo, double b_epi, QString output_pre);
         bool ExecuteCarp_Pt(QString directory, QString meshname, QString par_sdir, QString parfile, QStringList stim_files, QString output_dir);
         bool ExecuteIgbextract(QString directory, QString sdir, double small_f, double big_F, QString outname="", QString name="phie.igb");
         bool ExecuteGlElemCenters(QString meshPath, QString outputPath); 
@@ -78,7 +78,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
 
         inline QString mguvc() { return CARP_DIR("mguvc"); };
         inline QString GlVTKConvert() { return CARP_DIR("GlVTKConvert"); };
-        inline QString GlRuleFibres() { return CARP_DIR("GlRuleFibres"); };
+        inline QString GlRuleFibers() { return CARP_DIR("GlRuleFibers"); };
         inline QString GlElemCenters() { return CARP_DIR("GlElemCenters"); };
         inline QString carp_pt() { return CARP_DIR("carp.pt"); };
         inline QString igbextract() { return CARP_DIR("igbextract"); };
