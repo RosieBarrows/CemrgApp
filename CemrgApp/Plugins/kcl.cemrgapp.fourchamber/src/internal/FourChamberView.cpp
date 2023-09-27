@@ -424,7 +424,39 @@ void FourChamberView::SegmentImgs() {
 
 }
 
-void FourChamberView::PrepareSegmentation() {
+bool FourChamberView::cp(QString src, QString dst) {
+    bool exists = false;
+    bool overwrite = false;
+    bool success = false;
+
+    if (exists) {
+        int reply = Ask("Question", "File already exists. Overwrite?");
+        overwrite = (reply == QMessageBox::Yes);
+        if (!overwrite) {
+            MITK_INFO << ("Using existing file" + dst).toStdString();
+            return true;
+        }
+        QFile::rename(dst, dst + ".bak");
+        QFile::remove(dst);
+    } 
+
+    success = QFile::copy(src, dst);
+
+    if (exists) {
+        if (success){
+            QFile::remove(dst + ".bak");
+        } else {
+            QFile::rename(dst + ".bak", dst);
+        }
+    }
+
+    return success;
+}
+
+
+
+void FourChamberView::PrepareSegmentation()
+{
 
     if (!RequestProjectDirectoryFromUser()) return;
 
@@ -441,7 +473,6 @@ void FourChamberView::PrepareSegmentation() {
         m_Controls.button_select_pts->setVisible(true);
         m_Controls.button_select_pts_reset->setVisible(true);
     }
-
 }
 
 void FourChamberView::Meshing(){
@@ -588,8 +619,9 @@ void FourChamberView::VentricularFibres(){
 
         QJsonObject json = CemrgCommonUtils::CreateJSONObject(keys, values, types);
         CemrgCommonUtils::WriteJSONFile(json, meshPath, "vfibres_parameters.json");
+    } else {
+        return;
     }
-
 
     std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
     fourch_cmd->SetCarpDirectory(carp_directory);
@@ -603,25 +635,74 @@ void FourChamberView::VentricularFibres(){
         return;
     }
 
-    if ((!QFile::copy(vfibres_parameters.output(), Path(SDIR.UVC + "/BiV.lon")))) {
-        Warn("Problem with copying", "Problem with copying BiV.lon file");
-        return;
-    }
-    success = false;
+    if (!cp(vfibres_parameters.output(), Path(SDIR.UVC + "/BiV.lon"))) return;
 
     MITK_INFO << "Substituted biv.lon with new fibres";
     success = fourch_cmd->ExecuteGlElemCenters(Path(SDIR.UVC + "/BiV"), Path(SDIR.UVC + "/BiV_elem_centres.pts"));
-    
-    // run correct_fibres.py from docker
-    Inform("Correct fibres", "Correct fibres docker here! "); 
 
-    // if ((!QFile::copy(Path(SDIR.UVC + "/BiV.lon"), Path(SDIR.UVC + "/BiV_corrected.lon")))) {
-    //     Warn("Problem with copying", "Problem with copying BiV.lon file");
-    //     return;
-    // }
+    QString correctedFibresPath = fourch_cmd->DockerCorrectFibres(directory, SDIR.UVC + "/BiV/BiV");
 
-    // some meshtool commands
-    
+    if (!cp(Path(SDIR.UVC + "/BiV/BiV_corrected.lon"), Path(SDIR.UVC + "/BiV/BiV.lon"))) return;
+    MITK_INFO << "Substituted biv.lon with corrected fibres";
+
+    MITK_INFO << "Converting to VTK for visualisation with Paraview";
+    QStringList arguments;
+    QDir home(directory);
+    arguments << "-imsh=" + home.relativeFilePath(Path(SDIR.UVC + "/BiV/BiV"));
+    arguments << "-ifmt=carp_txt";
+    arguments << "-ofmt=carp_txt";
+    arguments << "-surf=" + home.relativeFilePath(Path(SDIR.UVC + "/BiV/BiV_fibres"));
+    QString expectedOutput = home.absoluteFilePath(Path(SDIR.UVC + "/BiV/BiV_fibres.vtk"));
+    QString mshtlConvert = fourch_cmd->DockerMeshtoolGeneric(directory, "convert", "", arguments, expectedOutput);
+
+    if (mshtlConvert=="ERROR_IN_PROCESSING") {
+        Warn("Error in processing", "Error in meshtool convert");
+        return;
+    }
+
+    arguments.clear();
+
+    MITK_INFO << "Copying myocardium mesh to surfaces folder";
+    // find and copy all files 
+    if (!cp(Path(SDIR.MESH + "/myocardium_OUT/myocardium.*"), Path(SDIR.UVC + "/"))) return;
+
+    MITK_INFO << "Inserting in submesh";
+    arguments << "-msh=" + home.relativeFilePath(Path(SDIR.UVC + "/myocardium"));
+    arguments << "-op=2";
+    arguments << "-outmsh=" + home.relativeFilePath(Path(SDIR.UVC + "/myocardium"));
+    expectedOutput = home.absoluteFilePath(Path(SDIR.UVC + "/myocardium.lon"));
+    QString mshtlInsert = fourch_cmd->DockerMeshtoolGeneric(directory, "generate", "fibres", arguments, expectedOutput);
+
+    if (mshtlInsert=="ERROR_IN_PROCESSING") {
+        Warn("Error in processing", "Error in meshtool generate");
+        return;
+    }
+
+    arguments.clear();
+
+    arguments << "-submsh="+home.relativeFilePath(Path(SDIR.UVC + "/BiV/BiV"));
+    arguments << "-msh="+home.relativeFilePath(Path(SDIR.UVC + "/myocardium"));
+    arguments << "-outmsh=" + home.relativeFilePath(vfibres_parameters.output());
+    arguments << "-ofmt=carp_txt";
+    expectedOutput = home.absoluteFilePath(vfibres_parameters.output() + ".pts");
+    QString mshtlSubmesh = fourch_cmd->DockerMeshtoolGeneric(directory, "insert", "submesh", arguments, expectedOutput);
+
+    arguments.clear();
+
+    if (mshtlSubmesh=="ERROR_IN_PROCESSING") {
+        Warn("Error in processing", "Error in meshtool insert");
+        return;
+    }
+
+    arguments << "-imsh="+home.relativeFilePath(vfibres_parameters.output());
+    arguments << "-omsh="+home.relativeFilePath(vfibres_parameters.output());
+    arguments << "-ofmt=vtk_bin";
+    expectedOutput = home.absoluteFilePath(vfibres_parameters.output() + ".vtk");
+    QString mshtlConvert2 = fourch_cmd->DockerMeshtoolGeneric(directory, "convert", "", arguments, expectedOutput);
+
+    if (mshtlConvert2=="ERROR_IN_PROCESSING") {
+        Warn("Error in processing", "Error in meshtool convert");
+    }
 }
 
 void FourChamberView::UVCs(){

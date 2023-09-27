@@ -76,6 +76,12 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
         inline void SetCarpDirectory(QString carpDir) { _carp_dir = carpDir; };
         inline QString CARP_DIR(QString subpath) { return _carp_dir + "/" + subpath; };
 
+        // Docker calling cemrg/4ch
+        inline void SetDockerImageFourch(QString tag = "latest") { SetDockerImage("cemrg/4ch:" + tag); };
+        QString DockerExtractSurfaces(QString baseDirectory, QString parFolder, QString inputTagsFilename, QString apexSeptumFolder, QString meshname);
+        QString DockerCorrectFibres(QString baseDirectory, QString meshname);
+        QString DockerMeshtoolGeneric(QString directory, QString command, QString subcommand, QStringList arguments, QString expectedOutput);
+
         inline QString mguvc() { return CARP_DIR("mguvc"); };
         inline QString GlVTKConvert() { return CARP_DIR("GlVTKConvert"); };
         inline QString GlRuleFibers() { return CARP_DIR("GlRuleFibers"); };

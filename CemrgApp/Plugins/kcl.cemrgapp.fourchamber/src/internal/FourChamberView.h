@@ -125,7 +125,8 @@ public:
     inline bool RequestCarpDirectoryFromUser(){ return RequestAnyFolderFromUser(carp_directory, "CARP binary folder", false); };
     inline QString Path(QString fnameExt = "") {return (directory + "/" + fnameExt); };
     inline std::string StdStringPath(QString fnameExt=""){return (Path(fnameExt).toStdString());};
-    
+
+    bool cp(QString src, QString dst);
 
 protected slots:
     // here you add the functions that willl be linked to buttons

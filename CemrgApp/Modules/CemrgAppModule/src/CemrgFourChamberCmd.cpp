@@ -292,6 +292,103 @@ bool CemrgFourChamberCmd::ExecuteGlElemCenters(QString meshPath, QString outputP
 
 }
 
+QString CemrgFourChamberCmd::DockerExtractSurfaces(QString baseDirectory, QString parFolder, QString inputTagsFilename, QString apexSeptumFolder, QString meshname) {
+    SetDockerImageFourch();
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+    QString executableName = executablePath + "docker";
+    QString outAbsolutePath = "ERROR_IN_PROCESSING";
+
+    QDir home(baseDirectory);
+    QStringList arguments = GetDockerArguments(home.absolutePath());
+
+    QString fourchCmd = "surfs";
+
+    arguments << fourchCmd;
+    arguments << "--par-folder" << home.relativeFilePath(parFolder);
+    arguments << "--input-tags-setup" << home.relativeFilePath(inputTagsFilename);
+    arguments << "--apex-septum-setup" << home.relativeFilePath(apexSeptumFolder);
+    arguments << "--meshname" << home.relativeFilePath(meshname);
+
+    QStringList outputs; 
+    outputs << home.absolutePath() + "/surfaces_uvc_LA/la/la.vtk";
+    outputs << home.absolutePath() + "/surfaces_uvc_RA/ra/ra.vtk";
+
+    bool successful = ExecuteCommand(executableName, arguments, outputs.at(0));
+    successful = successful && IsOutputSuccessful(outputs.at(1));
+
+    if(successful){
+        MITK_INFO << ("4Ch command: " + fourchCmd + " successful").toStdString();
+        outAbsolutePath = outputs.at(0);
+    } else{
+        MITK_WARN << ("Error running 4Ch command: " + fourchCmd).toStdString();
+    }
+
+    return outAbsolutePath;
+}
+
+QString CemrgFourChamberCmd::DockerCorrectFibres(QString baseDirectory, QString meshname) {
+    SetDockerImageFourch();
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+    QString executableName = executablePath + "docker";
+    QString outAbsolutePath = "ERROR_IN_PROCESSING";
+
+    QDir home(baseDirectory);
+    QStringList arguments = GetDockerArguments(home.absolutePath());
+
+    QString fourchCmd = "correctfibres";
+    arguments << fourchCmd;
+    arguments << "--meshname" << home.relativeFilePath(meshname);
+
+    QString outputPath = home.absolutePath() + "/" + meshname + "_corrected.lon";
+    bool successful = ExecuteCommand(executableName, arguments, outputPath);
+
+    if(successful){
+        MITK_INFO << ("4Ch command: " + fourchCmd + " successful").toStdString();
+        outAbsolutePath = outputPath;
+    } else{
+        MITK_WARN << ("Error running 4Ch command: " + fourchCmd).toStdString();
+    }
+
+    return outAbsolutePath;
+}
+
+QString CemrgFourChamberCmd::DockerMeshtoolGeneric(QString directory, QString command, QString subcommand, QStringList meshtoolArgs, QString expectedOutput) {
+    SetDockerImageOpenCarp();
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+    QString executableName = executablePath + "docker";
+    QString outAbsolutePath = "ERROR_IN_PROCESSING";
+
+    QDir home(directory);
+    QStringList arguments = GetDockerArguments(home.absolutePath());
+
+    arguments << command;
+    if (!subcommand.isEmpty()) {
+        arguments << subcommand;
+    }
+    arguments << meshtoolArgs;
+
+    QString outputPath = home.absolutePath() + "/" + expectedOutput;
+    bool successful = ExecuteCommand(executableName, arguments, outputPath);
+
+    if(successful){
+        MITK_INFO << ("meshtool command: " + command + " successful").toStdString();
+        outAbsolutePath = outputPath;
+    } else{
+        MITK_WARN << ("Error running meshtool command: " + command).toStdString();
+    }
+
+    return outAbsolutePath;
+}
+
 bool CemrgFourChamberCmd::ExecuteGlRuleFibers(VentricularFibresParams vfib) {
     QStringList arguments;
 
