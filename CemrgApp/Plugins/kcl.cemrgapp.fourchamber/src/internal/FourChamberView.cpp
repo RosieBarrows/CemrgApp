@@ -152,6 +152,8 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_select_pts_check, SIGNAL(clicked()), this, SLOT(SelectPointsCheck()));
     connect(m_Controls.button_select_pts_reset, SIGNAL(clicked()), this, SLOT(SelectPointsReset()));
 
+    connect(m_Controls.button_extractsurfs, SIGNAL(clicked()), this, SLOT(ExtractSurfaces()));
+
     // Set default variables and initialise objects
     m_Controls.button_loaddicom->setVisible(false);
     m_Controls.button_origin_spacing->setVisible(false);
@@ -533,7 +535,7 @@ void FourChamberView::Meshing(){
 
             QFileInfo finr(inr_path);
             Inform("Attention", "This operation takes a few minutes");
-            QString mesh_path = cmd_object->ExecuteCreateCGALMesh(directory, meshing_parameters.out_name, parpath, SDIR.SEG + "/" + finr.fileName(), SDIR.MESH, out_ext);
+            QString mesh_path = cmd_object->ExecuteCreateCGALMesh(directory, meshing_parameters.out_name, parpath, SDIR.SEG + "/" + finr.fileName(), meshing_parameters.out_dir, out_ext);
         } 
     }
 
@@ -582,10 +584,39 @@ void FourChamberView::SelectLARALandmarks(){
 }
 
 void FourChamberView::ExtractSurfaces(){
-    int reply = Ask("Question", "Placeholder");
-    if(reply==QMessageBox::Yes){
-        Inform("Answer", "OK!");
+    if (!RequestProjectDirectoryFromUser()) return;
+
+    QString outLa = Path(SDIR.UVC_LA + "/la/la.vtk");
+    QString outRa = Path(SDIR.UVC_RA + "/ra/ra.vtk");
+
+    bool recalculateOutputs = false;
+    if (QFile::exists(outLa) && QFile::exists(outRa)) {
+        int reply = Ask("Question", "LA and RA surfaces already exist. Overwrite?");
+        recalculateOutputs = (reply == QMessageBox::Yes);
     }
+
+    if (recalculateOutputs) {
+        QString inputTagsFilename = QFileDialog::getOpenFileName(NULL, "Open Input Tags File", StdStringPath(SDIR.PAR).c_str(), tr("JSON file (*.json)"));
+        if (inputTagsFilename.isEmpty()) return;
+
+        QString apexSeptumFolder = QFileDialog::getExistingDirectory(NULL, "Open Apex Septum Folder", StdStringPath(SDIR.PAR).c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
+        if (apexSeptumFolder.isEmpty()) return;
+
+        QString meshname = meshing_parameters.out_dir + "/" + meshing_parameters.out_name;
+
+        std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+        fourch_cmd->SetCarpDirectory(carp_directory);
+        fourch_cmd->SetCarpless(carpless);
+
+        QString output = fourch_cmd->DockerExtractSurfaces(directory, SDIR.PAR, inputTagsFilename, apexSeptumFolder, meshname);
+        if (output=="ERROR_IN_PROCESSING") {
+            Warn("Error in processing", "Error in extract surfaces");
+            return;
+        }
+    }
+
+    // open point selector plugin
+
 }
 
 void FourChamberView::SimulationSetup(){
@@ -1594,7 +1625,7 @@ bool FourChamberView::UserSelectMeshtools3DParameters(QString pre_input_path){
 
     QFileInfo fi(pre_input_path);
     m_m3d.lineEdit_input_path->setPlaceholderText(pre_input_path);
-    m_m3d.lineEdit_out_dir->setText(directory + "/" + SDIR.MESH);
+    m_m3d.lineEdit_out_dir->setText(directory + "/" + SDIR.MESH + "/myocardium_OUT");
 
     int dialogCode = inputs->exec();
 
