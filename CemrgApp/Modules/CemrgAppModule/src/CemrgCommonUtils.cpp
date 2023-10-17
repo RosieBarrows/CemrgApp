@@ -96,6 +96,7 @@ PURPOSE.  See the above copyright notices for more information.
 #include <QJsonParseError>
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QJsonValue>
 
 #include "CemrgCommonUtils.h"
 
@@ -1168,8 +1169,7 @@ QJsonObject CemrgCommonUtils::CreateJSONObject(QStringList keys_list, QStringLis
     return jsonObj;
 }
 
-template <>
-QJsonArray CemrgCommonUtils::CreateJSONArray<double>(std::vector<double> values) {
+QJsonArray CemrgCommonUtils::CreateJSONArrayDouble(std::vector<double> values) {
     QJsonArray json_array;
 
     for (int ix = 0; ix < values.size(); ix++) {
@@ -1179,8 +1179,7 @@ QJsonArray CemrgCommonUtils::CreateJSONArray<double>(std::vector<double> values)
     return json_array;
 }
 
-template <>
-QJsonArray CemrgCommonUtils::CreateJSONArray<unsigned int>(std::vector<unsigned int> values) {
+QJsonArray CemrgCommonUtils::CreateJSONArrayUInt(std::vector<unsigned int> values) {
     QJsonArray json_array;
 
     for (int ix = 0; ix < values.size(); ix++) {
@@ -1189,8 +1188,6 @@ QJsonArray CemrgCommonUtils::CreateJSONArray<unsigned int>(std::vector<unsigned 
 
     return json_array;
 }
-
-
 
 mitk::Image::Pointer CemrgCommonUtils::ImageFromSurfaceMesh(mitk::Surface::Pointer surf, double origin[3], double spacing[3]){
     vtkSmartPointer<vtkPolyData> pd = surf->GetVtkPolyData();

@@ -1270,7 +1270,7 @@ void FourChamberView::SetJsonPointsFromIndex(QJsonObject json) {
 
         segUtils->IndexToWorldOriginSpacing(index, world, originVector, spacingVector);
 
-        json_points[Key] = CemrgCommonUtils::CreateJSONArray<double>(world);
+        json_points[Key] = CemrgCommonUtils::CreateJSONArrayDouble(world);
     }
 }
 
@@ -1304,7 +1304,7 @@ void FourChamberView::UpdatePointsIndexFile(QJsonObject json) {
         }
 
         segUtils->WorldToIndexOriginSpacing(world, index, originVector, spacingVector);
-        points_index[key] = CemrgCommonUtils::CreateJSONArray<unsigned int>(index);
+        points_index[key] = CemrgCommonUtils::CreateJSONArrayUInt(index);
     }
 
     CemrgCommonUtils::WriteJSONFile(points_index, directory, FourChamberView::POINTS_FILE_INDEX);

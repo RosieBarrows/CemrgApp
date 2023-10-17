@@ -95,8 +95,8 @@ public:
     static mitk::DataNode::Pointer AddToStorage(mitk::BaseData* data, std::string nodeName, mitk::DataStorage::Pointer ds, bool init = true);
     static mitk::DataNode::Pointer UpdateFromStorage(mitk::BaseData *data, std::string nodeName, mitk::DataStorage::Pointer ds);
     static QJsonObject CreateJSONObject(QStringList keys_list, QStringList values_list, QStringList types_list);
-    template <typename T = double>
-    static QJsonArray CreateJSONArray(std::vector<T> values);
+    static QJsonArray CreateJSONArrayDouble(std::vector<double> values);
+    static QJsonArray CreateJSONArrayUInt(std::vector<unsigned int> values);
     static QJsonObject ReadJSONFile(QString dir, QString fname);
     static bool WriteJSONFile(QJsonObject json, QString dir, QString fname);
     static bool ModifyJSONFile(QString dir, QString fname, QString key, QString value = "", QString type = "");
