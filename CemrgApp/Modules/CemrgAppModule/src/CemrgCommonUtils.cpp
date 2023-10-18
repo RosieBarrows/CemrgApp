@@ -1884,9 +1884,11 @@ QString CemrgCommonUtils::ConvertToInr(mitk::Image::Pointer image, bool convert2
         try {
             if (convert2uint){
                 MITK_INFO << "Convert image to uint8_t";
+                MITK_INFO << "Pixel type: " << image->GetPixelType().GetComponentTypeAsString();
                 itk::Image<uint8_t, 3>::Pointer itkImage = itk::Image<uint8_t, 3>::New();
                 mitk::CastToItkImage(image, itkImage);
-                mitk::CastToMitkImage(itkImage, image);
+                mitk::Image::Pointer uint8Image = mitk::ImportItkImage(itkImage);
+                image = uint8Image;
             }
 
             MITK_INFO << "Access image volume";
