@@ -356,29 +356,6 @@ QString CemrgFourChamberCmd::DockerOriginAndSpacing(QString segName, QString dic
     return ExecuteSeg4ch("origin", modeArguments, outputName);
 }
 
-
-QString CemrgFourChamberCmd::DockerCreateCylinders(QString segName) {
-    return ExecuteSeg4ch("cylinders", GetArgumentList(segName), "SVC.nrrd");
-}
-
-QString CemrgFourChamberCmd::DockerCreateSvcIvc(QString segName) {
-    return ExecuteSeg4ch("svc_ivc", GetArgumentList(segName), "seg_s2a.nrrd");
-}
-
-QString CemrgFourChamberCmd::DockerCreateSlicers(QString segName) {
-
-    return ExecuteSeg4ch("slicers", GetArgumentList(segName), "seg_s2a.nrrd");
-}
-
-QString CemrgFourChamberCmd::DockerCropSvcIvc(QString outputName) {
-    
-    return ExecuteSeg4ch("crop", GetArgumentList(), "seg_s2f.nrrd");
-}
-
-QString CemrgFourChamberCmd::DockerCreateMyo(QString outputName) {
-    return ExecuteSeg4ch("myo", GetArgumentList(), "seg_s3p.nrrd");
-}
-
 QString CemrgFourChamberCmd::DockerExtractSurfaces(QString baseDirectory, QString parFolder, QString inputTagsFilename, QString apexSeptumFolder, QString meshname) {
     SetDockerImageFourch();
     QString executablePath;

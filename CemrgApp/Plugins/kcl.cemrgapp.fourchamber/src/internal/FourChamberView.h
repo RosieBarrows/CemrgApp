@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_FourChamberViewControls.h"
 #include "ui_FourChamberViewIdentifyLabels.h"
 #include "ui_Meshtools3DParameterUI.h"
+#include "ui_LabelsSelectorUI.h"
 #include "ui_VentricularFibresParameter.h"
 
 #include "QmitkRenderWindow.h"
@@ -174,6 +175,7 @@ protected:
     Ui::FourChamberViewControls m_Controls;
     Ui::FourChamberViewIdentifyLabels m_IdLabels;
     Ui::Meshtools3DParameterUI m_m3d;
+    Ui::LabelsSelectorUI m_labels;
     Ui::VentricularFibresParameter m_vfibres;
 
 private:

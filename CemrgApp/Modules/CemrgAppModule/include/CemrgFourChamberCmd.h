@@ -86,14 +86,14 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
         QStringList GetArgumentList(QString seg_name = "");
 
         QString DockerOriginAndSpacing(QString segName="seg_corrected.nrrd", QString dicomDir = "ct", QString outputName="origin_spacing.txt");
-        inline QString DockerCreateCylinders(QString segName="seg_corrected.nrrd") { return ExecuteSeg4ch("cylinders", segName, "", "SVC.nrrd"); };
-        inline QString DockerCreateSvcIvc(QString segName="seg_corrected.nrrd") { return ExecuteSeg4ch("svc_ivc", segName, "", "seg_s2a.nrrd"); };
-        inline QString DockerCreateSlicers(QString segName="seg_s2a.nrrd") { return ExecuteSeg4ch("slicers", segName, "", "SVC_slicer.nrrd"); };
+        inline QString DockerCreateCylinders(QString segName="seg_corrected.nrrd") { return ExecuteSeg4ch("cylinders", GetArgumentList(segName), "SVC.nrrd"); };
+        inline QString DockerCreateSvcIvc(QString segName="seg_corrected.nrrd") { return ExecuteSeg4ch("svc_ivc", GetArgumentList(segName), "seg_s2a.nrrd"); };
+        inline QString DockerCreateSlicers(QString segName="seg_s2a.nrrd") { return ExecuteSeg4ch("slicers", GetArgumentList(segName), "SVC_slicer.nrrd"); };
 
-        QString DockerCropSvcIvc(QString outputName = "seg_s2f.nrrd");
-        QString DockerCreateMyo(QString outputName = "seg_s3p.nrrd");
-        QString DockerCreateValvePlanes(QString outputName = "seg_s4k.nrrd");
-        QString DockerCleanSegmentation(QString outputName = "seg_s5.nrrd");
+        inline QString DockerCropSvcIvc() { return ExecuteSeg4ch("crop", GetArgumentList(), "seg_s2f.nrrd");};
+        inline QString DockerCreateMyo() { return ExecuteSeg4ch("myo", GetArgumentList(), "seg_s3p.nrrd"); };
+        inline QString DockerCreateValvePlanes() { return ExecuteSeg4ch("valve_planes", GetArgumentList(), "seg_s4k.nrrd"); };
+        inline QString DockerCleanSegmentation() { return ExecuteSeg4ch("clean_seg", GetArgumentList(), "seg_s5.nrrd"); };
 
         // Docker calling cemrg/4ch
         inline void SetDockerImageFourch(QString tag = "latest") { SetDockerImage("cemrg/4ch:" + tag); };
