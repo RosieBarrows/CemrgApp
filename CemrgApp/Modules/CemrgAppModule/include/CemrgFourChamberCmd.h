@@ -76,8 +76,28 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
         inline void SetCarpDirectory(QString carpDir) { _carp_dir = carpDir; };
         inline QString CARP_DIR(QString subpath) { return _carp_dir + "/" + subpath; };
 
+        // Docker calling cemrg/seg-4ch
+        inline void SetBaseDirectory(QString directory) { _base_directory = directory; };
+        inline void SetPointsFile(QString filename) { _points_file = filename; }; // only name, not path
+        inline void SetOriginSpacingFile(QString filename) { _origin_spacing_file = filename; }; // only name, not path
+        inline void SetLabelsFile(QString filename) { _labels_file = filename; }; // only name, not path
+
+        QString ExecuteSeg4ch(QString mode, QStringList modeArguments, QString expectedOutput);
+        QStringList GetArgumentList(QString seg_name = "");
+
+        QString DockerOriginAndSpacing(QString segName="seg_corrected.nrrd", QString dicomDir = "ct", QString outputName="origin_spacing.txt");
+        inline QString DockerCreateCylinders(QString segName="seg_corrected.nrrd") { return ExecuteSeg4ch("cylinders", segName, "", "SVC.nrrd"); };
+        inline QString DockerCreateSvcIvc(QString segName="seg_corrected.nrrd") { return ExecuteSeg4ch("svc_ivc", segName, "", "seg_s2a.nrrd"); };
+        inline QString DockerCreateSlicers(QString segName="seg_s2a.nrrd") { return ExecuteSeg4ch("slicers", segName, "", "SVC_slicer.nrrd"); };
+
+        QString DockerCropSvcIvc(QString outputName = "seg_s2f.nrrd");
+        QString DockerCreateMyo(QString outputName = "seg_s3p.nrrd");
+        QString DockerCreateValvePlanes(QString outputName = "seg_s4k.nrrd");
+        QString DockerCleanSegmentation(QString outputName = "seg_s5.nrrd");
+
         // Docker calling cemrg/4ch
         inline void SetDockerImageFourch(QString tag = "latest") { SetDockerImage("cemrg/4ch:" + tag); };
+        inline void SetDockerImageSeg4ch(QString tag = "latest") { SetDockerImage("cemrg/seg-4ch:" + tag); };
         QString DockerExtractSurfaces(QString baseDirectory, QString parFolder, QString inputTagsFilename, QString apexSeptumFolder, QString meshname);
         QString DockerCorrectFibres(QString baseDirectory, QString meshname);
         QString DockerMeshtoolGeneric(QString directory, QString command, QString subcommand, QStringList arguments, QString expectedOutput);
@@ -95,5 +115,11 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
     private:
         QString _carp_dir = "";
         bool carpless;
+
+        QString _path2points = "";
+        QString _points_file = "points.json";
+        QString _origin_spacing_file = "origin_spacing.json";
+        QString _labels_file = "";
+        QString _base_directory = "";
 };
 #endif // CemrgFourChamberCmd_h

@@ -292,6 +292,93 @@ bool CemrgFourChamberCmd::ExecuteGlElemCenters(QString meshPath, QString outputP
 
 }
 
+QString CemrgFourChamberCmd::ExecuteSeg4ch(QString mode, QStringList modeArguments, QString expectedOutput) { 
+    SetDockerImageSeg4ch();
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+
+    if (_base_directory.isEmpty()) {
+        MITK_ERROR << "Base directory not set!";
+        return "ERROR_IN_PROCESSING";
+    }
+
+    QStringList arguments = GetDockerArguments(_base_directory); 
+
+    QString executableName = executablePath + "docker";
+    QString outAbsolutePath = "ERROR_IN_PROCESSING";
+
+    arguments << mode;
+
+    for (int ix = 0; ix < modeArguments.size(); ix++) {
+        arguments << modeArguments.at(ix);
+    }
+
+    QDir home(_base_directory);
+
+    bool successful = ExecuteCommand(executableName, arguments, expectedOutput);
+    if(successful){
+        MITK_INFO << ("Seg-4Ch command: " + mode + " successful").toStdString();
+        outAbsolutePath = home.absolutePath() + "/" + expectedOutput;
+    } else{
+        MITK_WARN << ("Error running 4Ch command: " + mode).toStdString();
+    }
+
+    return outAbsolutePath;
+}
+
+QStringList CemrgFourChamberCmd::GetArgumentList(QString seg_name) {
+    QStringList arguments;
+    if (!seg_name.isEmpty()) {
+        arguments << "--seg-name" << seg_name;
+    }
+    if (!_points_file.isEmpty()) {
+        arguments << "--points-json" << _points_file;
+    }
+    if (!_origin_spacing_file.isEmpty()) {
+        arguments << "--origin-spacing-json" << _origin_spacing_file;
+    }
+    if (!_labels_file.isEmpty()) {
+        arguments << "--labels-file" << _labels_file;
+    }
+
+    return arguments;
+}
+
+QString CemrgFourChamberCmd::DockerOriginAndSpacing(QString segName, QString dicomDir, QString outputName) {
+    
+    QStringList modeArguments;
+    modeArguments << "--seg-name" << segName;
+    modeArguments << "--dicom-dir" << dicomDir;
+    modeArguments << "--output-name" << outputName;
+
+    return ExecuteSeg4ch("origin", modeArguments, outputName);
+}
+
+
+QString CemrgFourChamberCmd::DockerCreateCylinders(QString segName) {
+    return ExecuteSeg4ch("cylinders", GetArgumentList(segName), "SVC.nrrd");
+}
+
+QString CemrgFourChamberCmd::DockerCreateSvcIvc(QString segName) {
+    return ExecuteSeg4ch("svc_ivc", GetArgumentList(segName), "seg_s2a.nrrd");
+}
+
+QString CemrgFourChamberCmd::DockerCreateSlicers(QString segName) {
+
+    return ExecuteSeg4ch("slicers", GetArgumentList(segName), "seg_s2a.nrrd");
+}
+
+QString CemrgFourChamberCmd::DockerCropSvcIvc(QString outputName) {
+    
+    return ExecuteSeg4ch("crop", GetArgumentList(), "seg_s2f.nrrd");
+}
+
+QString CemrgFourChamberCmd::DockerCreateMyo(QString outputName) {
+    return ExecuteSeg4ch("myo", GetArgumentList(), "seg_s3p.nrrd");
+}
+
 QString CemrgFourChamberCmd::DockerExtractSurfaces(QString baseDirectory, QString parFolder, QString inputTagsFilename, QString apexSeptumFolder, QString meshname) {
     SetDockerImageFourch();
     QString executablePath;
