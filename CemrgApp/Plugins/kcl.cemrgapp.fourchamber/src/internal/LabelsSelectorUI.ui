@@ -29,11 +29,11 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>3</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
-       <string>Bloodpool labels</string>
+       <string>Base labels</string>
       </attribute>
       <widget class="QWidget" name="gridLayoutWidget">
        <property name="geometry">
@@ -55,42 +55,42 @@
         <item row="5" column="1">
          <widget class="QLineEdit" name="line_PArt_BP">
           <property name="placeholderText">
-           <string>PArt_BP (default=7)</string>
+           <string>PArt_BP=7</string>
           </property>
          </widget>
         </item>
         <item row="7" column="1">
          <widget class="QLineEdit" name="line_LPV1">
           <property name="placeholderText">
-           <string>LPV1 (default=8)</string>
+           <string>LPV1=8</string>
           </property>
          </widget>
         </item>
         <item row="3" column="1">
          <widget class="QLineEdit" name="line_RA_BP">
           <property name="placeholderText">
-           <string>RA_BP (default=5)</string>
+           <string>RA_BP=5</string>
           </property>
          </widget>
         </item>
         <item row="13" column="0">
          <widget class="QLineEdit" name="line_SVC">
           <property name="placeholderText">
-           <string>SVC (default=13)</string>
+           <string>SVC=13</string>
           </property>
          </widget>
         </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label">
           <property name="text">
-           <string>Ventricles</string>
+           <string>Ventricles </string>
           </property>
          </widget>
         </item>
         <item row="7" column="0">
          <widget class="QLineEdit" name="line_LAA">
           <property name="placeholderText">
-           <string>LAA (default=12)</string>
+           <string>LAA=12</string>
           </property>
          </widget>
         </item>
@@ -104,63 +104,63 @@
         <item row="1" column="0">
          <widget class="QLineEdit" name="line_LV_BP">
           <property name="placeholderText">
-           <string>LV_BP (default=1)</string>
+           <string>LV_BP=1</string>
           </property>
          </widget>
         </item>
         <item row="3" column="0">
          <widget class="QLineEdit" name="line_LA_BP">
           <property name="placeholderText">
-           <string>LA_BP (default=4)</string>
+           <string>LA_BP=4</string>
           </property>
          </widget>
         </item>
         <item row="7" column="2">
          <widget class="QLineEdit" name="line_RPV1">
           <property name="placeholderText">
-           <string>RPV1 (default=10)</string>
+           <string>RPV1=10</string>
           </property>
          </widget>
         </item>
         <item row="5" column="0">
          <widget class="QLineEdit" name="line_Ao_BP">
           <property name="placeholderText">
-           <string>Ao_BP (default=6)</string>
+           <string>Ao_BP=6</string>
           </property>
          </widget>
         </item>
         <item row="9" column="1">
          <widget class="QLineEdit" name="line_LPV2">
           <property name="placeholderText">
-           <string>LPV2 (default=9)</string>
+           <string>LPV2=9</string>
           </property>
          </widget>
         </item>
         <item row="1" column="1">
-         <widget class="QLineEdit" name="line_LV_Myo">
+         <widget class="QLineEdit" name="line_LV_myo">
           <property name="placeholderText">
-           <string>LV_Myo (default=2)</string>
+           <string>LV_myo=2</string>
           </property>
          </widget>
         </item>
         <item row="13" column="1">
-         <widget class="QLineEdit" name="lineEdit_6">
+         <widget class="QLineEdit" name="line_IVC">
           <property name="placeholderText">
-           <string>IVC (default=14)</string>
+           <string>IVC=14</string>
           </property>
          </widget>
         </item>
         <item row="9" column="2">
          <widget class="QLineEdit" name="line_RPV2">
           <property name="placeholderText">
-           <string>RPV2 (default=11)</string>
+           <string>RPV2=11</string>
           </property>
          </widget>
         </item>
         <item row="1" column="2">
          <widget class="QLineEdit" name="line_RV_BP">
           <property name="placeholderText">
-           <string>RV_BP (default=3)</string>
+           <string>RV_BP=3</string>
           </property>
          </widget>
         </item>
@@ -198,7 +198,7 @@
         <item row="6" column="1">
          <widget class="QLineEdit" name="line_TV">
           <property name="placeholderText">
-           <string>TV (default=202)</string>
+           <string>TV=202</string>
           </property>
          </widget>
         </item>
@@ -219,63 +219,63 @@
         <item row="1" column="0">
          <widget class="QLineEdit" name="line_LV_neck">
           <property name="placeholderText">
-           <string>LV_neck (default=101)</string>
+           <string>LV_neck=101</string>
           </property>
          </widget>
         </item>
         <item row="2" column="1">
          <widget class="QLineEdit" name="line_RA_myo">
           <property name="placeholderText">
-           <string>RA_myo (default=105)</string>
+           <string>RA_myo=105</string>
           </property>
          </widget>
         </item>
         <item row="6" column="0">
          <widget class="QLineEdit" name="line_MV">
           <property name="placeholderText">
-           <string>MV (default=201)</string>
+           <string>MV=201</string>
           </property>
          </widget>
         </item>
         <item row="7" column="1">
          <widget class="QLineEdit" name="line_PV">
           <property name="placeholderText">
-           <string>PV (default=204)</string>
+           <string>PV=204</string>
           </property>
          </widget>
         </item>
         <item row="1" column="1">
          <widget class="QLineEdit" name="line_RV_myo">
           <property name="placeholderText">
-           <string>RV_myo (default=103)</string>
+           <string>RV_myo=103</string>
           </property>
          </widget>
         </item>
         <item row="4" column="1">
          <widget class="QLineEdit" name="line_PArt_wall">
           <property name="placeholderText">
-           <string>PArt_wall (default=107)</string>
+           <string>PArt_wall=107</string>
           </property>
          </widget>
         </item>
         <item row="4" column="0">
          <widget class="QLineEdit" name="line_Ao_wall">
           <property name="placeholderText">
-           <string>Ao_wall (default=106)</string>
+           <string>Ao_wall=106</string>
           </property>
          </widget>
         </item>
         <item row="7" column="0">
          <widget class="QLineEdit" name="line_AV">
           <property name="placeholderText">
-           <string>AV (default=204)</string>
+           <string>AV=204</string>
           </property>
          </widget>
         </item>
         <item row="2" column="0">
-         <widget class="QLineEdit" name="lineEdit_4">
+         <widget class="QLineEdit" name="line_LA_myo">
           <property name="placeholderText">
-           <string>LA_myo (default=104)</string>
+           <string>LA_myo=104</string>
           </property>
          </widget>
         </item>
@@ -306,28 +306,28 @@
         <item row="6" column="1">
          <widget class="QLineEdit" name="line_LPV2_ring">
           <property name="placeholderText">
-           <string>LPV2_ring (default=222)</string>
+           <string>LPV2_ring=222</string>
           </property>
          </widget>
         </item>
         <item row="6" column="2">
          <widget class="QLineEdit" name="line_RPV2_ring">
           <property name="placeholderText">
-           <string>RPV2_ring (default=224)</string>
+           <string>RPV2_ring=224</string>
           </property>
          </widget>
         </item>
         <item row="1" column="1">
          <widget class="QLineEdit" name="line_plane_LPV1">
           <property name="placeholderText">
-           <string>plane_LPV1 (default=205)</string>
+           <string>plane_LPV1=205</string>
           </property>
          </widget>
         </item>
         <item row="3" column="2">
          <widget class="QLineEdit" name="line_plane_IVC">
           <property name="placeholderText">
-           <string>plane_IVC (default=211)</string>
+           <string>plane_IVC=211</string>
           </property>
          </widget>
         </item>
@@ -341,70 +341,70 @@
         <item row="1" column="0">
          <widget class="QLineEdit" name="line_plane_LAA">
           <property name="placeholderText">
-           <string>plane_LAA (default=209)</string>
+           <string>plane_LAA=209</string>
           </property>
          </widget>
         </item>
         <item row="1" column="2">
          <widget class="QLineEdit" name="line_plane_RPV1">
           <property name="placeholderText">
-           <string>plane_RPV1 (default=207)</string>
+           <string>plane_RPV1=207</string>
           </property>
          </widget>
         </item>
         <item row="2" column="2">
          <widget class="QLineEdit" name="line_plane_RPV2">
           <property name="placeholderText">
-           <string>plane_RPV2 (default=208)</string>
+           <string>plane_RPV2=208</string>
           </property>
          </widget>
         </item>
         <item row="5" column="0">
          <widget class="QLineEdit" name="line_LAA_ring">
           <property name="placeholderText">
-           <string>LAA_ring (default=225)</string>
+           <string>LAA_ring=225</string>
           </property>
          </widget>
         </item>
         <item row="7" column="1">
          <widget class="QLineEdit" name="line_SVC_ring">
           <property name="placeholderText">
-           <string>SVC_ring (default=226)</string>
+           <string>SVC_ring=226</string>
           </property>
          </widget>
         </item>
         <item row="7" column="2">
          <widget class="QLineEdit" name="line_IVC_ring">
           <property name="placeholderText">
-           <string>IVC_ring (default=227)</string>
+           <string>IVC_ring=227</string>
           </property>
          </widget>
         </item>
         <item row="2" column="1">
          <widget class="QLineEdit" name="line_plane_LPV2">
           <property name="placeholderText">
-           <string>plane_LPV2 (default = 206)</string>
+           <string>plane_LPV2 = 206</string>
           </property>
          </widget>
         </item>
         <item row="5" column="1">
          <widget class="QLineEdit" name="line_LPV1_ring">
           <property name="placeholderText">
-           <string>LPV1_ring (default=221)</string>
+           <string>LPV1_ring=221</string>
           </property>
          </widget>
         </item>
         <item row="5" column="2">
          <widget class="QLineEdit" name="line_RPV1_ring">
           <property name="placeholderText">
-           <string>RPV1_ring (default=223)</string>
+           <string>RPV1_ring=223</string>
           </property>
          </widget>
         </item>
         <item row="3" column="1">
          <widget class="QLineEdit" name="line_plane_SVC">
           <property name="placeholderText">
-           <string>plane_SVC (default=210)</string>
+           <string>plane_SVC=210</string>
           </property>
          </widget>
         </item>
@@ -428,49 +428,49 @@
          <x>10</x>
          <y>10</y>
          <width>591</width>
-         <height>221</height>
+         <height>201</height>
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout">
         <item row="5" column="0">
          <widget class="QLineEdit" name="line_LV_neck_WT">
           <property name="placeholderText">
-           <string>LV_neck_WT (default=2.00)</string>
+           <string>LV_neck_WT=2.00</string>
           </property>
          </widget>
         </item>
         <item row="7" column="1">
-         <widget class="QLineEdit" name="lineEdit_12">
+         <widget class="QLineEdit" name="line_PArt_WT">
           <property name="placeholderText">
-           <string>PArt_WT</string>
+           <string>PArt_WT=2.00</string>
           </property>
          </widget>
         </item>
         <item row="7" column="0">
          <widget class="QLineEdit" name="line_Ao_WT">
           <property name="placeholderText">
-           <string>Ao_WT (default=2.00)</string>
+           <string>Ao_WT=2.00</string>
           </property>
          </widget>
         </item>
         <item row="5" column="1">
          <widget class="QLineEdit" name="line_RV_WT">
           <property name="placeholderText">
-           <string>RV_WT (default=3.5)</string>
+           <string>RV_WT=3.5</string>
           </property>
          </widget>
         </item>
         <item row="6" column="1">
-         <widget class="QLineEdit" name="lineEdit_10">
+         <widget class="QLineEdit" name="line_RA_WT">
           <property name="placeholderText">
-           <string>RA_WT (default=2.00)</string>
+           <string>RA_WT=2.00</string>
           </property>
          </widget>
         </item>
         <item row="3" column="0">
          <widget class="QLineEdit" name="line_valve_WT">
           <property name="placeholderText">
-           <string>valve_WT (default=4)</string>
+           <string>valve_WT=4</string>
           </property>
          </widget>
         </item>
@@ -484,7 +484,7 @@
         <item row="4" column="0">
          <widget class="QLineEdit" name="line_ring_thickness">
           <property name="placeholderText">
-           <string>ring_thickness (default=4)</string>
+           <string>ring_thickness=4</string>
           </property>
          </widget>
         </item>
@@ -503,7 +503,7 @@
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QLineEdit" name="linse_scale_factor">
+         <widget class="QLineEdit" name="line_scale_factor">
           <property name="placeholderText">
            <string>default = 1/0.39844</string>
           </property>
@@ -512,14 +512,14 @@
         <item row="6" column="0">
          <widget class="QLineEdit" name="line_LA_WT">
           <property name="placeholderText">
-           <string>LA_WT (default=2.00)</string>
+           <string>LA_WT=2.00</string>
           </property>
          </widget>
         </item>
         <item row="3" column="1">
          <widget class="QLineEdit" name="line_valve_WT_svc_ivc">
           <property name="placeholderText">
-           <string>valve_WT_svc_ivc (default=4)</string>
+           <string>valve_WT_svc_ivc=4</string>
           </property>
          </widget>
         </item>

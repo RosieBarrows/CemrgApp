@@ -111,9 +111,12 @@ const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
 const QString FourChamberView::POINTS_FILE = "physical_points.json";
 const QString FourChamberView::POINTS_FILE_INDEX = "points.json";
 const QString FourChamberView::GEOMETRY_FILE = "geometry.json";
-const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL", "BLOODPOOL", "LEFT_VENTRICLE", "RIGHT_VENTRICLE", "LEFT_ATRIUM", "RIGHT_ATRIUM", "AORTA", "PULMONARY_ARTERY","LSPV", "LIPV", "RSPV", "RIPV", "LAA", "DELETE"};
+const QStringList FourChamberView::SEGMENTATION_LIST = {"MIXED_LABEL",  "BACKGROUND",  "LV_BP",  "LV_myo",  "RV_BP",  "LA_BP",  "RA_BP",  "Ao_BP",  "PArt_BP",  "LPV1",  "LPV2",  "RPV1",  "RPV2",  "LAA",  "SVC",  "IVC",  
+                                                        "LV_neck",  "RV_myo",  "LA_myo",  "RA_myo",  "Ao_wall",  "PArt_wall",  "MV",  "TV",  "AV",  "PV",  
+                                                        "plane_LPV1",  "plane_LPV2",  "plane_RPV1",  "plane_RPV2",  "plane_LAA",  "plane_SVC",  "plane_IVC",  
+                                                        "LPV1_ring",  "LPV2_ring",  "RPV1_ring",  "RPV2_ring",  "LAA_ring",  "SVC_ring",  "IVC_ring",  
+                                                        "DELETE"};
 const QString FourChamberView::LABELS_FILE = "segmentation_labels.json";
-const QString FourChamberView::SEGMENTATION_STEPS = "steps.json";
 
 std::vector<LabelsType> LabelsTypeRange(LabelsType begin, LabelsType end) {
     std::vector<LabelsType> result;
@@ -142,6 +145,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_loaddicom, SIGNAL(clicked()), this, SLOT(LoadDICOM()));
     connect(m_Controls.button_origin_spacing, SIGNAL(clicked()), this, SLOT(GetOriginSpacing()));
     connect(m_Controls.button_segment_image, SIGNAL(clicked()), this, SLOT(SegmentImgs()));
+    connect(m_Controls.button_define_labels, SIGNAL(clicked()), this, SLOT(UserDefineLabels()));
     connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
     connect(m_Controls.button_corrections_split, SIGNAL(clicked()), this, SLOT(CorrectionGetLabels()));
     connect(m_Controls.button_confirm_labels, SIGNAL(clicked()), this, SLOT(CorrectionConfirmLabels()));
@@ -158,6 +162,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     m_Controls.button_loaddicom->setVisible(false);
     m_Controls.button_origin_spacing->setVisible(false);
     m_Controls.button_segment_image->setVisible(false);
+    m_Controls.button_define_labels->setVisible(false);
 
     m_Controls.button_select_pts->setVisible(false);
     m_Controls.button_select_pts_a->setVisible(false);
@@ -180,7 +185,6 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     carpless = true;
 
     fourchTools = std::unique_ptr<CemrgFourChamberTools>(new CemrgFourChamberTools());
-    fourchTools->SetDebugOn();
     meshing_parameters = M3DParameters();
     vfibres_parameters = VentricularFibresParams();
 }
@@ -237,7 +241,8 @@ void FourChamberView::SetWorkingFolder(){
     m_Controls.button_loaddicom->setVisible(true);
     m_Controls.button_origin_spacing->setVisible(true);
     m_Controls.button_segment_image->setVisible(true);
-    
+    m_Controls.button_define_labels->setVisible(true);
+
     // m_Controls.button_uvcs->setEnabled(!carpless);
     // m_Controls.button_ventfibres->setEnabled(!carpless);
     // m_Controls.button_simset->setEnabled(!carpless);
@@ -348,19 +353,10 @@ void FourChamberView::GetOriginSpacing() {
 }
 
 void FourChamberView::SegmentImgs() {
-    QString stepsPath = Path(SDIR.SEG) + "/" + FourChamberView::SEGMENTATION_STEPS;
-    bool steps_file_found = false;
-
     int reply_load = Ask("Question", "Do you have a segmentation to load?");
-    int reply_steps = QMessageBox::No;
-        QString path = "";
+    QString path = "";
     if (reply_load == QMessageBox::Yes) {
-        path = QFileDialog::getOpenFileName(NULL, "Open Segmentation File", StdStringPath(SDIR.SEG).c_str(), QmitkIOUtil::GetFileOpenFilterString());
-        // find, navigate, or create steps file
-        // steps_file_found = CheckForExistingFile(Path(SDIR.SEG), FourChamberView::SEGMENTATION_STEPS);
-        // if (steps_file_found) {
-        //     reply_steps = Ask("Segmentation Steps File Found", "Do you want to load the segmentation file up to the latest step?");
-        // }  
+        path = QFileDialog::getOpenFileName(NULL, "Open Segmentation File", StdStringPath(SDIR.SEG).c_str(), QmitkIOUtil::GetFileOpenFilterString()); 
 
     } else if (reply_load == QMessageBox::No) {
         Inform("Attention", "Creating Multilabel Segmentation From CT data.\nSelect DICOM folder");
@@ -400,16 +396,7 @@ void FourChamberView::SegmentImgs() {
 
     if (!ArrayEqual(seg_spacing, spacing, 3)){
         segmentation->SetSpacing(mitk_spacing);
-    }
-
-    if (reply_steps == QMessageBox::Yes) { 
-        MITK_INFO << "Loading steps.json file";
-        fourchTools->NavigateToStep(stepsPath);
-        fourchTools->UpdateCurrentImage();
-    } else {
-        fourchTools->UpdateSegmentationStep(segmentation);
-    }
-    fourchTools->SaveSegmentationStage(stepsPath);   
+    }  
 
     QFileInfo fi(path);
     try {
@@ -423,6 +410,14 @@ void FourChamberView::SegmentImgs() {
         MITK_ERROR << "Exception caught: " << e.GetDescription();
         CemrgCommonUtils::AddToStorage(segmentation, fi.baseName().toStdString(), this->GetDataStorage());
     }
+
+}
+
+void FourChamberView::UserDefineLabels() {
+    if (!RequestProjectDirectoryFromUser()) return ;
+
+    bool userInputAccepted = UserSelectDefineLabels();
+
 
 }
 
@@ -900,8 +895,6 @@ void FourChamberView::CorrectionConfirmLabels() {
         userLabels.LabelInfoLists(labelKeys, labelsValues, labelsTypes);
         json_segmentation = CemrgCommonUtils::CreateJSONObject(labelKeys, labelsValues, labelsTypes);
 
-        fourchTools->UpdateChosenLabels(userLabels);
-
         CemrgCommonUtils::WriteJSONFile(json_segmentation, Path(SDIR.SEG), FourChamberView::LABELS_FILE);
 
     } else {
@@ -982,7 +975,7 @@ void FourChamberView::CorrectionIdLabels(int index) {
                 } else if (deleteCurrentLabel) {
                     m_Controls.combo_corrections_id->removeItem(index);
                     multilabelUtils->RemoveLabel((mitk::Image::Pointer) mlseg, label);
-                    mitk::IOUtil::Save(mlseg, StdStringPath(SDIR.SEG + "/" + sname.Qs1Nii()));
+                    mitk::IOUtil::Save(mlseg, StdStringPath(SDIR.SEG + "/seg_corrected.nrrd"));
 
                     CemrgCommonUtils::UpdateFromStorage(mlseg, nodes[0]->GetName(), this->GetDataStorage());
 
@@ -997,7 +990,7 @@ void FourChamberView::CorrectionIdLabels(int index) {
                     userLabels.SetLabelFromString(pickedLabelName.toStdString(), userLabel);
 
                     mlseg->GetLabel(label)->SetName(pickedLabelName.toStdString());
-                    mitk::IOUtil::Save(mlseg, StdStringPath(SDIR.SEG + "/" + sname.Qs1Nii()));
+                    mitk::IOUtil::Save(mlseg, StdStringPath(SDIR.SEG + "/seg_corrected.nrrd"));
                 }
             }
             MITK_INFO(userInputsAccepted) << "User inputs accepted";
@@ -1099,48 +1092,13 @@ void FourChamberView::SelectPointsCylinders() {
         UpdatePointsIndexFile(json_points);
         m_Controls.button_select_pts_a->setText("Run Scripts for Cylinders");
     } else {
-        // Run cylinders script
-        Inform("Attention", "Running Scripts for Cylinders");
         if (!fourchTools->CylindersSet()) {
             fourchTools->SetCylinders(json_points);
         }
+        // Run cylinders script
+        Inform("Attention", "Running Scripts for Cylinders");
 
-        QString svcPath = Path(SDIR.SEG + "/SVC.nii");
-        QString ivcPath = Path(SDIR.SEG + "/IVC.nii");
-        QString aortaPath = Path(SDIR.SEG + "/aorta_slicer.nii");
-        QString pArtPath = Path(SDIR.SEG + "/PArt_slicer.nii");
-
-
-        int slicerRadius = 10, slicerHeight = 30;
-
-        // start here 
-        mitk::Image::Pointer cylSvc = fourchTools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, svcPath);
-        mitk::Image::Pointer cylIvc = fourchTools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, ivcPath);
-
-        slicerRadius = 30;
-        slicerHeight = 2;
-        mitk::Image::Pointer cylAo = fourchTools->Cylinder(seg, "Ao", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, aortaPath);
-        mitk::Image::Pointer cylPArt = fourchTools->Cylinder(seg, "PArt", slicerRadius, slicerHeight, ManualPoints::CYLINDERS, pArtPath);
-
-        if (!cylSvc || !cylIvc) {
-            Warn("Attention - Missing Cylinders", "Cylinders for SVC and IVC were not created. Check LOG.");
-            return;
-        }
-        
-        std::vector<mitk::Image::Pointer> images;
-        images.push_back(seg);
-        images.push_back(cylSvc);
-        images.push_back(cylIvc);
-        int RspvLabel = 10, SvcLabel = 13, IvcLabel = 14; // check values based on image and user choices
-
-        mitk::Image::Pointer s2a = fourchTools->CreateSvcIvc(images, RspvLabel, SvcLabel, IvcLabel);
-        fourchTools->UpdateSegmentationStep(s2a);
-
-        UpdateDataManager(s2a, fourchTools->StepName(), nodes[0]);
-
-        Inform("Success", "Created SVC/IVC Cylinders correctly.");
-        m_Controls.button_select_pts_a->setEnabled(false);
-
+        // create fourchCmd object, define bits and run container from method
     }
 }
 
@@ -1169,40 +1127,12 @@ void FourChamberView::SelectPointsSlicers() {
         UpdatePointsIndexFile(json_points);
         m_Controls.button_select_pts_b->setText("Run Scripts for Slicers");
     } else {
-        // Run Slicers script
-        Inform("Attention", "Running Scripts for Slicers");
         if (!fourchTools->SlicersSet()) {
             fourchTools->SetSlicers(json_points);
         }
-
-        QString svcSlicerPath = Path(SDIR.SEG + "/SVC_slicer.nii");
-        QString ivcSlicerPath = Path(SDIR.SEG + "/IVC_slicer.nii");
-
-        int slicerRadius = 30, slicerHeight = 2;
-
-        mitk::Image::Pointer sliSvc = fourchTools->Cylinder(seg, "SVC", slicerRadius, slicerHeight, ManualPoints::SLICERS, svcSlicerPath);
-        mitk::Image::Pointer sliIvc = fourchTools->Cylinder(seg, "IVC", slicerRadius, slicerHeight, ManualPoints::SLICERS, ivcSlicerPath);
-
-        if (!sliSvc || !sliIvc) {
-            Warn("Attention - Missing Slicers", "Slicers for SVC and IVC were not created. Check LOG.");
-            return;
-        }
-        mitk::Image::Pointer aortaSlicer = mitk::IOUtil::Load<mitk::Image>(StdStringPath(SDIR.SEG + "/aorta_slicer.nii"));
-        mitk::Image::Pointer PArtSlicer = mitk::IOUtil::Load<mitk::Image>(StdStringPath(SDIR.SEG + "/PArt_slicer.nii"));
-
-        std::vector<mitk::Image::Pointer> images;
-        MITK_INFO << "Current step: " + fourchTools->StepName();
-        fourchTools->UpdateCurrentImage(); 
-        images.push_back(fourchTools->GetCurrentImage()); // seg_s2a
-        images.push_back(aortaSlicer); 
-        images.push_back(PArtSlicer);
-        images.push_back(sliSvc);
-        images.push_back(sliIvc);
-
-        mitk::Image::Pointer s2f = fourchTools->CropSvcIvc(images);
-
-        UpdateDataManager(s2f, fourchTools->StepName(), nodes[0]);
-        m_Controls.button_select_pts_b->setEnabled(false);
+        // Run Slicers script
+        Inform("Attention", "Running Scripts for Slicers");
+        
     }
 }
 
@@ -1236,7 +1166,8 @@ void FourChamberView::SelectPointsValvePlains(){
         }
         // Run Valve Plains script
         Inform("Attention", "Running Scripts for Valve Plains");
-        m_Controls.button_select_pts_c->setEnabled(false);
+
+        // create fourchCmd object, define bits and run container from method
     }
 }
 
@@ -1279,7 +1210,7 @@ void FourChamberView::SetJsonPointsFromIndex(QJsonObject json) {
 }
 
 void FourChamberView::UpdatePointsIndexFile(QJsonObject json) {
-    bool indexFileExists = CheckForExistingFile(directory, FourChamberView::POINTS_FILE_INDEX);
+    bool indexFileExists = CheckForExistingFile(Path(SDIR.SEG), FourChamberView::POINTS_FILE_INDEX);
     QJsonObject points_index;
     if (!indexFileExists) {
         QStringList pt_keys = SegPointIds.GetPointLabelOptions(ManualPoints::CYLINDERS);
@@ -1290,7 +1221,7 @@ void FourChamberView::UpdatePointsIndexFile(QJsonObject json) {
         InitialiseQStringListsFromSize(pt_keys.size(), values, types);
         points_index = CemrgCommonUtils::CreateJSONObject(pt_keys, values, types);
     } else {
-        points_index = CemrgCommonUtils::ReadJSONFile(directory, FourChamberView::POINTS_FILE_INDEX);
+        points_index = CemrgCommonUtils::ReadJSONFile(Path(SDIR.SEG), FourChamberView::POINTS_FILE_INDEX);
     }
 
     std::unique_ptr<CemrgMultilabelSegmentationUtils> segUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
@@ -1311,7 +1242,7 @@ void FourChamberView::UpdatePointsIndexFile(QJsonObject json) {
         points_index[key] = CemrgCommonUtils::CreateJSONArrayUInt(index);
     }
 
-    CemrgCommonUtils::WriteJSONFile(points_index, directory, FourChamberView::POINTS_FILE_INDEX);
+    CemrgCommonUtils::WriteJSONFile(points_index, Path(SDIR.SEG), FourChamberView::POINTS_FILE_INDEX);
 }
 
 void FourChamberView::ReloadJsonPoints(){
@@ -1413,7 +1344,7 @@ void FourChamberView::UpdateDataManager(mitk::Image::Pointer segmentation, std::
         mlseg->Modified();
 
         if (confirmLabels) {
-            for (LabelsType ltt : LabelsTypeRange(LabelsType::BLOODPOOL, LabelsType::LAA)) {
+            for (LabelsType ltt : LabelsTypeRange(LabelsType::LV_BP, LabelsType::LAA)) {
                 std::cout << "Label: " << userLabels.Get(ltt) << " Name: " << userLabels.LabelName(ltt) << '\n';
                 mlseg->GetLabel(userLabels.Get(ltt))->SetName(userLabels.LabelName(ltt));
             }
@@ -1613,7 +1544,60 @@ QString FourChamberView::GetPointTypeString(ManualPoints mpt) {
     return res;
 }
 
-// User Select Functions 
+// User Select Functions
+
+bool FourChamberView::UserSelectDefineLabels() {
+    QDialog *inputs = new QDialog(0, 0);
+    bool userInputAccepted = false;
+    m_labels.setupUi(inputs);
+
+    connect(m_labels.buttonBox, SIGNAL(accepted()), inputs, SLOT(accept()));
+    connect(m_labels.buttonBox, SIGNAL(rejected()), inputs, SLOT(reject()));
+
+    int dialogCode = inputs->exec();
+    if (dialogCode == QDialog::Accepted) {
+        HeartLabels hl;
+        QStringList keys = hl.GetKeys();
+        foreach (QString key, keys) {
+            QString real_key = "line_" + key.left(key.size() - 6); // removing '_label'
+            QLineEdit* lineEdit = inputs->findChild<QLineEdit*>(real_key);
+            if (lineEdit) {
+                bool ok;
+                int foundLabel = lineEdit->text().toInt(&ok);
+                if (ok) {
+                    std::cout << "Label: " << key.toStdString() << " Value: " << foundLabel << '\n';
+                    hl.SetLabel(key, foundLabel);
+                }
+            } else {
+                std::cout << "lineEdit not found: " << real_key << "\n";
+            }
+        }
+
+        ThicknessInfo ti;
+        foreach (QString key, ti.GetSimpleKeys()) {
+            QString ui_key = "line_" + key;
+            if (ui_key.contains("_multiplier")) {
+                ui_key = ui_key.left(ui_key.size() - 11); // removing '_multiplier'
+            }
+            QLineEdit* lineEdit = inputs->findChild<QLineEdit*>(ui_key);
+            if (lineEdit) {
+                bool ok;
+                double foundValue = lineEdit->text().toDouble(&ok);
+                if (ok) {
+                    std::cout << "Label: " << key.toStdString() << " Value: " << foundValue << '\n';
+                    ti.SetMultiplierKey(key, foundValue);
+                }
+            } else {
+                std::cout << "lineEdit not found: " << ui_key << "\n";
+            }
+        }
+        ti.UpdateValues2();
+        CemrgCommonUtils::WriteJSONFile(hl.UniteJson(ti.GetJson()), Path(SDIR.SEG), FourChamberView::LABELS_FILE);
+        userInputAccepted = true;
+    }
+    return userInputAccepted;
+}
+
 bool FourChamberView::UserSelectMeshtools3DParameters(QString pre_input_path){
     bool userAccepted = false;
     QDialog* inputs = new QDialog(0, 0);
@@ -1697,7 +1681,6 @@ bool FourChamberView::UserSelectMeshtools3DParameters(QString pre_input_path){
 
     return userAccepted;
 }
-
 bool FourChamberView::UserSelectIdentifyLabels(int index, unsigned int label, QColor qc) {
     QDialog *inputs = new QDialog(0, 0);
     bool userInputAccepted = false;

@@ -71,6 +71,16 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="button_define_labels">
+     <property name="styleSheet">
+      <string notr="true"> color: rgb(132, 174, 235);</string>
+     </property>
+     <property name="text">
+      <string>Define/Change Labels</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="button_prepseg">
      <property name="styleSheet">
       <string notr="true">text-align: left;</string>

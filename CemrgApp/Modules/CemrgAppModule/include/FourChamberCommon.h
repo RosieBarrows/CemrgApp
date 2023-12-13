@@ -5,25 +5,72 @@
 #include <QStringList>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QMap>
+#include <QFile>
+
+#include "CemrgCommonUtils.h"
 
 enum ManualPoints { CYLINDERS, SLICERS, VALVE_PLAINS };
-enum LabelsType {  
+// enum LabelsType {  
+//     BACKGROUND = 0,
+//     BLOODPOOL = 1, 
+//     LEFT_VENTRICLE = 2, 
+//     RIGHT_VENTRICLE = 3, 
+//     LEFT_ATRIUM = 4, 
+//     RIGHT_ATRIUM = 5, 
+//     AORTA = 6,
+//     PULMONARY_ARTERY = 7, 
+//     LSPV = 8, 
+//     LIPV = 9, 
+//     RSPV = 10, 
+//     RIPV = 11, 
+//     LAA = 12,
+//     SVC = 13,
+//     IVC = 14
+// };
+
+enum LabelsType {
     BACKGROUND = 0,
-    BLOODPOOL = 1, 
-    LEFT_VENTRICLE = 2, 
-    RIGHT_VENTRICLE = 3, 
-    LEFT_ATRIUM = 4, 
-    RIGHT_ATRIUM = 5, 
-    AORTA = 6,
-    PULMONARY_ARTERY = 7, 
-    LSPV = 8, 
-    LIPV = 9, 
-    RSPV = 10, 
-    RIPV = 11, 
+    LV_BP = 1,
+    LV_myo = 2,
+    RV_BP = 3,
+    LA_BP = 4,
+    RA_BP = 5,
+    Ao_BP = 6,
+    PArt_BP = 7,
+    LPV1 = 8,  // lspv
+    LPV2 = 9,  // lipv
+    RPV1 = 10, // rspv
+    RPV2 = 11, // ripv
     LAA = 12,
     SVC = 13,
-    IVC = 14
+    IVC = 14,
+    LV_neck = 101,
+    RV_myo = 103,
+    LA_myo = 104,
+    RA_myo = 105,
+    Ao_wall = 106,
+    PArt_wall = 107,
+    MV = 201,
+    TV = 202,
+    AV = 203,
+    PV = 204,
+    plane_LPV1 = 205,
+    plane_LPV2 = 206,
+    plane_RPV1 = 207,
+    plane_RPV2 = 208,
+    plane_LAA = 209,
+    plane_SVC = 210,
+    plane_IVC = 211,
+    LPV1_ring = 221,
+    LPV2_ring = 222,
+    RPV1_ring = 223,
+    RPV2_ring = 224,
+    LAA_ring = 225,
+    SVC_ring = 226,
+    IVC_ring = 227
 };
+
 class SegmentationLabels {
     private:
         std::unordered_map<LabelsType, unsigned int> labelMap;
@@ -34,25 +81,49 @@ class SegmentationLabels {
             }
         }
 
-
     public:
         SegmentationLabels() {
             labelMap = {
                 {BACKGROUND, 0},
-                {BLOODPOOL, 1},
-                {LEFT_VENTRICLE, 2},
-                {RIGHT_VENTRICLE, 3},
-                {LEFT_ATRIUM, 4},
-                {RIGHT_ATRIUM, 5},
-                {AORTA, 6},
-                {PULMONARY_ARTERY, 7},
-                {LSPV, 8},
-                {LIPV, 9},
-                {RSPV, 10},
-                {RIPV, 11},
-                {LAA, 12},
-                {SVC, 13},
-                {IVC, 14}};
+                {LV_BP,  1},
+                {LV_myo,  2},
+                {RV_BP,  3},
+                {LA_BP,  4},
+                {RA_BP,  5},
+                {Ao_BP,  6},
+                {PArt_BP,  7},
+                {LPV1,  8},
+                {LPV2,  9},
+                {RPV1,  10},
+                {RPV2,  11},
+                {LAA,  12},
+                {SVC,  13},
+                {IVC,  14},
+                {LV_neck,  101},
+                {RV_myo,  103},
+                {LA_myo,  104},
+                {RA_myo,  105},
+                {Ao_wall,  106},
+                {PArt_wall,  107},
+                {MV,  201},
+                {TV,  202},
+                {AV,  203},
+                {PV,  204},
+                {plane_LPV1,  205},
+                {plane_LPV2,  206},
+                {plane_RPV1,  207},
+                {plane_RPV2,  208},
+                {plane_LAA,  209},
+                {plane_SVC,  210},
+                {plane_IVC,  211},
+                {LPV1_ring,  221},
+                {LPV2_ring,  222},
+                {RPV1_ring,  223},
+                {RPV2_ring,  224},
+                {LAA_ring,  225},
+                {SVC_ring,  226},
+                {IVC_ring,  227}
+            };
         }
 
         SegmentationLabels(const SegmentationLabels& other) {
@@ -101,22 +172,46 @@ class SegmentationLabels {
 
         std::string LabelName(LabelsType labelType) const {
             switch (labelType) {
-            case BACKGROUND: return "BACKGROUND";
-            case BLOODPOOL: return "BLOODPOOL";
-            case LEFT_VENTRICLE: return "LEFT_VENTRICLE";
-            case RIGHT_VENTRICLE: return "RIGHT_VENTRICLE";
-            case LEFT_ATRIUM: return "LEFT_ATRIUM";
-            case RIGHT_ATRIUM: return "RIGHT_ATRIUM";
-            case AORTA: return "AORTA";
-            case PULMONARY_ARTERY: return "PULMONARY_ARTERY";
-            case LSPV: return "LSPV";
-            case LIPV: return "LIPV";
-            case RSPV: return "RSPV";
-            case RIPV: return "RIPV";
-            case LAA: return "LAA";
-            case SVC: return "SVC";
-            case IVC: return "IVC";
-            default: return "UNKNOWN";
+                case BACKGROUND: return "BACKGROUND"; break; 
+                case LV_BP: return "LV_BP"; break; 
+                case LV_myo: return "LV_myo"; break; 
+                case RV_BP: return "RV_BP"; break; 
+                case LA_BP: return "LA_BP"; break; 
+                case RA_BP: return "RA_BP"; break; 
+                case Ao_BP: return "Ao_BP"; break; 
+                case PArt_BP: return "PArt_BP"; break; 
+                case LPV1: return "LPV1"; break; 
+                case LPV2: return "LPV2"; break; 
+                case RPV1: return "RPV1"; break; 
+                case RPV2: return "RPV2"; break; 
+                case LAA: return "LAA"; break; 
+                case SVC: return "SVC"; break; 
+                case IVC: return "IVC"; break; 
+                case LV_neck: return "LV_neck"; break; 
+                case RV_myo: return "RV_myo"; break; 
+                case LA_myo: return "LA_myo"; break; 
+                case RA_myo: return "RA_myo"; break; 
+                case Ao_wall: return "Ao_wall"; break; 
+                case PArt_wall: return "PArt_wall"; break; 
+                case MV: return "MV"; break; 
+                case TV: return "TV"; break; 
+                case AV: return "AV"; break; 
+                case PV: return "PV"; break; 
+                case plane_LPV1: return "plane_LPV1"; break; 
+                case plane_LPV2: return "plane_LPV2"; break; 
+                case plane_RPV1: return "plane_RPV1"; break; 
+                case plane_RPV2: return "plane_RPV2"; break; 
+                case plane_LAA: return "plane_LAA"; break; 
+                case plane_SVC: return "plane_SVC"; break; 
+                case plane_IVC: return "plane_IVC"; break; 
+                case LPV1_ring: return "LPV1_ring"; break; 
+                case LPV2_ring: return "LPV2_ring"; break; 
+                case RPV1_ring: return "RPV1_ring"; break; 
+                case RPV2_ring: return "RPV2_ring"; break; 
+                case LAA_ring: return "LAA_ring"; break; 
+                case SVC_ring: return "SVC_ring"; break; 
+                case IVC_ring: return "IVC_ring"; break; 
+                default: return "BACKGROUND";
             }
         }
 
@@ -204,57 +299,6 @@ struct FourChamberSubfolders {
     QStringList Subdirectories(){
          return (QStringList() << SEG << MESH << UVC << UVC_LA << UVC_RA << AFIB << PRESIM << SIMS << PAR);
     }
-};
-struct FourChamberSegmentationNames {
-    QString _base, _s1, _s2a, _s2b, _s2c, _s2d, _s2e, _s2f;
-    FourChamberSegmentationNames()
-        :_base(""), 
-         _s1("seg_corrected"), 
-         _s2a("seg_s2a"),
-         _s2b("seg_s2b"),
-         _s2c("seg_s2c"),
-         _s2d("seg_s2d"),
-         _s2e("seg_s2e"),
-         _s2f("seg_s2f") {}
-    
-    void SetBase(QString name) { _base = name; }
-    
-    QString QGetBase(QString ext="") { return _base + ext; }
-    QString QGetS1(QString ext="") { return _s1 + ext; }
-    QString QGetS2A(QString ext="") { return _s2a + ext; }
-    QString QGetS2B(QString ext="") { return _s2b + ext; }
-    QString QGetS2C(QString ext="") { return _s2c + ext; }
-    QString QGetS2D(QString ext="") { return _s2d + ext; }
-    QString QGetS2E(QString ext="") { return _s2e + ext; }
-    QString QGetS2F(QString ext="") { return _s2f + ext; }
-
-    QString QbaseNii() { return QGetBase(".nii"); }
-    QString Qs1Nii() { return QGetS1(".nii"); }
-    QString Qs2aNii() { return QGetS2A(".nii"); } 
-    QString Qs2bNii() { return QGetS2B(".nii"); } 
-    QString Qs2cNii() { return QGetS2C(".nii"); } 
-    QString Qs2dNii() { return QGetS2D(".nii"); } 
-    QString Qs2eNii() { return QGetS2E(".nii"); } 
-    QString Qs2fNii() { return QGetS2F(".nii"); } 
-
-    std::string base() { return QGetBase().toStdString(); }
-    std::string s1() { return QGetS1().toStdString(); }
-    std::string s2a() { return QGetS2A().toStdString(); } 
-    std::string s2b() { return QGetS2B().toStdString(); } 
-    std::string s2c() { return QGetS2C().toStdString(); } 
-    std::string s2d() { return QGetS2D().toStdString(); } 
-    std::string s2e() { return QGetS2E().toStdString(); } 
-    std::string s2f() { return QGetS2F().toStdString(); } 
-
-    std::string base_nii() { return QbaseNii().toStdString(); }
-    std::string s1_nii() { return Qs1Nii().toStdString(); } 
-    std::string s2a_nii() { return Qs2aNii().toStdString(); }
-    std::string s2b_nii() { return Qs2bNii().toStdString(); }
-    std::string s2c_nii() { return Qs2cNii().toStdString(); }
-    std::string s2d_nii() { return Qs2dNii().toStdString(); }
-    std::string s2e_nii() { return Qs2eNii().toStdString(); }
-    std::string s2f_nii() { return Qs2fNii().toStdString(); }
-
 };
 
 struct ManualPointsStruct {
@@ -580,6 +624,127 @@ public:
         if (key == "Ao_WT_TIP") return Ao_WT_TIP;
         if (key == "PArt_WT_TIP") return PArt_WT_TIP;
         return Ao_WT_TIP; // Default value, you can adjust this as needed
+    }
+};
+
+struct ThicknessInfo { 
+    QJsonObject json;
+    QStringList keys1, values1, keys2, values2;
+    ThicknessInfo() {
+        QStringList types;
+        keys1 << "scale_factor" << "valve_WT_multiplier" << "valve_WT_svc_ivc_multiplier"
+             << "ring_thickness_multiplier"
+             << "LV_neck_WT_multiplier" << "RV_WT_multiplier" << "LA_WT_multiplier" 
+             << "RA_WT_multiplier" << "Ao_WT_multiplier" << "PArt_WT_multiplier";
+        keys2 << "valve_WT" << "valve_WT_svc_ivc"
+             << "ring_thickness"
+             << "LV_neck_WT" << "RV_WT" << "LA_WT" << "RA_WT" << "Ao_WT" << "PArt_WT";
+        values1 << "2.50978817388" << "4" << "4"
+               << "4"
+               << "2.00" << "3.50" << "2.00" << "2.00" << "2.00" << "2.00";
+        
+        UpdateValues2();
+    }
+
+    void UpdateValues2(bool updateJson = true) {
+        QStringList keys = keys1;
+        QStringList values = values1;
+        QStringList types;
+
+        for (int ix = 0; ix < keys2.size(); ix++) {
+            QString valuePrint = QString::number(values1.at(0).toDouble() * values1.at(ix + 1).toDouble());
+            values2 << valuePrint;
+            std::cout << "Value: " << valuePrint.toStdString() << '\n';
+        }
+        keys.append(keys2);
+        values.append(values2);
+
+        for (int ix = 0; ix < keys.size(); ix++){
+            types << "float";
+        }
+        if (updateJson) {
+            json = CemrgCommonUtils::CreateJSONObject(keys, values, types);
+        }
+        // reset keys1 and values1
+        keys1 = json.keys();
+        keys1.mid(0, 10);
+        values1 = QStringList();
+        for (int ix = 0; ix < keys1.size(); ix++) {
+            values1 << QString::number(json[keys1.at(ix)].toDouble());
+        }
+    }
+
+
+    QStringList GetSimpleKeys() {
+        return keys1;
+    }
+
+    void SetMultiplierKey(QString key, double value, bool updateJson = true) {
+        QString keyToUse = key;
+        if (!keyToUse.contains("scale_factor")) {
+            keyToUse += "_multiplier";
+        }
+        json[keyToUse] = value;
+        UpdateValues2(updateJson);
+    }
+
+    QJsonObject GetJson() {
+        return json;
+    }
+};
+
+struct HeartLabels {
+    QJsonObject json;
+    HeartLabels() {
+        QStringList keys, values, types;
+        keys <<"LV_BP_label" <<"LV_myo_label" <<"RV_BP_label" <<"LA_BP_label" <<"RA_BP_label" <<"Ao_BP_label" <<"PArt_BP_label";
+        keys <<"LPV1_label" << "LPV2_label" << "RPV1_label" << "RPV2_label" << "LAA_label" << "SVC_label" << "IVC_label";
+        keys <<"LV_neck_label" << "RV_myo_label" << "LA_myo_label" << "RA_myo_label" << "Ao_wall_label" << "PArt_wall_label";
+        keys <<"MV_label" << "TV_label" << "AV_label" << "PV_label";
+        keys <<"plane_LPV1_label" <<"plane_LPV2_label" <<"plane_RPV1_label" <<"plane_RPV2_label" <<"plane_LAA_label" <<"plane_SVC_label" <<"plane_IVC_label";
+        keys <<"LPV1_ring_label" << "LPV2_ring_label" << "RPV1_ring_label" << "RPV2_ring_label" << "LAA_ring_label" << "SVC_ring_label" << "IVC_ring_label";
+        values << "1" << "2" << "3" << "4" << "5" << "6" << "7" << "8"
+               << "9" << "10" << "11" << "12" << "13" << "14" << "101" << "103"
+               << "104" << "105" << "106" << "107" << "201" << "202" << "203" << "204"
+               << "205" << "206" << "207" << "208" << "209" << "210" << "211" << "221"
+               << "222" << "223" << "224" << "225" << "226" << "227";
+        for (int ix = 0; ix < keys.size(); ix++) {
+            types << "int";
+        }
+
+        json = CemrgCommonUtils::CreateJSONObject(keys, values, types);
+    }
+
+    int GetLabel(QString key) {
+        return json[key].toInt();
+    }
+
+    void SetLabel(QString key, int value) {
+        json[key] = value;
+    }
+
+    QStringList GetKeys() {
+        return json.keys();
+    }
+
+    void Save(QString dir, QString name) {
+        QString path = dir + "/" + name;
+        if (QFile::exists(path)) {
+            // bool CemrgCommonUtils::ModifyJSONFile(QString dir, QString fname, QString key, QString value, QString type) {
+            foreach (QString key, json.keys()) {
+                CemrgCommonUtils::ModifyJSONFile(dir, name, key, QString::number(json[key].toDouble()), "int");
+            }
+        } else {
+            CemrgCommonUtils::WriteJSONFile(json, dir, name);
+        }
+    }
+
+    QJsonObject UniteJson(QJsonObject other) {
+        QJsonObject newJson = json;
+        for (const QString &key : other.keys()) {
+            newJson[key] = other[key];
+        }
+        return newJson;
     }
 };
 

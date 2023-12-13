@@ -117,6 +117,7 @@ public:
     void InitialiseQStringListsFromSize(int num, QStringList &values, QStringList &types);
 
     // User Select Functions
+    bool UserSelectDefineLabels();
     bool UserSelectMeshtools3DParameters(QString pre_input_path);
     bool UserSelectIdentifyLabels(int index, unsigned int label, QColor qc);
     bool UserSelectVFibresParameters(QString pre_input_path);
@@ -142,6 +143,7 @@ protected slots:
     void LoadDICOM();
     void GetOriginSpacing();
     void SegmentImgs();
+    void UserDefineLabels();
     void ExtractSurfaces();
     void SelectLARALandmarks();
     void CalculateUVCs();
@@ -194,7 +196,6 @@ private:
     VentricularFibresParams vfibres_parameters;
     
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
-    FourChamberSegmentationNames sname; // helps set access segmentation names
     ManualPointsStruct SegPointIds; // keeps track of the segmentation points
     double origin[3], spacing[3];
 
