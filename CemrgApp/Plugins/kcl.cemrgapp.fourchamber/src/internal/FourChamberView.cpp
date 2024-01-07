@@ -418,6 +418,9 @@ void FourChamberView::UserDefineLabels() {
 
     bool userInputAccepted = UserSelectDefineLabels();
 
+    if (userInputAccepted) {
+        Inform("Information", "Labels defined. Press OK to continue.");
+    }
 
 }
 
@@ -1068,19 +1071,7 @@ void FourChamberView::SelectPoints() {
 }
 
 void FourChamberView::SelectPointsCylinders() {
-
-    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
-    if (nodes.size() != 1) {
-        Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
-        return;
-    }//_if
-
-    mitk::BaseData::Pointer data = nodes[0]->GetData();
-    if (!data) return; 
-
-    mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
-    if (!seg) return;
-    
+    MITK_INFO << "SelectPointsCylinders";
     if (m_Controls.button_select_pts_a->text().contains("Check Cylinder")) {
         if (!CheckPointsInJsonFile(ManualPoints::CYLINDERS)) {
             Warn("Attention - Missing Points", "All points need to be defined before running the script.");
@@ -1092,30 +1083,85 @@ void FourChamberView::SelectPointsCylinders() {
         UpdatePointsIndexFile(json_points);
         m_Controls.button_select_pts_a->setText("Run Scripts for Cylinders");
     } else {
+        
+        QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+        if (nodes.size() != 1) {
+            Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
+            return;
+        }//_if
+
+        mitk::BaseData::Pointer data = nodes[0]->GetData();
+        if (!data) return; 
+
+        mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (!seg) return;
+        
         if (!fourchTools->CylindersSet()) {
             fourchTools->SetCylinders(json_points);
         }
         // Run cylinders script
-        Inform("Attention", "Running Scripts for Cylinders");
-
+        MITK_INFO << "Running Scripts for Cylinders";
+        
         // create fourchCmd object, define bits and run container from method
+        std::unique_ptr<CemrgFourChamberCmd> fourchCmd = std::unique_ptr<CemrgFourChamberCmd>(new CemrgFourChamberCmd());
+        QString heartFolder = Path(SDIR.SEG);
+
+        cp(Path(FourChamberView::POINTS_FILE_INDEX), heartFolder + "/" + FourChamberView::POINTS_FILE_INDEX);
+        cp(Path(FourChamberView::GEOMETRY_FILE), heartFolder + "/" + FourChamberView::GEOMETRY_FILE);
+
+        if (!QFile::exists(heartFolder + "/" + FourChamberView::LABELS_FILE)) {
+            UserSelectDefineLabels();
+        }
+
+        fourchCmd->SetBaseDirectory(heartFolder);
+        fourchCmd->SetPointsFile(FourChamberView::POINTS_FILE_INDEX);
+        fourchCmd->SetOriginSpacingFile(FourChamberView::GEOMETRY_FILE);
+        fourchCmd->SetLabelsFile(FourChamberView::LABELS_FILE);
+
+        QString seg_corrected = "seg_corrected.nrrd";
+        QString seg_end = "seg_s2a.nrrd";
+
+        bool process = true;
+        if (QFile::exists(heartFolder + "/" + seg_corrected)) {
+            int reply = Ask("Question", "Segmentation [" +seg_corrected.toStdString()+ "] already exists.\n\n Process again?");
+            process = (reply == QMessageBox::Yes);
+        }
+
+        if (process) {
+            QString cylindersOutput = fourchCmd->DockerCreateCylinders(seg_corrected);
+            if (cylindersOutput=="ERROR_IN_PROCESSING") {
+                Warn("Error in processing", "Error in create cylinders");
+                return;
+            }
+        }
+
+        process = true;
+        if (QFile::exists(heartFolder + "/" + seg_end)) {
+            int reply = Ask("Question", "Segmentation [" +seg_end.toStdString()+ "] already exists.\n\n Process again?");
+            process = (reply == QMessageBox::Yes);
+        }
+
+        QString nextSegmentation = "ERROR_IN_PROCESSING";
+        if (process) {
+            nextSegmentation = fourchCmd->DockerCreateSvcIvc(seg_corrected);
+            if (nextSegmentation=="ERROR_IN_PROCESSING") {
+                Warn("Error in processing", "Error in create SVC/IVC");
+                return;
+            }
+        } else {
+            nextSegmentation = heartFolder + "/" + seg_end; // best guess
+        }
+
+        MITK_INFO << "Loading segmentation ("+seg_end.toStdString()+") from file";
+        mitk::Image::Pointer nextSeg = mitk::IOUtil::Load<mitk::Image>(nextSegmentation.toStdString());
+        UpdateDataManager(nextSeg, seg_end.toStdString(), nodes[0]);
+
+        m_Controls.button_select_pts_a->setEnabled(false);
     }
 }
 
 void FourChamberView::SelectPointsSlicers() {
- 
-    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
-    if (nodes.size() != 1) {
-        Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
-        return;
-    }//_if
-    
-    mitk::BaseData::Pointer data = nodes[0]->GetData();
-    if (!data) return; 
-
-    mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
-    if (!seg) return;
-   
+    MITK_INFO << "SelectPointsSlicers";   
     if (m_Controls.button_select_pts_b->text().contains("Check Slicer")) {
         if (!CheckPointsInJsonFile(ManualPoints::SLICERS)) {
             Warn("Attention - Missing Points", "All points need to be defined before running the script.");
@@ -1127,28 +1173,100 @@ void FourChamberView::SelectPointsSlicers() {
         UpdatePointsIndexFile(json_points);
         m_Controls.button_select_pts_b->setText("Run Scripts for Slicers");
     } else {
+        
+        QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+        if (nodes.size() != 1) {
+            Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
+            return;
+        }//_if
+
+        mitk::BaseData::Pointer data = nodes[0]->GetData();
+        if (!data) return; 
+
+        mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (!seg) return;
+        
         if (!fourchTools->SlicersSet()) {
             fourchTools->SetSlicers(json_points);
         }
         // Run Slicers script
-        Inform("Attention", "Running Scripts for Slicers");
-        
+        MITK_INFO << "Running Scripts for Slicers";
+
+        // create fourchCmd object, define bits and run container from method
+        std::unique_ptr<CemrgFourChamberCmd> fourchCmd = std::unique_ptr<CemrgFourChamberCmd>(new CemrgFourChamberCmd());
+        QString heartFolder = Path(SDIR.SEG);
+
+        cp(Path(FourChamberView::POINTS_FILE_INDEX), heartFolder + "/" + FourChamberView::POINTS_FILE_INDEX);
+        cp(Path(FourChamberView::GEOMETRY_FILE), heartFolder + "/" + FourChamberView::GEOMETRY_FILE);
+
+        if (!QFile::exists(heartFolder + "/" + FourChamberView::LABELS_FILE)) {
+            UserSelectDefineLabels();
+        }
+
+        fourchCmd->SetBaseDirectory(heartFolder);
+        fourchCmd->SetPointsFile(FourChamberView::POINTS_FILE_INDEX);
+        fourchCmd->SetOriginSpacingFile(FourChamberView::GEOMETRY_FILE);
+        fourchCmd->SetLabelsFile(FourChamberView::LABELS_FILE); 
+
+        bool process = true;
+
+        // mode: slicers
+        QString seg_start = "seg_s2a.nrrd"; 
+        if (!QFile::exists(heartFolder + "/" + seg_start)) {
+            Warn("Attention", "Segmentation [" +seg_start.toStdString()+ "] does not exist.\n\n Please run the script for cylinders first.");
+            return;
+        }
+
+        QString slicersOutput = fourchCmd->DockerCreateSlicers(seg_start);
+        if (slicersOutput=="ERROR_IN_PROCESSING") {
+            Warn("Error in processing", "Error in create slicers");
+            return;
+        }
+
+        // mode: crop
+        process = true;
+        QString seg_crop = "seg_s3p.nrrd"; // output of crop
+        if (QFile::exists(heartFolder + "/" + seg_crop)) {
+            int reply = Ask("Question", "Segmentation [" +seg_crop.toStdString()+ "] already exists.\n\n Process again?");
+            process = (reply == QMessageBox::Yes);
+        }
+
+        if (process) { 
+            QString cropOutput = fourchCmd->DockerCropSvcIvc();
+            if (cropOutput=="ERROR_IN_PROCESSING") {
+                Warn("Error in processing", "Error in crop slicers");
+                return;
+            }
+        }
+
+        // mode: myo
+        process = true;
+        QString seg_myo = "seg_s3p.nrrd";
+        if (QFile::exists(heartFolder + "/" + seg_myo)) {
+            int reply = Ask("Question", "Segmentation [" +seg_myo.toStdString()+ "] already exists.\n\n Process again?");
+            process = (reply == QMessageBox::Yes);
+        }
+
+        QString myoOutput = "ERROR_IN_PROCESSING";
+        if (process) {
+            myoOutput = fourchCmd->DockerCreateMyo();
+            if (myoOutput=="ERROR_IN_PROCESSING") {
+                Warn("Error in processing", "Error in create myo");
+                return;
+            }
+        } else {
+            myoOutput = heartFolder + "/" + seg_myo; // best guess
+        }
+
+        MITK_INFO << "Loading segmentation ("+seg_myo.toStdString()+") from file";
+        mitk::Image::Pointer myoSeg = mitk::IOUtil::Load<mitk::Image>(myoOutput.toStdString());
+        UpdateDataManager(myoSeg, seg_myo.toStdString(), nodes[0]);
+
     }
 }
 
 void FourChamberView::SelectPointsValvePlains(){
 
-    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
-    if (nodes.size() != 1) {
-        Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
-        return;
-    } //_if
-
-    mitk::BaseData::Pointer data = nodes[0]->GetData();
-    if (!data) return; 
-
-    mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
-    if (!seg) return;
 
     if (m_Controls.button_select_pts_c->text().contains("Check Valve Plains")) {
         if (!CheckPointsInJsonFile(ManualPoints::VALVE_PLAINS)) {
@@ -1161,6 +1279,19 @@ void FourChamberView::SelectPointsValvePlains(){
         UpdatePointsIndexFile(json_points);
         m_Controls.button_select_pts_c->setText("Run Scripts for Valve Plains");
     } else {
+        
+        QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+        if (nodes.size() != 1) {
+            Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
+            return;
+        } //_if
+
+        mitk::BaseData::Pointer data = nodes[0]->GetData();
+        if (!data) return; 
+
+        mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (!seg) return;
+        
         if (!fourchTools->ValvePointsSet()) {
             fourchTools->SetValvePoints(json_points);
         }
@@ -1168,10 +1299,45 @@ void FourChamberView::SelectPointsValvePlains(){
         Inform("Attention", "Running Scripts for Valve Plains");
 
         // create fourchCmd object, define bits and run container from method
+        std::unique_ptr<CemrgFourChamberCmd> fourchCmd = std::unique_ptr<CemrgFourChamberCmd>(new CemrgFourChamberCmd());
+        QString heartFolder = Path(SDIR.SEG);
+
+        cp(Path(FourChamberView::POINTS_FILE_INDEX), heartFolder + "/" + FourChamberView::POINTS_FILE_INDEX);
+        cp(Path(FourChamberView::GEOMETRY_FILE), heartFolder + "/" + FourChamberView::GEOMETRY_FILE);
+
+        if (!QFile::exists(heartFolder + "/" + FourChamberView::LABELS_FILE))
+        {
+            UserSelectDefineLabels();
+        }
+
+        fourchCmd->SetBaseDirectory(heartFolder);
+        fourchCmd->SetPointsFile(FourChamberView::POINTS_FILE_INDEX);
+        fourchCmd->SetOriginSpacingFile(FourChamberView::GEOMETRY_FILE);
+        fourchCmd->SetLabelsFile(FourChamberView::LABELS_FILE);
+
+        bool process = true;
+
+        QString seg_myo = "seg_s3p.nrrd";
+        if (QFile::exists(heartFolder + "/" + seg_myo)) {
+            int reply = Ask("Question", "Segmentation [" +seg_myo.toStdString()+ "] already exists.\n\n Process again?");
+            process = (reply == QMessageBox::Yes);
+        }
+
+        QString myoOutput = "ERROR_IN_PROCESSING";
+        if (process) {
+            myoOutput = fourchCmd->DockerCreateMyo();
+            if (myoOutput=="ERROR_IN_PROCESSING") {
+                Warn("Error in processing", "Error in create myo");
+                return;
+            }
+        } else {
+            myoOutput = heartFolder + "/" + seg_myo; // best guess
+        }
     }
 }
 
 bool FourChamberView::CheckPointsInJsonFile(ManualPoints mpt){
+    MITK_INFO << "Checking points in json file";
     // reload json file
     ReloadJsonPoints();
 
@@ -1574,7 +1740,7 @@ bool FourChamberView::UserSelectDefineLabels() {
         }
 
         ThicknessInfo ti;
-        foreach (QString key, ti.GetSimpleKeys()) {
+        foreach (QString key, ti.GetKeys()) {
             QString ui_key = "line_" + key;
             if (ui_key.contains("_multiplier")) {
                 ui_key = ui_key.left(ui_key.size() - 11); // removing '_multiplier'
@@ -1584,14 +1750,12 @@ bool FourChamberView::UserSelectDefineLabels() {
                 bool ok;
                 double foundValue = lineEdit->text().toDouble(&ok);
                 if (ok) {
-                    std::cout << "Label: " << key.toStdString() << " Value: " << foundValue << '\n';
-                    ti.SetMultiplierKey(key, foundValue);
+                    std::cout << "Name: " << key.toStdString() << " Value: " << foundValue << '\n';
+                    ti.SetKey(key, foundValue);
                 }
-            } else {
-                std::cout << "lineEdit not found: " << ui_key << "\n";
-            }
+            } 
         }
-        ti.UpdateValues2();
+        ti.Update();
         CemrgCommonUtils::WriteJSONFile(hl.UniteJson(ti.GetJson()), Path(SDIR.SEG), FourChamberView::LABELS_FILE);
         userInputAccepted = true;
     }

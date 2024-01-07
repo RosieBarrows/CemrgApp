@@ -1126,6 +1126,29 @@ bool CemrgCommonUtils::ModifyJSONFile(QString dir, QString fname, QString key, Q
     return success;
 }
 
+void CemrgCommonUtils::PrintJSON(QJsonObject json, QString title) {
+    MITK_INFO << title.toStdString();
+    std::cout << "----------------------------------------"<< '\n';
+    QStringList keys = json.keys();
+    for (int i = 0; i < keys.size(); i++) {
+        QString key = keys.at(i);
+        QString value = "";
+        if (json[key].isArray()) {
+            QJsonArray array = json[key].toArray();
+            for (int ix = 0; ix < array.size(); ix++) {
+                value += QString::number(array.at(ix).toDouble()) + ", ";
+            }
+        }
+        else
+        {
+            value = json[key].toString();
+        }
+
+        std::cout << key.toStdString() << " : " << value.toStdString() << '\n';
+    }
+    std::cout << "----------------------------------------"<< '\n';
+}
+
 QJsonObject CemrgCommonUtils::CreateJSONObject(QStringList keys_list, QStringList values_list, QStringList types_list) {
     QJsonObject jsonObj;
 

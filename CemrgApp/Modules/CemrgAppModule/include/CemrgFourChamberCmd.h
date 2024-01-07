@@ -78,9 +78,9 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
 
         // Docker calling cemrg/seg-4ch
         inline void SetBaseDirectory(QString directory) { _base_directory = directory; };
-        inline void SetPointsFile(QString filename) { _points_file = filename; }; // only name, not path
-        inline void SetOriginSpacingFile(QString filename) { _origin_spacing_file = filename; }; // only name, not path
-        inline void SetLabelsFile(QString filename) { _labels_file = filename; }; // only name, not path
+        inline void SetPointsFile(QString filename) { _points_file = "/data/" + filename; };                // only name, not path
+        inline void SetOriginSpacingFile(QString filename) { _origin_spacing_file = "/data/" + filename; }; // only name, not path
+        inline void SetLabelsFile(QString filename) { _labels_file = "/data/"+ filename; }; // only name, not path
 
         QString ExecuteSeg4ch(QString mode, QStringList modeArguments, QString expectedOutput);
         QStringList GetArgumentList(QString seg_name = "");
@@ -117,8 +117,9 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
         bool carpless;
 
         QString _path2points = "";
-        QString _points_file = "points.json";
-        QString _origin_spacing_file = "origin_spacing.json";
+        // "/data/" is the path inside the docker container
+        QString _points_file = "/data/points.json";
+        QString _origin_spacing_file = "/data/origin_spacing.json";
         QString _labels_file = "";
         QString _base_directory = "";
 };

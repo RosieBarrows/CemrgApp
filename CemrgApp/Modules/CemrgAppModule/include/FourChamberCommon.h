@@ -517,11 +517,11 @@ public:
         : points(3 * GetNumEnumValues(mpt)), pointsSet(false) {}
 
     double GetPointAt(PointsNamesType ptType, unsigned int index) {
-        return points.at(static_cast<int>(ptType) * 3 + index);
+        return points.at((static_cast<int>(ptType) - offset) * 3 + index);
     }
 
     void SetPointAt(PointsNamesType ptType, unsigned int index, double value) {
-        points.at(static_cast<int>(ptType) * 3 + index) = value;
+        points.at((static_cast<int>(ptType) - offset) * 3 + index) = value;
     }
 
     void SetPoint(PointsNamesType ptType, std::vector<double> value) {
@@ -559,6 +559,7 @@ public:
 protected:
     std::vector<double> points;
     bool pointsSet;
+    int offset;
 
 private: 
     int GetNumEnumValues(ManualPoints mpt) {
@@ -576,7 +577,9 @@ private:
 class CylinderPointsType : public BasePointsType {
 public:
     CylinderPointsType()
-        : BasePointsType(static_cast<int>(PArt3) - static_cast<int>(SVC1) + 1) {} 
+        : BasePointsType(static_cast<int>(PArt3) - static_cast<int>(SVC1) + 1) {
+            offset = static_cast<int>(SVC1);
+        } 
 
     PointsNamesType FromKey(QString key) override {
         if (key == "SVC_1") return SVC1;
@@ -598,7 +601,9 @@ public:
 class SlicersPointsType : public BasePointsType {
 public:
     SlicersPointsType()
-        : BasePointsType(static_cast<int>(PArt_TIP) - static_cast<int>(SVC_SLICER1) + 1) {} 
+        : BasePointsType(static_cast<int>(PArt_TIP) - static_cast<int>(SVC_SLICER1) + 1) {
+            offset = static_cast<int>(SVC_SLICER1);
+        } 
 
     PointsNamesType FromKey(QString key) override {
         if (key == "SVC_slicer_1") return SVC_SLICER1;
@@ -618,7 +623,9 @@ public:
 class ValvePlainsPointsType : public BasePointsType {
 public:
     ValvePlainsPointsType() 
-        : BasePointsType(static_cast<int>(PArt_WT_TIP) - static_cast<int>(Ao_WT_TIP) + 1) {} // Total number of enum values for ValvePlains
+        : BasePointsType(static_cast<int>(PArt_WT_TIP) - static_cast<int>(Ao_WT_TIP) + 1) {
+            offset = static_cast<int>(Ao_WT_TIP);
+        } // Total number of enum values for ValvePlains
 
     PointsNamesType FromKey(QString key) override {
         if (key == "Ao_WT_TIP") return Ao_WT_TIP;
@@ -629,8 +636,9 @@ public:
 
 struct ThicknessInfo { 
     QJsonObject json;
-    QStringList keys1, values1, keys2, values2;
+    double scale_factor;
     ThicknessInfo() {
+        QStringList keys1, values1, keys2, values2;
         QStringList types;
         keys1 << "scale_factor" << "valve_WT_multiplier" << "valve_WT_svc_ivc_multiplier"
              << "ring_thickness_multiplier"
@@ -642,19 +650,16 @@ struct ThicknessInfo {
         values1 << "2.50978817388" << "4" << "4"
                << "4"
                << "2.00" << "3.50" << "2.00" << "2.00" << "2.00" << "2.00";
-        
-        UpdateValues2();
-    }
 
-    void UpdateValues2(bool updateJson = true) {
+        scale_factor = 2.50978817388;
+
         QStringList keys = keys1;
         QStringList values = values1;
-        QStringList types;
 
         for (int ix = 0; ix < keys2.size(); ix++) {
-            QString valuePrint = QString::number(values1.at(0).toDouble() * values1.at(ix + 1).toDouble());
+            QString valuePrint = QString::number(scale_factor * values1.at(ix + 1).toDouble());
             values2 << valuePrint;
-            std::cout << "Value: " << valuePrint.toStdString() << '\n';
+            std::cout << values2.at(ix).toStdString() << ": " << valuePrint.toStdString() << '\n';
         }
         keys.append(keys2);
         values.append(values2);
@@ -662,35 +667,50 @@ struct ThicknessInfo {
         for (int ix = 0; ix < keys.size(); ix++){
             types << "float";
         }
-        if (updateJson) {
-            json = CemrgCommonUtils::CreateJSONObject(keys, values, types);
-        }
-        // reset keys1 and values1
-        keys1 = json.keys();
-        keys1.mid(0, 10);
-        values1 = QStringList();
-        for (int ix = 0; ix < keys1.size(); ix++) {
-            values1 << QString::number(json[keys1.at(ix)].toDouble());
-        }
+        
+        json = CemrgCommonUtils::CreateJSONObject(keys, values, types);
+    }
+    // start here: do everything through json
+    QStringList GetKeys() {
+        return json.keys();
     }
 
-
-    QStringList GetSimpleKeys() {
-        return keys1;
-    }
-
-    void SetMultiplierKey(QString key, double value, bool updateJson = true) {
-        QString keyToUse = key;
-        if (!keyToUse.contains("scale_factor")) {
-            keyToUse += "_multiplier";
+    void SetKey(QString key, QString value) {
+        json[key] = value;
+        if (key.contains("multiplier")) {
+            json[key.left(key.size() - 11)] = value.toDouble()*scale_factor;
         }
-        json[keyToUse] = value;
-        UpdateValues2(updateJson);
     }
 
     QJsonObject GetJson() {
         return json;
     }
+
+    void Print() {
+        QStringList keys = json.keys();
+        for (int ix = 0; ix < keys.size(); ix++) {
+            std::cout << keys.at(ix).toStdString() << ": " << json[keys.at(ix)].toDouble() << '\n';
+        }
+    }
+
+    void SetKey(QString key, double value) {
+        if (key == "scale_factor") {
+            scale_factor = value;
+        } else if (key.contains("multiplier")) {
+            json[key.left(key.size() - 11)] = value*scale_factor;
+        }
+        json[key] = value;
+    }
+
+    void Update() {
+        QStringList keys = json.keys();
+        for (int ix = 0; ix < keys.size(); ix++) {
+            if (keys.at(ix).contains("multiplier")) {
+                json[keys.at(ix).left(keys.at(ix).size() - 11)] = json[keys.at(ix)].toDouble()*scale_factor;
+            }
+        }
+    }
+
 };
 
 struct HeartLabels {
@@ -745,6 +765,13 @@ struct HeartLabels {
             newJson[key] = other[key];
         }
         return newJson;
+    }
+
+    void Print() {
+        QStringList keys = json.keys();
+        for (int ix = 0; ix < keys.size(); ix++) {
+            std::cout << keys.at(ix).toStdString() << ": " << json[keys.at(ix)].toInt() << '\n';
+        }
     }
 };
 

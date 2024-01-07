@@ -315,12 +315,10 @@ QString CemrgFourChamberCmd::ExecuteSeg4ch(QString mode, QStringList modeArgumen
         arguments << modeArguments.at(ix);
     }
 
-    QDir home(_base_directory);
-
-    bool successful = ExecuteCommand(executableName, arguments, expectedOutput);
+    bool successful = ExecuteCommand(executableName, arguments, _base_directory + "/" + expectedOutput);
     if(successful){
         MITK_INFO << ("Seg-4Ch command: " + mode + " successful").toStdString();
-        outAbsolutePath = home.absolutePath() + "/" + expectedOutput;
+        outAbsolutePath = _base_directory + "/" + expectedOutput;
     } else{
         MITK_WARN << ("Error running 4Ch command: " + mode).toStdString();
     }
