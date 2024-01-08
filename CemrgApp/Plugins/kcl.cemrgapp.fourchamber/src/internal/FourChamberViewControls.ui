@@ -91,16 +91,6 @@
     </widget>
    </item>
    <item>
-    <widget class="QPushButton" name="button_corrections">
-     <property name="styleSheet">
-      <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
-     </property>
-     <property name="text">
-      <string>        2.1: Manual Corrections (PV Split)</string>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QPushButton" name="button_corrections_split">
      <property name="styleSheet">
       <string notr="true">text-align: left;</string>
@@ -183,10 +173,30 @@
    <item>
     <widget class="QPushButton" name="button_select_pts_reset">
      <property name="styleSheet">
+      <string notr="true">color: rgb(132, 174, 235);</string>
+     </property>
+     <property name="text">
+      <string>Reset Point Selection</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_corrections">
+     <property name="styleSheet">
       <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
      </property>
      <property name="text">
-      <string>        2.3: Reset Point Selection</string>
+      <string>   Step X: Manual Corrections</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_smooth_segmentation">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
+     </property>
+     <property name="text">
+      <string>   Step Y: Smooth Segmentation</string>
      </property>
     </widget>
    </item>

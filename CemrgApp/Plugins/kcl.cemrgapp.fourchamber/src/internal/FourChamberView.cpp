@@ -136,6 +136,8 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     m_Controls.setupUi(parent);
     connect(m_Controls.button_setfolder, SIGNAL(clicked()), this, SLOT(SetWorkingFolder()));
     connect(m_Controls.button_prepseg, SIGNAL(clicked()), this, SLOT(PrepareSegmentation()));
+    connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
+    connect(m_Controls.button_smooth_segmentation, SIGNAL(clicked()), this, SLOT(SmoothSegmentation()));
     connect(m_Controls.button_meshing, SIGNAL(clicked()), this, SLOT(Meshing()));
     connect(m_Controls.button_uvcs, SIGNAL(clicked()), this, SLOT(UVCs()));
     connect(m_Controls.button_ventfibres, SIGNAL(clicked()), this, SLOT(VentricularFibres()));
@@ -146,7 +148,6 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_origin_spacing, SIGNAL(clicked()), this, SLOT(GetOriginSpacing()));
     connect(m_Controls.button_segment_image, SIGNAL(clicked()), this, SLOT(SegmentImgs()));
     connect(m_Controls.button_define_labels, SIGNAL(clicked()), this, SLOT(UserDefineLabels()));
-    connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
     connect(m_Controls.button_corrections_split, SIGNAL(clicked()), this, SLOT(CorrectionGetLabels()));
     connect(m_Controls.button_confirm_labels, SIGNAL(clicked()), this, SLOT(CorrectionConfirmLabels()));
     connect(m_Controls.button_select_pts, SIGNAL(clicked()), this, SLOT(SelectPoints()));
@@ -170,7 +171,6 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     m_Controls.button_select_pts_c->setVisible(false);
     m_Controls.button_select_pts_check->setVisible(false);
     m_Controls.button_select_pts_reset->setVisible(false);
-    m_Controls.button_corrections->setVisible(false);
     m_Controls.button_corrections_split->setVisible(false);
     m_Controls.button_confirm_labels->setVisible(false);
     m_Controls.button_confirm_labels->setEnabled(false);
@@ -252,7 +252,7 @@ void FourChamberView::LoadDICOM() {
     
     int replyNii = Ask("Question: Data type", "Do you have a Nifti file to load? \n(NO = DICOMs)"); 
     if (replyNii == QMessageBox::Yes) {
-        QString niiFile = QFileDialog::getOpenFileName(NULL, "Open Nifti file.", StdStringPath(SDIR.SEG).c_str());
+        QString niiFile = QFileDialog::getOpenFileName(NULL, "Open Nifti file.", StdStringPath(SDIR.SEG).c_str(), tr("Nifti file (*.nii)"));
         QFileInfo fnii(niiFile);
         if (fnii.exists()) {
             std::string key = "dicom.series.SeriesDescription";
@@ -462,13 +462,11 @@ void FourChamberView::PrepareSegmentation()
 
     if (m_Controls.button_select_pts->isVisible()){
 
-        m_Controls.button_corrections->setVisible(false);
         m_Controls.button_corrections_split->setVisible(false);
         m_Controls.button_select_pts->setVisible(false);
         m_Controls.button_select_pts_reset->setVisible(false);
 
     } else {
-        m_Controls.button_corrections->setVisible(true);
         m_Controls.button_corrections_split->setVisible(true);
         m_Controls.button_select_pts->setVisible(true);
         m_Controls.button_select_pts_reset->setVisible(true);
@@ -776,19 +774,16 @@ void FourChamberView::CalculateUVCs(){
 void FourChamberView::Corrections(){
 
     if (!RequestProjectDirectoryFromUser()) return; // if the path was chosen incorrectly -> returns.
-
-    bool button_timing = m_Controls.button_corrections->text().contains("PV Split");
-    
+   
     std::string msg = "Loading Multilabel Segmentation tools.\n\n";
-    msg += button_timing ? " Make any manual corrections on pulmonary veins." : "Make additional corrections to segmentation";
+    msg += "Make additional corrections to segmentation";
     
     Inform("Attention", msg.c_str());
-    
-    if (button_timing) {
-        m_Controls.button_corrections->setText("        2.1: Other Manual Corrections");
-    }
 
     this->GetSite()->GetPage()->ShowView("org.mitk.views.multilabelsegmentation");
+}
+
+void FourChamberView::SmoothSegmentation() {
 }
 
 void FourChamberView::CorrectionGetLabels() {
@@ -1262,6 +1257,7 @@ void FourChamberView::SelectPointsSlicers() {
         mitk::Image::Pointer myoSeg = mitk::IOUtil::Load<mitk::Image>(myoOutput.toStdString());
         UpdateDataManager(myoSeg, seg_myo.toStdString(), nodes[0]);
 
+        m_Controls.button_select_pts_b->setEnabled(false);
     }
 }
 
@@ -1305,8 +1301,7 @@ void FourChamberView::SelectPointsValvePlains(){
         cp(Path(FourChamberView::POINTS_FILE_INDEX), heartFolder + "/" + FourChamberView::POINTS_FILE_INDEX);
         cp(Path(FourChamberView::GEOMETRY_FILE), heartFolder + "/" + FourChamberView::GEOMETRY_FILE);
 
-        if (!QFile::exists(heartFolder + "/" + FourChamberView::LABELS_FILE))
-        {
+        if (!QFile::exists(heartFolder + "/" + FourChamberView::LABELS_FILE)) {
             UserSelectDefineLabels();
         }
 
@@ -1315,24 +1310,53 @@ void FourChamberView::SelectPointsValvePlains(){
         fourchCmd->SetOriginSpacingFile(FourChamberView::GEOMETRY_FILE);
         fourchCmd->SetLabelsFile(FourChamberView::LABELS_FILE);
 
-        bool process = true;
-
         QString seg_myo = "seg_s3p.nrrd";
-        if (QFile::exists(heartFolder + "/" + seg_myo)) {
-            int reply = Ask("Question", "Segmentation [" +seg_myo.toStdString()+ "] already exists.\n\n Process again?");
+        if (!QFile::exists(heartFolder + "/" + seg_myo)) {
+            Warn("Attention", "Segmentation [" +seg_myo.toStdString()+ "] does not exist.\n\n Please run the script for slicers first.");
+            return;
+        }
+
+        bool process = true;
+        QString seg_valves = "seg_s4a.nrrd";
+        if (QFile::exists(heartFolder + "/" + seg_valves)) {
+            int reply = Ask("Question", "Segmentation [" +seg_valves.toStdString()+ "] already exists.\n\n Process again?");
             process = (reply == QMessageBox::Yes);
         }
 
-        QString myoOutput = "ERROR_IN_PROCESSING";
+        QString valvePlanesOutput = "ERROR_IN_PROCESSING";
         if (process) {
-            myoOutput = fourchCmd->DockerCreateMyo();
-            if (myoOutput=="ERROR_IN_PROCESSING") {
-                Warn("Error in processing", "Error in create myo");
+            valvePlanesOutput = fourchCmd->DockerCreateValvePlanes();
+            if (valvePlanesOutput=="ERROR_IN_PROCESSING") {
+                Warn("Error in processing", "Error in create valve planes");
                 return;
             }
         } else {
-            myoOutput = heartFolder + "/" + seg_myo; // best guess
+            valvePlanesOutput = heartFolder + "/" + seg_valves; // best guess
         }
+
+        process = true;
+        QString seg_clean = "seg_s5.nrrd";
+        if (QFile::exists(heartFolder + "/" + seg_clean)) {
+            int reply = Ask("Question", "Segmentation [" +seg_clean.toStdString()+ "] already exists.\n\n Process again?");
+            process = (reply == QMessageBox::Yes);
+        }
+
+        QString cleanSegOutput = "ERROR_IN_PROCESSING";
+        if (process) {
+            cleanSegOutput = fourchCmd->DockerCleanSegmentation();
+            if (cleanSegOutput=="ERROR_IN_PROCESSING") {
+                Warn("Error in processing", "Error in clean segmentation");
+                return;
+            }
+        } else {
+            cleanSegOutput = heartFolder + "/" + seg_clean; // best guess
+        }
+
+        MITK_INFO << "Loading segmentation (" + seg_clean.toStdString() + ") from file";
+        mitk::Image::Pointer cleanSeg = mitk::IOUtil::Load<mitk::Image>(cleanSegOutput.toStdString());
+        UpdateDataManager(cleanSeg, seg_clean.toStdString(), nodes[0]);
+        
+        m_Controls.button_select_pts_a->setEnabled(false);
     }
 }
 
@@ -2044,7 +2068,9 @@ void FourChamberView::VFibresBrowseFile(const QString &idNdir) {
 void FourChamberView::SetButtonsEnable(bool enable) {
     // Sets all buttons to enable or disable.
     // Used at the beginning of the pipeline
-    m_Controls.button_prepseg->setEnabled(enable) ; 
+    m_Controls.button_prepseg->setEnabled(enable) ;
+    m_Controls.button_corrections->setVisible(enable);
+    m_Controls.button_smooth_segmentation->setVisible(enable);
     m_Controls.button_meshing->setEnabled(enable) ; 
     m_Controls.button_uvcs->setEnabled(enable) ; 
     m_Controls.button_ventfibres->setEnabled(enable) ; 

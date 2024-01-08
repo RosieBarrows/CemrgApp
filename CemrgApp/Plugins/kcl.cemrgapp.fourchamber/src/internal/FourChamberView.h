@@ -134,6 +134,8 @@ protected slots:
     // here you add the functions that willl be linked to buttons
     void SetWorkingFolder();
     void PrepareSegmentation();
+    void Corrections();
+    void SmoothSegmentation();
     void Meshing();
     void UVCs();
     void VentricularFibres();
@@ -148,7 +150,6 @@ protected slots:
     void SelectLARALandmarks();
     void CalculateUVCs();
 
-    void Corrections();
     void CorrectionGetLabels();
     void CorrectionConfirmLabels();
     void CorrectionIdLabels(int);
