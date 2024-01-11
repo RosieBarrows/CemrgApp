@@ -637,6 +637,21 @@ void FourChamberView::SurfaceToVolume() {
 }
 
 void FourChamberView::DefineTags() {
+    if (!RequestProjectDirectoryFromUser()) return;
+
+    QString meshname = meshing_parameters.out_name;
+    QString tagsname = meshing_parameters.out_dir + "/" + meshing_parameters.out_name + "_tags";
+
+    std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+    fourch_cmd->SetCarpDirectory(carp_directory);
+    fourch_cmd->SetCarpless(carpless);
+
+    //                           DockerDefineTags(baseDirectory, dataSubdir, atriaSubdir, meshname, parfolder, inputTagsFilename, bbSettingsFilename)
+    QString output = fourch_cmd->DockerDefineTags(directory, SDIR.UVC, SDIR.AFIB, meshname, "tags_presim.json", "bachmann_bundle_fec_settings.json");
+    if (output=="ERROR_IN_PROCESSING") {
+        Warn("Error in processing", "Error in define tags");
+        return;
+    }
 }
 
 void FourChamberView::VentricularFibres(){

@@ -420,6 +420,44 @@ QString CemrgFourChamberCmd::DockerCorrectFibres(QString baseDirectory, QString 
     return outAbsolutePath;
 }
 
+QString CemrgFourChamberCmd::DockerDefineTags(QString baseDirectory, QString dataSubdir, QString atriaSubdir, QString meshname, QString parfolder, QString inputTagsFilename, QString bbSettingsFilename) {
+    SetDockerImageFourch();
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+    QString executableName = executablePath + "docker";
+    QString outAbsolutePath = "ERROR_IN_PROCESSING";
+
+    QDir home(baseDirectory);
+    QStringList arguments = GetDockerArguments(home.absolutePath());
+
+    QString presimFolder = home.relativeFilePath(dataSubdir);
+
+    QString fourchCmd = "tags";
+    arguments << fourchCmd;
+    arguments << "--data-subdir" << home.relativeFilePath(dataSubdir);
+    arguments << "--mesh-path" << home.relativeFilePath(atriaSubdir);
+    arguments << "--meshname" << meshname;
+    arguments << "--par-folder" << home.relativeFilePath(parfolder);
+    arguments << "--input-tags-setup" << inputTagsFilename;
+    arguments << "--bb-settings" << bbSettingsFilename;
+
+    // msh_bb = f"{msh}_av_fec_bb"
+    QString mshBB = meshname + "_av_fec_bb";
+    QString outputPath = home.relativeFilePath(dataSubdir + "/" + mshBB + ".vtk");
+    bool successful = ExecuteCommand(executableName, arguments, outputPath);
+
+    if(successful){
+        MITK_INFO << ("4Ch command: " + fourchCmd + " successful").toStdString();
+        outAbsolutePath = outputPath;
+    } else{
+        MITK_WARN << ("Error running 4Ch command: " + fourchCmd).toStdString();
+    }
+
+    return outAbsolutePath;
+}
+
 QString CemrgFourChamberCmd::DockerMeshtoolGeneric(QString directory, QString command, QString subcommand, QStringList meshtoolArgs, QString expectedOutput) {
     SetDockerImageOpenCarp();
     QString executablePath;
