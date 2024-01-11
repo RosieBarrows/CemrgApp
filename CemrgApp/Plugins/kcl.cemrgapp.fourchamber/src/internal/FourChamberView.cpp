@@ -142,6 +142,8 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_uvcs, SIGNAL(clicked()), this, SLOT(UVCs()));
     connect(m_Controls.button_ventfibres, SIGNAL(clicked()), this, SLOT(VentricularFibres()));
     connect(m_Controls.button_atrfibres, SIGNAL(clicked()), this, SLOT(AtrialFibres()));
+    connect(m_Controls.button_surf2vol, SIGNAL(clicked()), this, SLOT(SurfaceToVolume()));
+    connect(m_Controls.button_definetags, SIGNAL(clicked()), this, SLOT(DefineTags()));
     connect(m_Controls.button_simset, SIGNAL(clicked()), this, SLOT(SimulationSetup()));
 
     connect(m_Controls.button_loaddicom, SIGNAL(clicked()), this, SLOT(LoadDICOM()));
@@ -158,6 +160,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_select_pts_reset, SIGNAL(clicked()), this, SLOT(SelectPointsReset()));
 
     connect(m_Controls.button_extractsurfs, SIGNAL(clicked()), this, SLOT(ExtractSurfaces()));
+    connect(m_Controls.button_calcuvcs, SIGNAL(clicked()), this, SLOT(CalculateUVCS()));
 
     // Set default variables and initialise objects
     m_Controls.button_loaddicom->setVisible(false);
@@ -479,63 +482,60 @@ void FourChamberView::Meshing(){
 
     QString seg_dir = Path(SDIR.SEG);
     QString mesh_dir = Path(SDIR.MESH);
-    QString segname = "seg_final_smooth.nrrd";
-    QString path = seg_dir + "/" + segname;
 
     if (!QDir().mkpath(mesh_dir)) {
         Warn("Problem with subfolder", "Problem with meshing subfolder"); 
         return;
     }
 
-    // create cmd object (CemrgCommandLine) outputs to directory/meshing
-    std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
     QString mesh_path = "";
-
     int reply_load = Ask("Question", "Do you have a mesh to load?");
-    bool ask_to_load = true;
-
     if (reply_load == QMessageBox::Yes) {
         mesh_path = QFileDialog::getOpenFileName(NULL, "Open Mesh Points File (.pts)", mesh_dir.toStdString().c_str(), tr("Points file (*.pts)"));
         QFileInfo fi(mesh_path);
         meshing_parameters.out_name = fi.baseName();
 
     } else if (reply_load == QMessageBox::No) {
-    
-        if(QFile::exists(path)) {
-            int reply_load_seg = Ask("Question", "Load previously smoothed segmentation (" + segname.toStdString() + ")?");
-            if(reply_load_seg==QMessageBox::Yes) {
-                MITK_INFO << "Loading segmentation from file";
-                ask_to_load = false;
-            } 
+        QString segname = "seg_final_smooth.nrrd";
+        QString path = seg_dir + "/" + segname;
+        bool ask_to_load = true;
+        if (!QFile::exists(path)) {
+            // retrieve the path of the segmentation after user has selected it from the UI
+            path = QFileDialog::getOpenFileName(NULL, "Open Segmentation file", seg_dir.toStdString().c_str(), QmitkIOUtil::GetFileOpenFilterString());
+
+            if (path.isEmpty()){
+                Warn("No segmentation found", "No segmentation found [seg_final_smooth.nrrd]. Use the Smoothing button to create it.");
+                return;
+            }
+
+            QFileInfo fi(path);
+            seg_dir = fi.absolutePath();
+            segname = fi.fileName();
+            MITK_INFO << ("Segmentation path: " + path).toStdString();
         } 
-    } else {
-        return;
-    }
-    
-    if (ask_to_load) { 
-        // retrieve the path of the segmentation after user has selected it from the UI
-        path = QFileDialog::getOpenFileName(NULL, "Open Segmentation file", seg_dir.toStdString().c_str(), QmitkIOUtil::GetFileOpenFilterString());
-        QFileInfo fi(path);
-        seg_dir = fi.absolutePath();
-        segname = fi.fileName();
-        MITK_INFO << ("Segmentation path: " + path).toStdString();
+
+        // create cmd object (CemrgCommandLine) outputs to directory/meshing
+        std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
+
+        QString inr_path = CemrgCommonUtils::ConvertToInr(seg_dir, segname, true, "converted.inr");
+        if (inr_path.isEmpty()) {
+            Warn("Failed to convert segmentation", "Error converting segmentation to INR format");
+            return; 
+        }
+        QString parpath = mesh_dir + "/heart_mesh_data.par";
+        bool success_m3d_params = UserSelectMeshtools3DParameters(inr_path);
+        PrintMeshingParameters(parpath);
+        if (success_m3d_params) {
+            QString out_ext = meshing_parameters.out_carp ? "pts" : "vtk";
+            QFileInfo finr(inr_path);
+            Inform("Attention", "This operation takes a few minutes");
+            QDir home(directory);
+            mesh_path = cmd_object->ExecuteCreateCGALMesh(directory, meshing_parameters.out_name, parpath, SDIR.SEG + "/" + finr.fileName(), home.relativeFilePath(meshing_parameters.out_dir), out_ext);
+        } else {
+            return;
+        }
     }
 
-    QString inr_path = CemrgCommonUtils::ConvertToInr(seg_dir, segname, true, "converted.inr");
-    if (inr_path.isEmpty()) {
-        Warn("Failed to convert segmentation", "Error converting segmentation to INR format");
-        return; 
-    }
-    QString parpath = mesh_dir + "/heart_mesh_data.par";
-    bool success_m3d_params = UserSelectMeshtools3DParameters(inr_path);
-    PrintMeshingParameters(parpath);
-    if (success_m3d_params) {
-        QString out_ext = meshing_parameters.out_carp ? "pts" : "vtk";
-        QFileInfo finr(inr_path);
-        Inform("Attention", "This operation takes a few minutes");
-        QDir home(directory);
-        QString mesh_path = cmd_object->ExecuteCreateCGALMesh(directory, meshing_parameters.out_name, parpath, SDIR.SEG + "/" + finr.fileName(), home.relativeFilePath(meshing_parameters.out_dir), out_ext);
-    } 
 
     MITK_INFO << ("Mesh path: " + mesh_path).toStdString();
     if (mesh_path.isEmpty()) return;
@@ -631,6 +631,12 @@ void FourChamberView::AtrialFibres(){
     if(reply==QMessageBox::Yes){
         Inform("Answer", "OK");
     }
+}
+
+void FourChamberView::SurfaceToVolume() {
+}
+
+void FourChamberView::DefineTags() {
 }
 
 void FourChamberView::VentricularFibres(){
@@ -784,6 +790,26 @@ void FourChamberView::Corrections(){
 }
 
 void FourChamberView::SmoothSegmentation() {
+    //Check for selection of images
+    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+    if (nodes.size() != 1) {
+        Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
+        return;
+    }//_if
+
+
+    mitk::BaseData::Pointer data = nodes[0]->GetData();
+    std::string nodeName = nodes[0]->GetName();
+    if (data) {
+        mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (seg) {
+            // bool doResample = true, doReorient = false, isBinary = true;
+            // mitk::Image::Pointer seg_smooth = CemrgCommonUtils::IsoImageResampleReorient(seg, doResample, doReorient, isBinary, std::vector<double>(3, 0.15));
+            std::unique_ptr<CemrgMultilabelSegmentationUtils> multilabelUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
+            mitk::Image::Pointer seg_smooth = multilabelUtils->ResampleSmoothLabel(seg, std::vector<double>(3, 0.15), 0.5);
+            mitk::IOUtil::Save(seg_smooth, StdStringPath(SDIR.SEG + "/seg_final_smooth.nrrd"));
+        }
+    }
 }
 
 void FourChamberView::CorrectionGetLabels() {
@@ -1356,7 +1382,7 @@ void FourChamberView::SelectPointsValvePlains(){
         mitk::Image::Pointer cleanSeg = mitk::IOUtil::Load<mitk::Image>(cleanSegOutput.toStdString());
         UpdateDataManager(cleanSeg, seg_clean.toStdString(), nodes[0]);
         
-        m_Controls.button_select_pts_a->setEnabled(false);
+        m_Controls.button_select_pts_c->setEnabled(false);
     }
 }
 
@@ -2074,7 +2100,9 @@ void FourChamberView::SetButtonsEnable(bool enable) {
     m_Controls.button_meshing->setEnabled(enable) ; 
     m_Controls.button_uvcs->setEnabled(enable) ; 
     m_Controls.button_ventfibres->setEnabled(enable) ; 
-    m_Controls.button_atrfibres->setEnabled(enable) ; 
+    m_Controls.button_atrfibres->setEnabled(enable) ;
+    m_Controls.button_surf2vol->setEnabled(enable) ;
+    m_Controls.button_definetags->setEnabled(enable) ; 
     m_Controls.button_simset->setEnabled(enable) ;
 }
 

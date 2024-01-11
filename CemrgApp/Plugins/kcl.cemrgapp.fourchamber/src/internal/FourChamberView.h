@@ -140,6 +140,8 @@ protected slots:
     void UVCs();
     void VentricularFibres();
     void AtrialFibres();
+    void SurfaceToVolume();
+    void DefineTags();
     void SimulationSetup();
 
     void LoadDICOM();

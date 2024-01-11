@@ -274,12 +274,32 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="button_surf2vol">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step 7: Surface to Volume</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_definetags">
+     <property name="styleSheet">
+      <string notr="true">text-align: left;</string>
+     </property>
+     <property name="text">
+      <string>   Step 8: Define Tags</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="button_simset">
      <property name="styleSheet">
       <string notr="true">text-align: left;</string>
      </property>
      <property name="text">
-      <string>   Step 7: Simulation set-up</string>
+      <string>   Step 9: Simulation set-up</string>
      </property>
     </widget>
    </item>

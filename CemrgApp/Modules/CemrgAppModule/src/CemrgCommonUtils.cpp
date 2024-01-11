@@ -200,7 +200,7 @@ mitk::Image::Pointer CemrgCommonUtils::Downsample(mitk::Image::Pointer image, in
     return image;
 }
 
-mitk::Image::Pointer CemrgCommonUtils::IsoImageResampleReorient(mitk::Image::Pointer image, bool resample, bool reorientToRAI, bool isBinary) {
+mitk::Image::Pointer CemrgCommonUtils::IsoImageResampleReorient(mitk::Image::Pointer image, bool resample, bool reorientToRAI, bool isBinary, std::vector<double> spacing) {
 
     MITK_INFO(resample) << "Resampling image to be isometric.";
     MITK_INFO(reorientToRAI) << "Doing a reorientation to RAI.";
@@ -214,12 +214,12 @@ mitk::Image::Pointer CemrgCommonUtils::IsoImageResampleReorient(mitk::Image::Poi
     if (resample) {
         ResampleImageFilterType::Pointer resampler = ResampleImageFilterType::New();
 
-        if(isBinary){
+        if(!isBinary){ // if not binary, use B-Spline interpolation
             typedef itk::BSplineInterpolateImageFunction<ImageType, double, double> BSplineInterpolatorType;
             BSplineInterpolatorType::Pointer bsplineInterp = BSplineInterpolatorType::New();
             bsplineInterp->SetSplineOrder(3);
             resampler->SetInterpolator(bsplineInterp);
-        } else{
+        } else{ // if binary, use nearest neighbor interpolation
             typedef itk::NearestNeighborInterpolateImageFunction<ImageType, double> NearestInterpolatorType;
             NearestInterpolatorType::Pointer nnInterp = NearestInterpolatorType::New();
             resampler->SetInterpolator(nnInterp);
@@ -231,12 +231,11 @@ mitk::Image::Pointer CemrgCommonUtils::IsoImageResampleReorient(mitk::Image::Poi
         ImageType::SpacingType input_spacing = itkInputImage->GetSpacing();
         ImageType::SizeType output_size;
         ImageType::SpacingType output_spacing;
-        output_size[0] = input_size[0] * (input_spacing[0] / 1.0);
-        output_size[1] = input_size[1] * (input_spacing[1] / 1.0);
-        output_size[2] = input_size[2] * (input_spacing[2] / 1.0);
-        output_spacing[0] = 1.0;
-        output_spacing[1] = 1.0;
-        output_spacing[2] = 1.0;
+        for (int i = 0; i < 3; ++i) {
+            output_size[i] = input_size[i] * (input_spacing[i] / spacing[i]);
+            output_spacing[i] = spacing[i];
+        }//_for
+        
         resampler->SetSize(output_size);
         resampler->SetOutputSpacing(output_spacing);
         resampler->SetOutputDirection(itkInputImage->GetDirection());
@@ -265,9 +264,9 @@ mitk::Image::Pointer CemrgCommonUtils::IsoImageResampleReorient(mitk::Image::Poi
     return image;
 }
 
-mitk::Image::Pointer CemrgCommonUtils::IsoImageResampleReorient(QString imPath, bool resample,  bool reorientToRAI, bool isBinary) {
+mitk::Image::Pointer CemrgCommonUtils::IsoImageResampleReorient(QString imPath, bool resample,  bool reorientToRAI, bool isBinary, std::vector<double> spacing) {
 
-    return CemrgCommonUtils::IsoImageResampleReorient(mitk::IOUtil::Load<mitk::Image>(imPath.toStdString()), resample, reorientToRAI, isBinary);
+    return CemrgCommonUtils::IsoImageResampleReorient(mitk::IOUtil::Load<mitk::Image>(imPath.toStdString()), resample, reorientToRAI, isBinary, spacing);
 }
 
 void CemrgCommonUtils::Binarise(mitk::Image::Pointer image, float background){

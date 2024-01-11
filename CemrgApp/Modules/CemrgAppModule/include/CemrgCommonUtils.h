@@ -53,8 +53,8 @@ public:
 
     //Sampling Utils
     static mitk::Image::Pointer Downsample(mitk::Image::Pointer image, int factor);
-    static mitk::Image::Pointer IsoImageResampleReorient(mitk::Image::Pointer image, bool resample=false, bool reorientToRAI=false, bool isBinary=false);
-    static mitk::Image::Pointer IsoImageResampleReorient(QString imPath, bool resample=false, bool reorientToRAI=false, bool isBinary=false);
+    static mitk::Image::Pointer IsoImageResampleReorient(mitk::Image::Pointer image, bool resample=false, bool reorientToRAI=false, bool isBinary=false, std::vector<double> spacing=std::vector<double>(3, 1.0));
+    static mitk::Image::Pointer IsoImageResampleReorient(QString imPath, bool resample = false, bool reorientToRAI = false, bool isBinary = false, std::vector<double> spacing = std::vector<double>(3, 1.0));
 
     // Image Analysis Utils
     static void SetSegmentationEdgesToZero(mitk::Image::Pointer image, QString outPath="");

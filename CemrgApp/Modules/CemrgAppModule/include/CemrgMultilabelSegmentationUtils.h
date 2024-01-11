@@ -68,6 +68,8 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgMultilabelSegmentationUtils {
         mitk::Image::Pointer ReplaceLabel(mitk::Image::Pointer seg, int oldLabel, int newLabel);
         inline mitk::Image::Pointer RemoveLabel(mitk::Image::Pointer seg, int label) { return ReplaceLabel(seg, label, 0); };
 
+        mitk::Image::Pointer ResampleSmoothLabel(mitk::Image::Pointer image, std::vector<double> spacing, double sigmaFraction=0.5);
+
         enum MaskLabelBehaviour { ZEROS, ONLY, REPLACE, FORBID };
         mitk::Image::Pointer AddMaskToSegmentation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel, MaskLabelBehaviour mlb, std::vector<int> labelsToProcess = std::vector<int>());
         inline mitk::Image::Pointer AddMask(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel) { return AddMaskToSegmentation(seg, mask, newLabel, MaskLabelBehaviour::ZEROS); };

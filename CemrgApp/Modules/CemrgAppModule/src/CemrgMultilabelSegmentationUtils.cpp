@@ -53,6 +53,11 @@ PURPOSE.  See the above copyright notices for more information.
 #include <itkLabelStatisticsImageFilter.h>
 #include <itkDanielssonDistanceMapImageFilter.h>
 #include <itkBinaryThresholdImageFilter.h>
+#include <itkLabelImageGaussianInterpolateImageFunction.h>
+#include <itkLabelImageToLabelMapFilter.h>
+#include <itkLabelMapToLabelImageFilter.h>
+#include <itkResampleImageFilter.h>
+#include <itkLabelImageGaussianInterpolateImageFunction.h>
 
 #include "CemrgCommonUtils.h"
 #include "CemrgAtrialTools.h"
@@ -168,6 +173,46 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ReplaceLabel(mitk::Image:
     newSeg->SetGeometry(seg->GetGeometry());
     
     return newSeg;
+}
+
+
+mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ResampleSmoothLabel(mitk::Image::Pointer image, std::vector<double> spacing, double sigmaFraction) {
+
+    using ImageType = itk::Image<unsigned char, 3>;
+    using ResampleImageFilterType = itk::ResampleImageFilter<ImageType, ImageType>;
+    using GaussianInterpolatorType = itk::LabelImageGaussianInterpolateImageFunction<ImageType, double>;
+    ImageType::Pointer input = ImageType::New();
+    mitk::CastToItkImage(image, input);
+
+    ImageType::SizeType input_size = input->GetLargestPossibleRegion().GetSize();
+    ImageType::SpacingType input_spacing = input->GetSpacing();
+    ImageType::SizeType output_size;
+    ImageType::SpacingType output_spacing;
+    for (int i = 0; i < 3; ++i) {
+        output_size[i] = input_size[i] * (input_spacing[i] / spacing[i]);
+        output_spacing[i] = spacing[i];
+    } //_for
+
+    GaussianInterpolatorType::Pointer gaussianInterpolator = GaussianInterpolatorType::New();
+    GaussianInterpolatorType::ArrayType sigma;
+    for (unsigned int dim = 0; dim < 3; ++dim) {
+        sigma[dim] = output_spacing[dim] * sigmaFraction;
+    }
+    gaussianInterpolator->SetSigma(sigma);
+    gaussianInterpolator->SetAlpha(3.0);
+
+    ResampleImageFilterType::Pointer resizeFilter = ResampleImageFilterType::New();
+    resizeFilter->SetInput(input);
+    resizeFilter->SetInterpolator(gaussianInterpolator);
+    resizeFilter->SetSize(output_size);
+    resizeFilter->SetOutputSpacing(output_spacing);
+    resizeFilter->SetOutputOrigin(input->GetOrigin());
+    resizeFilter->SetOutputDirection(input->GetDirection());
+    resizeFilter->UpdateLargestPossibleRegion();
+
+    mitk::Image::Pointer outputIm = mitk::ImportItkImage(resizeFilter->GetOutput())->Clone();
+    // outputIm->SetGeometry(image->GetGeometry());
+    return outputIm;
 }
 
 bool CemrgMultilabelSegmentationUtils::CheckExisting(mitk::Image::Pointer seg, int queryLabel) {
