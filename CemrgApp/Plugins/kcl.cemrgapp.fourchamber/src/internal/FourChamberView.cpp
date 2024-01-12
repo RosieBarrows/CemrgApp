@@ -641,13 +641,14 @@ void FourChamberView::DefineTags() {
 
     QString meshname = meshing_parameters.out_name;
     QString tagsname = meshing_parameters.out_dir + "/" + meshing_parameters.out_name + "_tags";
+    QString inputTagsFilename = "tags_presim.json";
+    QString bbSettingsFilename = "bachmann_bundle_fec_settings.json";
 
     std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
     fourch_cmd->SetCarpDirectory(carp_directory);
     fourch_cmd->SetCarpless(carpless);
-
-    //                           DockerDefineTags(baseDirectory, dataSubdir, atriaSubdir, meshname, parfolder, inputTagsFilename, bbSettingsFilename)
-    QString output = fourch_cmd->DockerDefineTags(directory, SDIR.UVC, SDIR.AFIB, meshname, "tags_presim.json", "bachmann_bundle_fec_settings.json");
+    // QString baseDirectory, QString dataSubdir, QString atriaSubdir, QString meshname, QString parfolder, QString inputTagsFilename, QString bbSettingsFilename
+    QString output = fourch_cmd->DockerDefineTags(directory, SDIR.UVC, SDIR.AFIB, meshname, SDIR. inputTagsFilename, bbSettingsFilename);
     if (output=="ERROR_IN_PROCESSING") {
         Warn("Error in processing", "Error in define tags");
         return;

@@ -420,6 +420,10 @@ QString CemrgFourChamberCmd::DockerCorrectFibres(QString baseDirectory, QString 
     return outAbsolutePath;
 }
 
+QString CemrgFourChamberCmd::DockerLaplaceCalc(QString baseDirectory, QString meshname, QString endoSurfFile, QString epiSurfFile, QString parfolder, QString outdirectory) {
+    
+}
+
 QString CemrgFourChamberCmd::DockerDefineTags(QString baseDirectory, QString dataSubdir, QString atriaSubdir, QString meshname, QString parfolder, QString inputTagsFilename, QString bbSettingsFilename) {
     SetDockerImageFourch();
     QString executablePath;
