@@ -634,6 +634,28 @@ void FourChamberView::AtrialFibres(){
 }
 
 void FourChamberView::SurfaceToVolume() {
+    // std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+    // fourch_cmd->SetCarpDirectory(carp_directory);
+    // fourch_cmd->SetCarpless(carpless);
+
+    // === main laplace - la ===
+    // QString output = fourch_cmd->DockerLaplacePrep(...);
+    // carp.pt
+    // igbextract
+    // GlVTKConvert
+
+    // === main laplace - ra ===
+    // QString output = fourch_cmd->DockerLaplacePrep(...);
+    // carp.pt
+    // igbextract
+    // GlVTKConvert
+
+    // === surfact to volume - la ===
+    // === surfact to volume - ra ===
+
+    // === Mapping to biatrial mesh ===
+
+    // === Mapping to four chamber mesh ===
 }
 
 void FourChamberView::DefineTags() {

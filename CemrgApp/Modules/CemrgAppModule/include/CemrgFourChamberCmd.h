@@ -100,7 +100,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
         inline void SetDockerImageSeg4ch(QString tag = "latest") { SetDockerImage("cemrg/seg-4ch:" + tag); };
         QString DockerExtractSurfaces(QString baseDirectory, QString parFolder, QString inputTagsFilename, QString apexSeptumFolder, QString meshname);
         QString DockerCorrectFibres(QString baseDirectory, QString meshname);
-        QString DockerLaplaceCalc(QString baseDirectory, QString meshname, QString endoSurfFile, QString epiSurfFile, QString parfolder, QString outdirectory);
+        QString DockerLaplacePrep(QString baseDirectory, QString atrium, QString afibSubdir, QString surfEndo, QString surfEpi);
         QString DockerDefineTags(QString baseDirectory, QString dataSubdir, QString atriaSubdir, QString meshname, QString parfolder, QString inputTagsFilename, QString bbSettingsFilename);
         QString DockerMeshtoolGeneric(QString directory, QString command, QString subcommand, QStringList arguments, QString expectedOutput);
 

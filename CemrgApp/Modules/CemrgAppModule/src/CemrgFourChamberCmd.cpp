@@ -420,8 +420,36 @@ QString CemrgFourChamberCmd::DockerCorrectFibres(QString baseDirectory, QString 
     return outAbsolutePath;
 }
 
-QString CemrgFourChamberCmd::DockerLaplaceCalc(QString baseDirectory, QString meshname, QString endoSurfFile, QString epiSurfFile, QString parfolder, QString outdirectory) {
-    
+QString CemrgFourChamberCmd::DockerLaplacePrep(QString baseDirectory, QString atrium, QString afibSubdir, QString surfEndo, QString surfEpi) {
+    SetDockerImageFourch();
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+    QString executableName = executablePath + "docker";
+    QString outAbsolutePath = "ERROR_IN_PROCESSING";
+
+    QDir home(baseDirectory);
+    QStringList arguments = GetDockerArguments(home.absolutePath());
+
+    QString fourchCmd = "laplace_prep";
+    arguments << fourchCmd;
+    arguments << "--mesh-path" << home.relativeFilePath(afibSubdir);
+    arguments << "--atrium" << atrium;
+    arguments << "--surf-endo" << surfEndo;
+    arguments << "--surf-epi" << surfEpi;
+
+    QString outputPath = home.absolutePath() + "/" + afibSubdir + "/" + atrium + "/" + surfEndo + ".vtx";
+    bool successful = ExecuteCommand(executableName, arguments, outputPath);
+
+    if(successful){
+        MITK_INFO << ("4Ch command: " + fourchCmd + " successful").toStdString();
+        outAbsolutePath = outputPath;
+    } else{
+        MITK_WARN << ("Error running 4Ch command: " + fourchCmd).toStdString();
+    }
+
+    return outAbsolutePath;    
 }
 
 QString CemrgFourChamberCmd::DockerDefineTags(QString baseDirectory, QString dataSubdir, QString atriaSubdir, QString meshname, QString parfolder, QString inputTagsFilename, QString bbSettingsFilename) {
