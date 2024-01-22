@@ -633,25 +633,62 @@ void FourChamberView::AtrialFibres(){
     }
 }
 
+bool FourChamberView::MainLaplaceProcess(QString uacFolder, QString atrium){
+    QString surfEndo = atrium + "_endo";
+    QString surfEpi = atrium + "_epi";
+
+    QString endoSurfPath = uacFolder + "/" + atrium + "/" + surfEndo;
+    QString epiSurfPath = uacFolder + "/" + atrium + "/" + surfEpi;
+    QStringList stimFiles = {endoSurfPath, epiSurfPath};
+    QString outSuffix = "endo_epi";
+    QString lapOutSuffix = "laplace_" + outSuffix;
+    QString outDir = uacFolder + "/" + atrium + "/" + outSuffix;
+    QString parfile = "carpf_" + lapOutSuffix +".par";
+
+    QStringList nList = {"phie.dat"};
+    QString modelName = atrium + "/" + atrium;
+    bool trimNames = true;
+
+    std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+    fourch_cmd->SetCarpDirectory(carp_directory);
+    fourch_cmd->SetCarpless(carpless);
+
+    QString output = fourch_cmd->DockerLaplacePrep(directory, atrium, SDIR.AFIB, surfEndo, surfEpi);
+
+    // carp.pt:
+    bool success = fourch_cmd->ExecuteCarp_Pt(directory, meshing_parameters.out_name, SDIR.PAR, parfile, stimFiles, outDir);
+
+    // igbextract
+    success = fourch_cmd->ExecuteIgbextract(directory, SDIR.AFIB + "/UAC/" + outSuffix, 0.0, 0.0, nList.at(0), "phie.igb");
+
+    // GlVTKConvert
+    success = fourch_cmd->ExecuteGlVTKConvert(uacFolder, modelName, nList, lapOutSuffix, trimNames);
+
+    return success;
+}
+
+bool FourChamberView::MainSurfToVolumeProcess(QString uacFolderSuffix, QString atrium) {
+    std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+    fourch_cmd->SetCarpDirectory(carp_directory);
+    fourch_cmd->SetCarpless(carpless);
+
+    QString success = fourch_cmd->DockerSurfaceToVolume(directory, atrium, "Fibre_endo_l", "Fibre_epi_l", uacFolderSuffix);
+
+    // START HERE
+}
+
 void FourChamberView::SurfaceToVolume() {
-    // std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
-    // fourch_cmd->SetCarpDirectory(carp_directory);
-    // fourch_cmd->SetCarpless(carpless);
+    // uac_folder = f"{directory}/{mesh_path}"
+    QString uacFolder = Path(SDIR.AFIB+"/UAC");
 
-    // === main laplace - la ===
-    // QString output = fourch_cmd->DockerLaplacePrep(...);
-    // carp.pt
-    // igbextract
-    // GlVTKConvert
+    bool success = MainLaplaceProcess(uacFolder, "la");
+    if (!success) return;
 
-    // === main laplace - ra ===
-    // QString output = fourch_cmd->DockerLaplacePrep(...);
-    // carp.pt
-    // igbextract
-    // GlVTKConvert
+    success = MainLaplaceProcess(uacFolder, "ra");
+    if (!success) return;
 
-    // === surfact to volume - la ===
-    // === surfact to volume - ra ===
+    // === surface to volume - la ===
+    // === surface to volume - ra ===
 
     // === Mapping to biatrial mesh ===
 
@@ -669,8 +706,8 @@ void FourChamberView::DefineTags() {
     std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
     fourch_cmd->SetCarpDirectory(carp_directory);
     fourch_cmd->SetCarpless(carpless);
-    // QString baseDirectory, QString dataSubdir, QString atriaSubdir, QString meshname, QString parfolder, QString inputTagsFilename, QString bbSettingsFilename
-    QString output = fourch_cmd->DockerDefineTags(directory, SDIR.UVC, SDIR.AFIB, meshname, SDIR. inputTagsFilename, bbSettingsFilename);
+    //                                       baseDirectory, dataSubdir, atriaSubdir, meshname, parfolder, inputTagsFilename, bbSettingsFilename
+    QString output = fourch_cmd->DockerDefineTags(directory, SDIR.UVC, SDIR.AFIB, meshname, SDIR.PAR, inputTagsFilename, bbSettingsFilename);
     if (output=="ERROR_IN_PROCESSING") {
         Warn("Error in processing", "Error in define tags");
         return;

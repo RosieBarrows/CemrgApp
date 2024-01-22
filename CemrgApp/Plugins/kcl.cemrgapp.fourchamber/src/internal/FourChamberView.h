@@ -130,6 +130,10 @@ public:
 
     bool cp(QString src, QString dst);
 
+    // 4ch process functions
+    bool MainLaplaceProcess(QString uacFolder, QString atrium);
+    bool MainSurfToVolumeProcess(QString uacFolder, QString atrium);
+
 protected slots:
     // here you add the functions that willl be linked to buttons
     void SetWorkingFolder();
