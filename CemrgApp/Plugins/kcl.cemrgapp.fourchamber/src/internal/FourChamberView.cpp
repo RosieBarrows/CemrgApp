@@ -674,12 +674,46 @@ bool FourChamberView::MainSurfToVolumeProcess(QString uacFolderSuffix, QString a
 
     QString success = fourch_cmd->DockerSurfaceToVolume(directory, atrium, "Fibre_endo_l", "Fibre_epi_l", uacFolderSuffix);
 
-    // START HERE
+    return (success=="ERROR_IN_PROCESSING");
+}
+
+bool FourChamberView::MeshtoolInsert(QString uacFolder, QString expOutputName, QString subMsh, QString msh) {
+    std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+    fourch_cmd->SetCarpDirectory(carp_directory);
+    fourch_cmd->SetCarpless(carpless);
+
+    QStringList argsinsert;
+    QString expOutput = uacFolder + "/" + expOutputName;
+    argsinsert << "-submsh=" + uacFolder + "/" + subMsh;
+    argsinsert << "-msh=" + uacFolder + "/" + msh;
+    argsinsert << "-ofmt=carp_txt";
+    argsinsert << "-outmsh=" + expOutput;
+
+    QString insrtOutput = fourch_cmd->DockerMeshtoolGeneric(directory, "insert", "submesh", argsinsert, expOutput + ".elem");
+
+    return (insrtOutput == "ERROR_IN_PROCESSING");
+}
+
+bool FourChamberView::MeshtoolConvert(QString uacFolder, QString expOutputName, QString inputName) {
+    std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+    fourch_cmd->SetCarpDirectory(carp_directory);
+    fourch_cmd->SetCarpless(carpless);
+
+    QString expOutput = uacFolder + "/" + expOutputName;
+    if (inputName.isEmpty()) inputName = expOutputName;
+
+    QStringList argsconvert;
+    argsconvert << "-imsh=" + inputName;
+    argsconvert << "-omsh=" + expOutput + ".vtk";
+    QString convrtOutput = fourch_cmd->DockerMeshtoolGeneric(directory, "convert", "", argsconvert, expOutput + ".elem");
+
+    return (convrtOutput == "ERROR_IN_PROCESSING");
 }
 
 void FourChamberView::SurfaceToVolume() {
     // uac_folder = f"{directory}/{mesh_path}"
-    QString uacFolder = Path(SDIR.AFIB+"/UAC");
+    QString uacFolderSuffix = SDIR.AFIB + "/UAC";
+    QString uacFolder = Path(uacFolderSuffix);
 
     bool success = MainLaplaceProcess(uacFolder, "la");
     if (!success) return;
@@ -688,11 +722,46 @@ void FourChamberView::SurfaceToVolume() {
     if (!success) return;
 
     // === surface to volume - la ===
+    success = MainSurfToVolumeProcess(uacFolderSuffix, "la");
+    if (!success) return;
+
     // === surface to volume - ra ===
+    success = MainSurfToVolumeProcess(uacFolderSuffix, "ra");
+    if (!success) return;
 
     // === Mapping to biatrial mesh ===
+    QStringList atria = {"la", "ra"};
+    QStringList suffix = {".nod", ".eidx"};
+    QString fibrsSheet = "_fibres_l_sheet";
+
+    std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+    fourch_cmd->SetCarpDirectory(carp_directory);
+    fourch_cmd->SetCarpless(carpless);
+    for (unsigned int ix = 0; ix < atria.size(); ix++) {
+        QString atr = atria.at(ix);
+        for (unsigned int jx = 0; jx < suffix.size(); jx++) {
+            QString srcPath = uacFolder + "/" + atr + "/" + atr + suffix.at(jx);
+            QString dstPath = uacFolder + "/" + atr + "/" + atr + fibrsSheet + suffix.at(jx);
+            if (!cp(srcPath, dstPath)) return;
+        }
+    }
+
+    QString biatrPre = "biatrial/biatrial";
+    if (!MeshtoolInsert(uacFolder, biatrPre + "_la_fibres", "la/la" + fibrsSheet, biatrPre)) return ;
+    if (!MeshtoolConvert(uacFolder, biatrPre + "_la_fibres")) return ;
+
+    if (!MeshtoolInsert(uacFolder, biatrPre + "_fibres_l", "ra/ra" + fibrsSheet, biatrPre + "_la_fibres")) return ;
+    if (!MeshtoolConvert(uacFolder, biatrPre + "_fibres_l")) return ;
 
     // === Mapping to four chamber mesh ===
+    for (unsigned int jx = 0; jx < suffix.size(); jx++) {
+        QString srcPath = uacFolder + "/" + biatrPre + suffix.at(jx);
+        QString dstPath = uacFolder + "/" + biatrPre + fibrsSheet + suffix.at(jx);
+        if (!cp(srcPath, dstPath)) return;
+    }
+
+    if (!MeshtoolInsert(directory, SDIR.AFIB + "/myocardium_fibres_l", uacFolder + "/" + biatrPre + "_fibres_l", SDIR.UVC + meshing_parameters.out_name)) return ;
+    if (!MeshtoolConvert(directory, SDIR.AFIB + "/myocardium_fibres_l")) return ;
 }
 
 void FourChamberView::DefineTags() {

@@ -133,6 +133,8 @@ public:
     // 4ch process functions
     bool MainLaplaceProcess(QString uacFolder, QString atrium);
     bool MainSurfToVolumeProcess(QString uacFolder, QString atrium);
+    bool MeshtoolInsert(QString uacFolder, QString expOutputName, QString subMsh, QString msh);
+    bool MeshtoolConvert(QString uacFolder, QString expOutputName, QString inputName="");
 
 protected slots:
     // here you add the functions that willl be linked to buttons
