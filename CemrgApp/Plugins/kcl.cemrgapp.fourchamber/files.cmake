@@ -5,11 +5,13 @@ set(SRC_CPP_FILES
 set(INTERNAL_CPP_FILES
   kcl_cemrgapp_fourchamber_Activator.cpp
   FourChamberView.cpp
+  FourChamberLandmarksView.cpp
   CemrgDataInteractor.cpp
 )
 
 set(UI_FILES
   src/internal/FourChamberViewControls.ui
+  src/internal/FourChamberLandmarksViewControls.ui
   src/internal/FourChamberViewPointLabelSelect.ui
   src/internal/FourChamberViewIdentifyLabels.ui
   src/internal/Meshtools3DParameterUI.ui
