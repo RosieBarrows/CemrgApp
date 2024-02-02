@@ -775,4 +775,44 @@ struct HeartLabels {
     }
 };
 
+enum AtrialLandmarksType {NOT_SET = -1, LA_APEX=11, LA_SEPTUM=13, RA_APEX=15, RA_SEPTUM=17, RAA_APEX=19};
+class PickedPointType { 
+    public :
+        PickedPointType() {
+            seedIds = vtkSmartPointer<vtkIdList>::New();
+            seedIds->Initialize();
+            
+            lineSeeds = vtkSmartPointer<vtkPolyData>::New();
+            lineSeeds->Initialize();
+            lineSeeds->SetPoints(vtkSmartPointer<vtkPoints>::New());
+
+            seedLabels = std::vector<int>();
+            pointNames = QStringList();
+        }
+
+        void AddPointFromSurface(mitk::Surface::Pointer surface, int pickedSeedId, int label = -1) { 
+            double* point = surface->GetVtkPolyData()->GetPoint(pickedSeedId);
+            seedIds->InsertNextId(pickedSeedId);
+            lineSeeds->GetPoints()->InsertNextPoint(point);
+            lineSeeds->Modified();
+
+            // 
+            if (label != -1) {
+                seedLabels.push_back(label);
+            }
+        }
+
+        void PushBackLabel(AtrialLandmarksType label) {
+            seedLabels.push_back(static_cast<int>(label));
+        }
+
+
+    private :
+        std::vector<int> seedLabels;
+        vtkSmartPointer<vtkIdList> seedIds;
+        vtkSmartPointer<vtkPolyData> lineSeeds;
+
+        QStringList pointNames;
+}
+
 #endif

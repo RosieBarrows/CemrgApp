@@ -36,9 +36,10 @@ PURPOSE.  See the above copyright notices for more information.
 #include <vtkActor.h>
 #include <CemrgAtriaClipper.h>
 #include <CemrgScarAdvanced.h>
+#include <FourChamberCommon.h>
 
 #include "ui_FourChamberLandmarksViewControls.h"
-// #include "ui_FourChamberLandmarksViewRough.h"
+#include "ui_FourChamberLandmarksViewPointLabel.h"
 // #include "ui_FourChamberLandmarksViewRefined.h"
 
 /**
@@ -73,28 +74,25 @@ public:
 protected slots:
 
     /// \brief Called when the user clicks the GUI button
-    void Help(bool firstTime=false);
-    void SaveRoughPoints();
-    void SaveRefinedPoints();
+    void Help();
+    void SaveSelectedPoints();
+    void ComboSelectWorkingMesh(int index);
 
-protected:
+            protected :
 
-    virtual void CreateQtPartControl(QWidget *parent) override;
+        virtual void CreateQtPartControl(QWidget *parent) override;
     virtual void SetFocus() override;
     /// \brief called by QmitkFunctionality when DataManager's selection has changed
     virtual void OnSelectionChanged(
             berry::IWorkbenchPart::Pointer source, const QList<mitk::DataNode::Pointer>& nodes) override;
 
     Ui::FourChamberLandmarksViewControls m_Controls;
-    // Ui::FourChamberLandmarksViewRough m_Rough;
-    // Ui::FourChamberLandmarksViewRefined m_Refined;
+    Ui::FourChamberLandmarksViewPointLabel m_PickedPoints;
 
 private:
 
     void iniPreSurf();
     void Visualiser(double opacity=1.0);
-    void VisualiserAuto(double opacity);
-    void VisualiserManual(double opacity);
 
     void SphereSourceVisualiser(vtkSmartPointer<vtkPolyData> pointSources, QString colour="1.0,0.0,0.0", double scaleFactor=0.01);
     void PickCallBack(bool refinedLandmarks=false);
@@ -106,12 +104,9 @@ private:
     void UserSelectPvRoughLabel();
     void UserSelectPvRefinedLabel();
 
-    void RoughUiEnableButtons();
-    void RefinedUiEnableButtons();
-
-    static QString fileName;
     static QString directory;
-    static QString whichAtrium;
+    static QString laSubdir, laName;
+    static QString raSubdir, raName;
 
     mitk::Surface::Pointer surface;
     vtkSmartPointer<vtkActor> surfActor;

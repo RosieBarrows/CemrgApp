@@ -13,6 +13,7 @@ set(UI_FILES
   src/internal/FourChamberViewControls.ui
   src/internal/FourChamberLandmarksViewControls.ui
   src/internal/FourChamberViewPointLabelSelect.ui
+  src/internal/FourChamberLandmarksViewPointLabel.ui
   src/internal/FourChamberViewIdentifyLabels.ui
   src/internal/Meshtools3DParameterUI.ui
   src/internal/LabelsSelectorUI.ui

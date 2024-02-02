@@ -87,9 +87,11 @@ PURPOSE.  See the above copyright notices for more information.
 #include <CemrgCommandLine.h>
 #include <CemrgCommonUtils.h>
 
-QString FourChamberLandmarksView::fileName;
 QString FourChamberLandmarksView::directory;
-QString FourChamberLandmarksView::whichAtrium;
+QString FourChamberLandmarksView::laSubdir;
+QString FourChamberLandmarksView::raSubdir;
+QString FourChamberLandmarksView::laName;
+QString FourChamberLandmarksView::raName;
 
 const std::string FourChamberLandmarksView::VIEW_ID = "org.mitk.views.FourChamberLandmarksView";
 
@@ -97,30 +99,15 @@ void FourChamberLandmarksView::CreateQtPartControl(QWidget *parent) {
 
     // create GUI widgets from the Qt Designer's .ui file
     m_Controls.setupUi(parent);
-    connect(m_Controls.button_guide1, SIGNAL(clicked()), this, SLOT(Help()));
-    connect(m_Controls.button_1, SIGNAL(clicked()), this, SLOT(SaveRoughPoints()));
-    connect(m_Controls.button_2, SIGNAL(clicked()), this, SLOT(SaveRefinedPoints()));
-
-    isLeftAtrium = (FourChamberLandmarksView::whichAtrium.compare("LA", Qt::CaseInsensitive)==0);
-    std::cout << (isLeftAtrium ? "Working on Left Atrium" : "Working on Right Atrium") << '\n';
-    if(!isLeftAtrium){
-        m_Controls.button_1->setText("Save Landmarks");
-        m_Controls.button_2->setText("Save Region");
-    }
+    connect(m_Controls.button_help, SIGNAL(clicked()), this, SLOT(Help()));
+    connect(m_Controls.button_1, SIGNAL(clicked()), this, SLOT(SaveSelectedPoints()));
+    connect(m_Controls.combo_select, SIGNAL(currentIndexChanged(int)), this, SLOT(ComboSelectWorkingMesh(int)));
 
     //Create GUI widgets
-    inputsRough = new QDialog(0,0);
-    m_Rough.setupUi(inputsRough);
-    connect(m_Rough.buttonBox, SIGNAL(accepted()), inputsRough, SLOT(accept()));
-    connect(m_Rough.buttonBox, SIGNAL(rejected()), inputsRough, SLOT(reject()));
-
-    inputsRefined = new QDialog(0,0);
-    m_Refined.setupUi(inputsRefined);
-    connect(m_Refined.buttonBox, SIGNAL(accepted()), inputsRefined, SLOT(accept()));
-    connect(m_Refined.buttonBox, SIGNAL(rejected()), inputsRefined, SLOT(reject()));
-
-    RoughUiEnableButtons();
-    RefinedUiEnableButtons();
+    inputsPickedPoints = new QDialog(0,0);
+    m_PickedPoints.setupUi(inputsPickedPoints);
+    connect(m_PickedPoints.buttonBox, SIGNAL(accepted()), inputsPickedPoints, SLOT(accept()));
+    connect(m_PickedPoints.buttonBox, SIGNAL(rejected()), inputsPickedPoints, SLOT(reject()));
 
     //Setup renderer
     surfActor = vtkSmartPointer<vtkActor>::New();
@@ -153,17 +140,11 @@ void FourChamberLandmarksView::CreateQtPartControl(QWidget *parent) {
 
     //Initialisation
     iniPreSurf();
-    if (surface.IsNotNull()) {
-        InitialisePickerObjects();
-        Visualiser();
-    }
-
-    m_Controls.button_2->setEnabled(false);
     Help(true);
 }
 
 void FourChamberLandmarksView::SetFocus() {
-    m_Controls.button_guide1->setFocus();
+    m_Controls.button_help->setFocus();
 }
 
 void FourChamberLandmarksView::OnSelectionChanged(
@@ -171,12 +152,12 @@ void FourChamberLandmarksView::OnSelectionChanged(
 }
 
 FourChamberLandmarksView::~FourChamberLandmarksView() {
-    inputsRough->deleteLater();
+    inputsPickedPoints->deleteLater();
     inputsRefined->deleteLater();
 }
 
 // slots
-void FourChamberLandmarksView::Help(bool firstTime){
+void FourChamberLandmarksView::Help(){
     std::string msg = "";
     if(firstTime){
         msg = "HELP\n Select Rough locations with the spacebar, ";
@@ -191,91 +172,16 @@ void FourChamberLandmarksView::Help(bool firstTime){
     QMessageBox::information(NULL, "Help", msg.c_str());
 }
 
-void FourChamberLandmarksView::SaveRoughPoints(){
-    if(roughSeedIds->GetNumberOfIds() == 0){
-        QMessageBox::warning(NULL, "Rough landmarks not selected.", "Select the correct rough landmarks.");
-        return;
-    }
+void FourChamberLandmarksView::SaveSelectedPoints() {
 
-    MITK_INFO << "[SaveRoughPoints] Saving rough points to file.";
-    QString prodPath = directory + "/";
-    QString outname = (isLeftAtrium) ? "prodLaRoughLandmarks" : "prodRaLandmarks";
-    ofstream fileRough, fileRoughLabels;
+} 
 
-    MITK_INFO << "[SaveRoughPoints] Saving TXT file.";
-    fileRough.open((prodPath + outname + ".txt").toStdString());
-    fileRoughLabels.open((prodPath + outname + "-Labels.txt").toStdString());
-
-	std::vector<int> roughPointsOrder;
-	if (isLeftAtrium) {
-		roughPointsOrder = { 15, 17, 13, 11, 21, 19 };
-	} else {
-		roughPointsOrder = { 29, 31, 33, 35, 37, 39 };
-	}
-    for (unsigned int ix = 0; ix<roughPointsOrder.size(); ix++) {
-        int index = GetIndex(roughSeedLabels, roughPointsOrder.at(ix));
-        if(index!=-1){
-            std::cout << GetStructureIdFromLabel(false, roughSeedLabels.at(index)) << '\n';
-
-            vtkIdType vId = roughSeedIds->GetId(index);
-            double* point = surface->GetVtkPolyData()->GetPoint(vId);
-
-            fileRough << std::setprecision(12) << point[0] << "," << point[1] << "," << point[2] << "\n";
-            fileRoughLabels << GetStructureIdFromLabel(false, roughSeedLabels.at(index)) << "\n";
-        } else{
-            MITK_WARN << "[SaveRoughPoints] Value not found";
-        }
-    }
-    fileRough.close();
-
-    m_Controls.button_1->setEnabled(false);
-    m_Controls.button_2->setEnabled(true);
-    Help();
-
-
+void FourChamberLandmarksView::ComboSelectWorkingMesh(int index) {
+    
 }
 
-void FourChamberLandmarksView::SaveRefinedPoints(){
-    if(refinedSeedIds->GetNumberOfIds() == 0){
-        QMessageBox::warning(NULL, "Refined landmarks not selected.", "Select the correct refined landmarks.");
-        return;
-    }
 
-    MITK_INFO << "[SaveRefinedPoints] Saving refined points to file.";
-    QString prodPath = directory + "/";
-    QString outname = (isLeftAtrium) ? "prodLaRefinedLandmarks" : "prodRaRegion";
-    ofstream fileRefined;
-    ofstream fileRough, fileRefinedLabels;
-
-    MITK_INFO << "[SaveRefinedPoints] Saving TXT file.";
-    fileRefined.open((prodPath + outname + ".txt").toStdString());
-    fileRefinedLabels.open((prodPath + outname + "-Labels.txt").toStdString());
-
-	std::vector<int> refinedPointsOrder;
-	if (isLeftAtrium) {
-		refinedPointsOrder = { 19, 22, 13, 17 };
-	} else {
-		refinedPointsOrder = { 29, 31, 33, 35, 37, 39 };
-	}
-    for (unsigned int ix = 0; ix<refinedPointsOrder.size(); ix++) {
-        int index = GetIndex(refinedSeedLabels, refinedPointsOrder.at(ix));
-        if(index!=-1){
-            std::cout << GetStructureIdFromLabel(true, refinedSeedLabels.at(index)) << '\n';
-            vtkIdType vId = refinedSeedIds->GetId(index);
-            double* point = surface->GetVtkPolyData()->GetPoint(vId);
-
-            fileRefined << std::setprecision(12) << point[0] << "," << point[1] << "," << point[2] << "\n";
-            fileRefinedLabels << GetStructureIdFromLabel(true, refinedSeedLabels.at(index)) << "\n";
-
-        } else{
-            MITK_WARN << "[SaveRefinedPoints] Value not found";
-        }
-    }
-    fileRefined.close();
-
-    m_Controls.button_2->setEnabled(false);
-    m_Controls.button_guide1->setEnabled(false);
-}
+/// slots
 
 void FourChamberLandmarksView::SetDirectoryFile(const QString directory, const QString fileName, const QString whichAtrium) {
     FourChamberLandmarksView::fileName = fileName;
@@ -296,19 +202,9 @@ void FourChamberLandmarksView::iniPreSurf() {
 
 void FourChamberLandmarksView::Visualiser(double opacity){
     MITK_INFO << "[Visualiser]";
-    double max_scalar = (isLeftAtrium) ? 19 : 7;
+    double max_scalar = 19;
     double min_scalar = 1;
     vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
-    // double max_scalar=-1, min_scalar=1e9,s;
-    // vtkFloatArray *scalars = vtkFloatArray::New();
-    // scalars = vtkFloatArray::SafeDownCast(surface->GetVtkPolyData()->GetCellData()->GetScalars());
-    // for (vtkIdType i=0;i<surface->GetVtkPolyData()->GetNumberOfCells();i++) {
-    //     s = scalars->GetTuple1(i);
-    //     if (s > max_scalar)
-    //         max_scalar = s;
-    //     if (s < min_scalar)
-    //         min_scalar = s;
-    // }
     this->maxScalar = max_scalar;
     this->minScalar = min_scalar;
 
@@ -622,11 +518,11 @@ void FourChamberLandmarksView::UserSelectPvLabel(bool refinedLandmarks){
 }
 
 void FourChamberLandmarksView::UserSelectPvRoughLabel(){
-    int dialogCode = inputsRough->exec();
+    int dialogCode = inputsPickedPoints->exec();
     QRect screenGeometry = QApplication::desktop()->screenGeometry();
-    int x = (screenGeometry.width() - inputsRough->width()) / 2;
-    int y = (screenGeometry.height() - inputsRough->height()) / 2;
-    inputsRough->move(x,y);
+    int x = (screenGeometry.width() - inputsPickedPoints->width()) / 2;
+    int y = (screenGeometry.height() - inputsPickedPoints->height()) / 2;
+    inputsPickedPoints->move(x,y);
 
     //Act on dialog return code
     if (dialogCode == QDialog::Accepted) {
@@ -674,7 +570,7 @@ void FourChamberLandmarksView::UserSelectPvRoughLabel(){
         }
 
     } else if (dialogCode == QDialog::Rejected) {
-        inputsRough->close();
+        inputsPickedPoints->close();
     }//_if
 }
 
@@ -800,39 +696,6 @@ int FourChamberLandmarksView::GetIndex(std::vector<int> v, int value){
         index = it - v.begin();
     }
     return index;
-}
-
-void FourChamberLandmarksView::RoughUiEnableButtons(){
-    m_Rough.radioBtn_LAA_base->setVisible(isLeftAtrium);
-    m_Rough.radioBtn_LAA_tip->setVisible(isLeftAtrium);
-    m_Rough.radioBtn_LA_LSPV->setVisible(isLeftAtrium);
-    m_Rough.radioBtn_LA_LIPV->setVisible(isLeftAtrium);
-    m_Rough.radioBtn_LA_RSPV->setVisible(isLeftAtrium);
-    m_Rough.radioBtn_LA_RIPV->setVisible(isLeftAtrium);
-
-    m_Rough.radioBtn_RA_SVC_POST->setVisible(!isLeftAtrium);
-    m_Rough.radioBtn_RA_IVC_POST->setVisible(!isLeftAtrium);
-    m_Rough.radioBtn_RAA_TCV->setVisible(!isLeftAtrium);
-    m_Rough.radioBtn_RA_CS_TCV->setVisible(!isLeftAtrium);
-    m_Rough.radioBtn_RA_SVC_ANT->setVisible(!isLeftAtrium);
-    m_Rough.radioBtn_RA_IVC_ANT->setVisible(!isLeftAtrium);
-}
-
-void FourChamberLandmarksView::RefinedUiEnableButtons(){
-
-    m_Refined.radioBtn_LA_FO->setVisible(isLeftAtrium);
-    m_Refined.radioBtn_LA_LSPV->setVisible(isLeftAtrium);
-    m_Refined.radioBtn_LA_LatWall->setVisible(isLeftAtrium);
-    m_Refined.radioBtn_LA_LspvBody->setVisible(isLeftAtrium);
-    m_Refined.radioBtn_LA_RSPV->setVisible(isLeftAtrium);
-    m_Refined.radioBtn_LA_RspvBody->setVisible(isLeftAtrium);
-
-    m_Refined.radioBtn_RA_IVC_ANT->setVisible(!isLeftAtrium);
-    m_Refined.radioBtn_RA_CS->setVisible(!isLeftAtrium);
-    m_Refined.radioBtn_RA_IvcSvc->setVisible(!isLeftAtrium);
-    m_Refined.radioBtn_RA_SVC_ANT->setVisible(!isLeftAtrium);
-    m_Refined.radioBtn_RAA_ANT->setVisible(!isLeftAtrium);
-    m_Refined.radioBtn_RAA_CS_ANT->setVisible(!isLeftAtrium);
 }
 
 /*
