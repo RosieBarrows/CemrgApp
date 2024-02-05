@@ -50,7 +50,6 @@ PURPOSE.  See the above copyright notices for more information.
   \sa QmitkAbstractView
   \ingroup ${plugin_target}_internal
 */
-typedef std::pair<vtkIdType, double> SeedRadiusPairType;
 class FourChamberLandmarksView : public QmitkAbstractView {
 
     // this is needed for all Qt objects that should have a Qt meta-object
@@ -60,16 +59,10 @@ class FourChamberLandmarksView : public QmitkAbstractView {
 public:
 
     static const std::string VIEW_ID;
-    static void SetDirectoryFile(const QString directory, const QString fileName, const QString whichAtrium);
+    static void SetDirectoryFile(const QString directory, const QString laSubdir, const QString laName, const QString raSubdir, const QString raName);
     ~FourChamberLandmarksView();
 
     // helper functions
-    std::string GetShortcuts();
-    std::string GetRoughPointsGuide();
-    std::string GetRefinedPointsGiude();
-    std::string GetStructureIdFromLabel(bool refinedLandmarks, int label);
-
-    int GetIndex(std::vector<int> v, int value);
 
 protected slots:
 
@@ -78,9 +71,9 @@ protected slots:
     void SaveSelectedPoints();
     void ComboSelectWorkingMesh(int index);
 
-            protected :
-
-        virtual void CreateQtPartControl(QWidget *parent) override;
+protected :
+        
+    virtual void CreateQtPartControl(QWidget *parent) override;
     virtual void SetFocus() override;
     /// \brief called by QmitkFunctionality when DataManager's selection has changed
     virtual void OnSelectionChanged(
@@ -95,14 +88,10 @@ private:
     void Visualiser(double opacity=1.0);
 
     void SphereSourceVisualiser(vtkSmartPointer<vtkPolyData> pointSources, QString colour="1.0,0.0,0.0", double scaleFactor=0.01);
-    void PickCallBack(bool refinedLandmarks=false);
+    void PickCallBack();
     static void KeyCallBackFunc(vtkObject*, long unsigned int, void* ClientData, void*);
 
-    void InitialisePickerObjects();
-
-    void UserSelectPvLabel(bool refinedLandmarks=false);
-    void UserSelectPvRoughLabel();
-    void UserSelectPvRefinedLabel();
+    void UserSelectLabel();
 
     static QString directory;
     static QString laSubdir, laName;
@@ -110,7 +99,8 @@ private:
 
     mitk::Surface::Pointer surface;
     vtkSmartPointer<vtkActor> surfActor;
-    bool isLeftAtrium;
+
+    PickedPointType pickedPoint;
 
     std::vector<int> roughSeedLabels;
     vtkSmartPointer<vtkIdList> roughSeedIds;
@@ -120,8 +110,7 @@ private:
     vtkSmartPointer<vtkIdList> refinedSeedIds;
     vtkSmartPointer<vtkPolyData> refinedLineSeeds;
 
-    QDialog* inputsRough;
-    QDialog* inputsRefined;
+    QDialog* inputsPickedPoints;
     double maxScalar, minScalar;
 
     vtkSmartPointer<vtkRenderer> renderer;

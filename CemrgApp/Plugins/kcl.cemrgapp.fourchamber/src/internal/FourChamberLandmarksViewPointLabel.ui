@@ -46,10 +46,10 @@
     </widget>
    </item>
    <item>
-    <widget class="QComboBox" name="m_comboBox"/>
+    <widget class="QComboBox" name="comboBox"/>
    </item>
    <item>
-    <widget class="QDialogButtonBox" name="m_ok_cancel_button">
+    <widget class="QDialogButtonBox" name="buttonBox">
      <property name="standardButtons">
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>

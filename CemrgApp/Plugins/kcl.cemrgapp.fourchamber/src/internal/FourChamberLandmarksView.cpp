@@ -93,14 +93,14 @@ QString FourChamberLandmarksView::raSubdir;
 QString FourChamberLandmarksView::laName;
 QString FourChamberLandmarksView::raName;
 
-const std::string FourChamberLandmarksView::VIEW_ID = "org.mitk.views.FourChamberLandmarksView";
+const std::string FourChamberLandmarksView::VIEW_ID = "org.mitk.views.fourchamberlandmarksview";
 
 void FourChamberLandmarksView::CreateQtPartControl(QWidget *parent) {
 
     // create GUI widgets from the Qt Designer's .ui file
     m_Controls.setupUi(parent);
     connect(m_Controls.button_help, SIGNAL(clicked()), this, SLOT(Help()));
-    connect(m_Controls.button_1, SIGNAL(clicked()), this, SLOT(SaveSelectedPoints()));
+    connect(m_Controls.button_save, SIGNAL(clicked()), this, SLOT(SaveSelectedPoints()));
     connect(m_Controls.combo_select, SIGNAL(currentIndexChanged(int)), this, SLOT(ComboSelectWorkingMesh(int)));
 
     //Create GUI widgets
@@ -118,7 +118,7 @@ void FourChamberLandmarksView::CreateQtPartControl(QWidget *parent) {
     // renderer->TwoSidedLightingOn();
     // renderer->UpdateLightsGeometryToFollowCamera();
     vtkSmartPointer<vtkTextActor> txtActor = vtkSmartPointer<vtkTextActor>::New();
-    std::string shortcuts = GetShortcuts();
+    std::string shortcuts = "SPACE: Pick point\nDELETE: Remove last point\nH: Help\n";
     txtActor->SetInput(shortcuts.c_str());
     txtActor->GetTextProperty()->SetFontSize(14);
     txtActor->GetTextProperty()->SetColor(1.0, 1.0, 1.0);
@@ -140,7 +140,6 @@ void FourChamberLandmarksView::CreateQtPartControl(QWidget *parent) {
 
     //Initialisation
     iniPreSurf();
-    Help(true);
 }
 
 void FourChamberLandmarksView::SetFocus() {
@@ -151,24 +150,24 @@ void FourChamberLandmarksView::OnSelectionChanged(
         berry::IWorkbenchPart::Pointer /*src*/, const QList<mitk::DataNode::Pointer>& /*nodes*/) {
 }
 
+void FourChamberLandmarksView::SetDirectoryFile(const QString directory, const QString laSubdir, const QString laName, const QString raSubdir, const QString raName) {
+    FourChamberLandmarksView::directory = directory;
+    FourChamberLandmarksView::laSubdir = laSubdir;
+    FourChamberLandmarksView::laName = laName;
+    FourChamberLandmarksView::raSubdir = raSubdir;
+    FourChamberLandmarksView::raName = raName;
+}
+
 FourChamberLandmarksView::~FourChamberLandmarksView() {
     inputsPickedPoints->deleteLater();
-    inputsRefined->deleteLater();
 }
 
 // slots
 void FourChamberLandmarksView::Help(){
     std::string msg = "";
-    if(firstTime){
-        msg = "HELP\n Select Rough locations with the spacebar, ";
-        msg += "then click the Save Rough Locations button to enable saving ";
-        msg += "Refined Loactions.\n\n";
-        msg += GetRoughPointsGuide();
-    } else if(!m_Controls.button_2->isEnabled()) {
-        msg = GetRoughPointsGuide();
-    } else {
-        msg = GetRefinedPointsGiude();
-    }
+    msg += "This view allows the user to pick landmarks on the atrial surface.\n";
+    msg += "Choose the atrium from the combo box, then \n";
+    msg += "pick points by pressing the SPACE key.";
     QMessageBox::information(NULL, "Help", msg.c_str());
 }
 
@@ -177,27 +176,52 @@ void FourChamberLandmarksView::SaveSelectedPoints() {
 } 
 
 void FourChamberLandmarksView::ComboSelectWorkingMesh(int index) {
-    
+    QString selected = m_Controls.combo_select->itemText(index);
+    surface = mitk::IOUtil::Load<mitk::Surface>(directory.toStdString() + "/" + selected.toStdString());    
+    if (surface) {
+        if (pickedPoint.IsEmpty()) {
+            pickedPoint = PickedPointType();
+        } else {
+            m_PickedPoints.comboBox->clear();
+            pickedPoint.Clear();
+        }
+        
+        QStringList names;
+        std::vector<int> availableLabels;
+        if (selected.contains(laSubdir)) {
+            names << "LA_APEX" << "LA_SEPTUM";
+            availableLabels = {AtrialLandmarksType::LA_APEX, AtrialLandmarksType::LA_SEPTUM};
+        } else if (selected.contains(raSubdir)) {
+            names << "RA_APEX" << "RA_SEPTUM" << "RAA_APEX";
+            availableLabels = {AtrialLandmarksType::RA_APEX, AtrialLandmarksType::RA_SEPTUM, AtrialLandmarksType::RAA_APEX};
+        }
+        pickedPoint.SetAvailableLabels(names, availableLabels);
+        m_PickedPoints.comboBox->addItems(names);
+    }
 }
 
 
-/// slots
+/// slots - end
 
-void FourChamberLandmarksView::SetDirectoryFile(const QString directory, const QString fileName, const QString whichAtrium) {
-    FourChamberLandmarksView::fileName = fileName;
-    FourChamberLandmarksView::directory = directory;
-    FourChamberLandmarksView::whichAtrium = whichAtrium;
-}
+void FourChamberLandmarksView::iniPreSurf() {    
+    //Load the surface
+    QString laPath = directory + "/" + laSubdir + "/" + laName;
+    QString raPath = directory + "/" + raSubdir + "/" + raName;
 
-void FourChamberLandmarksView::iniPreSurf() {
-    //Find the selected node
-    QString path = FourChamberLandmarksView::directory + "/" + FourChamberLandmarksView::fileName;
-    // mitk::Surface::Pointer shell = mitk::IOUtil::Load<mitk::Surface>(path.toStdString());
-    mitk::Surface::Pointer shell = CemrgCommonUtils::LoadVTKMesh(path.toStdString());
-    CemrgCommonUtils::FlipXYPlane(shell, "", "");
-    mitk::IOUtil::Save(shell, path.toStdString());
+    if (QFile::exists(laPath)) {
+        m_Controls.combo_select->addItem(laSubdir + "/" + laName);
+    }
+    if (QFile::exists(raPath)) {
+        m_Controls.combo_select->addItem(raSubdir + "/" + raName);
+    }
 
-    surface = shell;
+    if (m_Controls.combo_select->count() > 0) {
+        m_Controls.combo_select->setEnabled(false);
+        QMessageBox::warning(NULL, "Warning", "No surfaces found in the selected directory!");
+    } else { 
+
+        Help();
+    }
 }
 
 void FourChamberLandmarksView::Visualiser(double opacity){
@@ -208,8 +232,9 @@ void FourChamberLandmarksView::Visualiser(double opacity){
     this->maxScalar = max_scalar;
     this->minScalar = min_scalar;
 
-    SphereSourceVisualiser(roughLineSeeds);
-    SphereSourceVisualiser(refinedLineSeeds, "0.0,0.0,1.0");
+    if (!pickedPoint.IsEmpty()) {
+        SphereSourceVisualiser(pickedPoint.GetLineSeeds());
+    }
 
     //Create a mapper and actor for surface
     vtkSmartPointer<vtkPolyDataMapper> surfMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
@@ -275,7 +300,7 @@ void FourChamberLandmarksView::SphereSourceVisualiser(vtkSmartPointer<vtkPolyDat
     renderer->AddActor(glyphActor);
 }
 
-void FourChamberLandmarksView::PickCallBack(bool refinedLandmarks) {
+void FourChamberLandmarksView::PickCallBack() {
 
     vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
     picker->SetTolerance(1E-4 * surface->GetVtkPolyData()->GetLength());
@@ -300,16 +325,8 @@ void FourChamberLandmarksView::PickCallBack(bool refinedLandmarks) {
         pickedSeedId = pickedCellPointIds->GetId(0);
     }
 
-    double* point = surface->GetVtkPolyData()->GetPoint(pickedSeedId);
-    if(!refinedLandmarks){
-        roughSeedIds->InsertNextId(pickedSeedId);
-        roughLineSeeds->GetPoints()->InsertNextPoint(point);
-        roughLineSeeds->Modified();
-    } else{
-        refinedSeedIds->InsertNextId(pickedSeedId);
-        refinedLineSeeds->GetPoints()->InsertNextPoint(point);
-        refinedLineSeeds->Modified();
-    }
+    // update point
+    pickedPoint.AddPointFromSurface(surface, pickedSeedId);
 
     m_Controls.widget_1->GetRenderWindow()->Render();
 }
@@ -323,201 +340,20 @@ void FourChamberLandmarksView::KeyCallBackFunc(vtkObject*, long unsigned int, vo
     if (key == "space") {
         //Ask the labels
         self->PickCallBack();
-        self->UserSelectPvLabel();
+        self->UserSelectLabel();
 
     } else if (key == "Delete") {
 
-        //Clean up last dropped seed point
-        vtkSmartPointer<vtkPoints> newPoints = vtkSmartPointer<vtkPoints>::New();
-        vtkSmartPointer<vtkPoints> points = self->roughLineSeeds->GetPoints();
-        for (int i=0; i<points->GetNumberOfPoints()-1; i++){
-            newPoints->InsertNextPoint(points->GetPoint(i));
-        }
-        self->roughLineSeeds->SetPoints(newPoints);
-        vtkSmartPointer<vtkIdList> newSeedIds = vtkSmartPointer<vtkIdList>::New();
-        newSeedIds->Initialize();
-        vtkSmartPointer<vtkIdList> roughSeedIds = self->roughSeedIds;
-        for (int i=0; i<roughSeedIds->GetNumberOfIds()-1; i++){
-            newSeedIds->InsertNextId(roughSeedIds->GetId(i));
-        }
-        self->roughSeedIds = newSeedIds;
-
-        if (self->roughSeedLabels.empty() == false) {
-            int radioButtonNumber = self->roughSeedLabels.back() - 10;
-            if (radioButtonNumber == 1)
-            self->m_Rough.radioBtn_LA_LSPV->setEnabled(true);
-            else if (radioButtonNumber == 3)
-            self->m_Rough.radioBtn_LA_LIPV->setEnabled(true);
-            else if (radioButtonNumber == 5)
-            self->m_Rough.radioBtn_LA_RSPV->setEnabled(true);
-            else if (radioButtonNumber == 7)
-            self->m_Rough.radioBtn_LA_RIPV->setEnabled(true);
-            else if (radioButtonNumber == 9)
-            self->m_Rough.radioBtn_LAA_base->setEnabled(true);
-            else if (radioButtonNumber == 11)
-            self->m_Rough.radioBtn_LAA_tip->setEnabled(true);
-            else if (radioButtonNumber == 19)
-            self->m_Rough.radioBtn_RA_SVC_POST->setEnabled(true);
-            else if (radioButtonNumber == 21)
-            self->m_Rough.radioBtn_RA_IVC_POST->setEnabled(true);
-            else if (radioButtonNumber == 23)
-            self->m_Rough.radioBtn_RAA_TCV->setEnabled(true);
-            else if (radioButtonNumber == 25)
-            self->m_Rough.radioBtn_RA_CS_TCV->setEnabled(true);
-            else if (radioButtonNumber == 27)
-            self->m_Rough.radioBtn_RA_SVC_ANT->setEnabled(true);
-            else if (radioButtonNumber == 29)
-            self->m_Rough.radioBtn_RA_IVC_ANT->setEnabled(true);
-
-            self->roughSeedLabels.pop_back();
-        }//_if
+        self->pickedPoint.CleanupLastPoint();
 
         self->m_Controls.widget_1->GetRenderWindow()->Render();
-    } else if (key == "X" || key == "x"){
-        if(self->m_Controls.button_2->isEnabled()){
-            bool refinedLandmarks = true;
-            self->PickCallBack(refinedLandmarks);
-            self->UserSelectPvLabel(refinedLandmarks);
-        }
-    } else if (key == "D" || key == "d"){
-        if(self->m_Controls.button_2->isEnabled()){
-            //Clean up last dropped seed point
-            vtkSmartPointer<vtkPoints> newPoints = vtkSmartPointer<vtkPoints>::New();
-            vtkSmartPointer<vtkPoints> points = self->refinedLineSeeds->GetPoints();
-            for (int i=0; i<points->GetNumberOfPoints()-1; i++){
-                newPoints->InsertNextPoint(points->GetPoint(i));
-            }
-            self->refinedLineSeeds->SetPoints(newPoints);
-            vtkSmartPointer<vtkIdList> newSeedIds = vtkSmartPointer<vtkIdList>::New();
-            newSeedIds->Initialize();
-            vtkSmartPointer<vtkIdList> roughSeedIds = self->refinedSeedIds;
-            for (int i=0; i<roughSeedIds->GetNumberOfIds()-1; i++){
-                newSeedIds->InsertNextId(roughSeedIds->GetId(i));
-            }
-            self->refinedSeedIds = newSeedIds;
-
-            if (self->refinedSeedLabels.empty() == false) {
-                int radioButtonNumber = self->refinedSeedLabels.back() - 10;
-                if (radioButtonNumber == 1)
-                self->m_Refined.radioBtn_LA_LSPV->setEnabled(true);
-                else if (radioButtonNumber == 3)
-                self->m_Refined.radioBtn_LA_LspvBody->setEnabled(true);
-                else if (radioButtonNumber == 5)
-                self->m_Refined.radioBtn_LA_RSPV->setEnabled(true);
-                else if (radioButtonNumber == 7)
-                self->m_Refined.radioBtn_LA_RspvBody->setEnabled(true);
-                else if (radioButtonNumber == 9)
-                self->m_Refined.radioBtn_LA_LatWall->setEnabled(true);
-                else if (radioButtonNumber == 12)
-                self->m_Refined.radioBtn_LA_FO->setEnabled(true);
-
-                else if (radioButtonNumber == 19)
-                self->m_Refined.radioBtn_RA_IVC_ANT->setEnabled(true);
-                else if (radioButtonNumber == 21)
-                self->m_Refined.radioBtn_RA_CS->setEnabled(true);
-                else if (radioButtonNumber == 23)
-                self->m_Refined.radioBtn_RA_IvcSvc->setEnabled(true);
-                else if (radioButtonNumber == 25)
-                self->m_Refined.radioBtn_RA_SVC_ANT->setEnabled(true);
-                else if (radioButtonNumber == 27)
-                self->m_Refined.radioBtn_RAA_ANT->setEnabled(true);
-                else if (radioButtonNumber == 29)
-                self->m_Refined.radioBtn_RAA_CS_ANT->setEnabled(true);
-
-                self->refinedSeedLabels.pop_back();
-            }//_if
-
-            self->m_Controls.widget_1->GetRenderWindow()->Render();
-        }
     } else if (key == "H" || key == "h"){
         self->Help();
     }
 }
 
 // helper functions
-void FourChamberLandmarksView::InitialisePickerObjects(){
-    roughSeedIds = vtkSmartPointer<vtkIdList>::New();
-    roughSeedIds->Initialize();
-    roughLineSeeds = vtkSmartPointer<vtkPolyData>::New();
-    roughLineSeeds->Initialize();
-    roughLineSeeds->SetPoints(vtkSmartPointer<vtkPoints>::New());
-
-
-    refinedSeedIds = vtkSmartPointer<vtkIdList>::New();
-    refinedSeedIds->Initialize();
-    refinedLineSeeds = vtkSmartPointer<vtkPolyData>::New();
-    refinedLineSeeds->Initialize();
-    refinedLineSeeds->SetPoints(vtkSmartPointer<vtkPoints>::New());
-}
-
-std::string FourChamberLandmarksView::GetShortcuts(){
-    std::string res = "";
-    if(isLeftAtrium){
-        res += "ROUGH";
-    } else{
-        res += "LANDMARK";
-    }
-    res += " POINT SELECTION:\n\tSpace: select rough location\n\tDelete: remove rough location";
-    if(isLeftAtrium){
-        res += "\n\nREFINED";
-    } else{
-        res += "\n\nREGION";
-    }
-    res += " POINT SELECTION:\n\tX: Select refined landmark\n\tD: remove refined landmark";
-    res += "\nHELP:\n\tH/h: Guides";
-
-    return res;
-}
-
-std::string FourChamberLandmarksView::GetRoughPointsGuide(){
-    std::string res = "";
-    if(isLeftAtrium){
-        res = "ROUGH LANDMARKS GUIDE\n Select rough locations for:\n";
-        res += "LSPV, LIPV\n RSPV, RIPV\nLAA tip, and LAA base.\n";
-    } else{
-        res = "LANDMARKS GUIDE\n Select rough locations for:\n";
-        res += "SVC posterior \n";
-        res += "IVC posterior \n";
-        res += "RAA/TCV posterior \n";
-        res += "CS/TCV posterior \n";
-        res += "SVC anterior \n";
-        res += "IVC anterior \n";
-    }
-
-    return res;
-}
-
-std::string FourChamberLandmarksView::GetRefinedPointsGiude(){
-    std::string res = "";
-    if(isLeftAtrium){
-        res = "REFINED LANDMARKS GUIDE\n Select specific locations for: \n";
-        res += "Lateral wall (LAA) - Between LSPV and MV, away from LAA\n";
-        res += "Septal wall (FO)\n";
-        res += "Posterior segment of LSPV/LA junction\n";
-        res += "Posterior segment of RSPV/LA junction\n";
-    } else{
-        res = "REGION GUIDE\n Select specific locations for: \n";
-        res += "IVC anterior \n";
-		res += "CS\n";
-        res += "IVC/SVC anterior \n";
-        res += "SVC anterior \n";
-        res += "RAA anterior \n";
-        res += "RAA/CS anterior \n";
-    }
-
-    return res;
-}
-
-
-void FourChamberLandmarksView::UserSelectPvLabel(bool refinedLandmarks){
-    if(!refinedLandmarks){
-        UserSelectPvRoughLabel();
-    } else{
-        UserSelectPvRefinedLabel();
-    }
-}
-
-void FourChamberLandmarksView::UserSelectPvRoughLabel(){
+void FourChamberLandmarksView::UserSelectLabel(){
     int dialogCode = inputsPickedPoints->exec();
     QRect screenGeometry = QApplication::desktop()->screenGeometry();
     int x = (screenGeometry.width() - inputsPickedPoints->width()) / 2;
@@ -526,176 +362,12 @@ void FourChamberLandmarksView::UserSelectPvRoughLabel(){
 
     //Act on dialog return code
     if (dialogCode == QDialog::Accepted) {
-
-        if(isLeftAtrium){
-            if (m_Rough.radioBtn_LA_LSPV->isChecked()) {
-                roughSeedLabels.push_back(11); // LSPV
-                m_Rough.radioBtn_LA_LSPV->setEnabled(false);
-            } else if (m_Rough.radioBtn_LA_LIPV->isChecked()) {
-                roughSeedLabels.push_back(13); // LIPV
-                m_Rough.radioBtn_LA_LIPV->setEnabled(false);
-            } else if (m_Rough.radioBtn_LA_RSPV->isChecked()) {
-                roughSeedLabels.push_back(15); // RSPV
-                m_Rough.radioBtn_LA_RSPV->setEnabled(false);
-            } else if (m_Rough.radioBtn_LA_RIPV->isChecked()) {
-                roughSeedLabels.push_back(17); // RIPV
-                m_Rough.radioBtn_LA_RIPV->setEnabled(false);
-            } else if (m_Rough.radioBtn_LAA_base->isChecked()) {
-                roughSeedLabels.push_back(19); // LAAP_1
-                m_Rough.radioBtn_LAA_base->setEnabled(false);
-            } else if(m_Rough.radioBtn_LAA_tip){
-                roughSeedLabels.push_back(21);
-                m_Rough.radioBtn_LAA_tip->setEnabled(false);
-            }
-        } else{
-            if(m_Rough.radioBtn_RA_SVC_POST->isChecked()){
-                roughSeedLabels.push_back(29);
-                m_Rough.radioBtn_RA_SVC_POST->setEnabled(false);
-            } else if(m_Rough.radioBtn_RA_IVC_POST->isChecked()){
-                roughSeedLabels.push_back(31);
-                m_Rough.radioBtn_RA_IVC_POST->setEnabled(false);
-            } else if(m_Rough.radioBtn_RAA_TCV->isChecked()){
-                roughSeedLabels.push_back(33);
-                m_Rough.radioBtn_RAA_TCV->setEnabled(false);
-            } else if(m_Rough.radioBtn_RA_CS_TCV->isChecked()){
-                roughSeedLabels.push_back(35);
-                m_Rough.radioBtn_RA_CS_TCV->setEnabled(false);
-            } else if(m_Rough.radioBtn_RA_SVC_ANT->isChecked()){
-                roughSeedLabels.push_back(37);
-                m_Rough.radioBtn_RA_SVC_ANT->setEnabled(false);
-            } else if(m_Rough.radioBtn_RA_IVC_ANT->isChecked()){
-                roughSeedLabels.push_back(39);
-                m_Rough.radioBtn_RA_IVC_ANT->setEnabled(false);
-            }
-        }
-
+        int pickedIndex = m_PickedPoints.comboBox->currentIndex();
+        pickedPoint.PushBackLabelFromAvailable(pickedIndex);
+        
     } else if (dialogCode == QDialog::Rejected) {
         inputsPickedPoints->close();
     }//_if
-}
-
-void FourChamberLandmarksView::UserSelectPvRefinedLabel(){
-    int dialogCode = inputsRefined->exec();
-    QRect screenGeometry = QApplication::desktop()->screenGeometry();
-    int x = (screenGeometry.width() - inputsRefined->width()) / 2;
-    int y = (screenGeometry.height() - inputsRefined->height()) / 2;
-    inputsRefined->move(x,y);
-
-    //Act on dialog return code
-    if (dialogCode == QDialog::Accepted) {
-        if(isLeftAtrium){
-            if (m_Refined.radioBtn_LA_LSPV->isChecked()) {
-                refinedSeedLabels.push_back(11); // LSPV
-                m_Refined.radioBtn_LA_LSPV->setEnabled(false);
-            } else if (m_Refined.radioBtn_LA_LspvBody->isChecked()) {
-                refinedSeedLabels.push_back(13); // LspvBody
-                m_Refined.radioBtn_LA_LspvBody->setEnabled(false);
-            } else if (m_Refined.radioBtn_LA_RSPV->isChecked()) {
-                refinedSeedLabels.push_back(15); // RSPV
-                m_Refined.radioBtn_LA_RSPV->setEnabled(false);
-            } else if (m_Refined.radioBtn_LA_RspvBody->isChecked()) {
-                refinedSeedLabels.push_back(17); // RspvBody
-                m_Refined.radioBtn_LA_RspvBody->setEnabled(false);
-            } else if (m_Refined.radioBtn_LA_LatWall->isChecked()) {
-                refinedSeedLabels.push_back(19); // LatWall
-                m_Refined.radioBtn_LA_LatWall->setEnabled(false);
-            } else if(m_Refined.radioBtn_LA_FO){ // LAAP_1
-                refinedSeedLabels.push_back(22);
-                m_Refined.radioBtn_LA_FO->setEnabled(false);
-            }
-        } else {
-            if(m_Refined.radioBtn_RA_IVC_ANT->isChecked()){
-                refinedSeedLabels.push_back(29);
-                m_Refined.radioBtn_RA_IVC_ANT->setEnabled(false);
-            } else if(m_Refined.radioBtn_RA_CS->isChecked()){
-                refinedSeedLabels.push_back(31);
-                m_Refined.radioBtn_RA_CS->setEnabled(false);
-            } else if(m_Refined.radioBtn_RA_IvcSvc->isChecked()){
-                refinedSeedLabels.push_back(33);
-                m_Refined.radioBtn_RA_IvcSvc->setEnabled(false);
-            } else if(m_Refined.radioBtn_RA_SVC_ANT->isChecked()){
-                refinedSeedLabels.push_back(35);
-                m_Refined.radioBtn_RA_SVC_ANT->setEnabled(false);
-            } else if(m_Refined.radioBtn_RAA_ANT->isChecked()){
-                refinedSeedLabels.push_back(37);
-                m_Refined.radioBtn_RAA_ANT->setEnabled(false);
-            } else if(m_Refined.radioBtn_RAA_CS_ANT->isChecked()){
-                refinedSeedLabels.push_back(39);
-                m_Refined.radioBtn_RAA_CS_ANT->setEnabled(false);
-            }
-        }
-
-    } else if (dialogCode == QDialog::Rejected) {
-        inputsRefined->close();
-    }//_if
-}
-
-std::string FourChamberLandmarksView::GetStructureIdFromLabel(bool refinedLandmarks, int label){
-    QString res;
-    if(!refinedLandmarks){
-        if(label==11){
-            res = "LSPV";
-        }else if(label==13){
-            res = "LIPV";
-        }else if(label==15){
-            res = "RSPV";
-        }else if(label==17){
-            res = "RIPV";
-        }else if(label==19){
-            res = "LAA_BASE";
-        }else if(label==21){
-            res = "LAA_TIP";
-        } else if(label==29){
-            res = "SVC_POST";
-        } else if(label==31){
-            res = "IVC_POST";
-        } else if(label==33){
-            res = "RAA_VALVE_P";
-        } else if(label==35){
-            res = "CS_VALVE_P";
-        } else if(label==37){
-            res = "SVC_ANT";
-        } else if(label==39){
-            res = "IVC_ANT";
-        }
-    } else{
-        if(label==11){
-            res = "LSPV_ROOF";
-        }else if(label==13){
-            res = "LSPV_POST";
-        }else if(label==15){
-            res = "RSPV_ROOF";
-        }else if(label==17){
-            res = "RIPV_POST";
-        }else if(label==19){
-            res = "LAA";
-        }else if(label==22){
-            res = "FO";
-        } else if(label==29){
-            res = "IVC_ANT";
-        } else if(label==31){
-            res = "CS_TOP";
-        } else if(label==33){
-            res = "IVC_SVC_ANT";
-        } else if(label==35){
-            res = "SVC_ANT";
-        } else if(label==37){
-            res = "RAA_ANT";
-        } else if(label==39){
-            res = "RAA_CS_ANT";
-        }
-    }
-
-    return res.toStdString();
-}
-
-int FourChamberLandmarksView::GetIndex(std::vector<int> v, int value){
-    int index=-1;
-    auto it = std::find(v.begin(), v.end(), value);
-    if(it != v.end()){
-        index = it - v.begin();
-    }
-    return index;
 }
 
 /*

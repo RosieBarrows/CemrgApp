@@ -88,6 +88,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // plugin classes
 #include "kcl_cemrgapp_fourchamber_Activator.h"
 #include "FourChamberView.h"
+#include "FourChamberLandmarksView.h"
 
 // Qt
 #include <QMessageBox>
@@ -103,6 +104,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <CemrgCommonUtils.h>
 #include <CemrgCommandLine.h>
 #include <CemrgFourChamberCmd.h>
+
 
 
 const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
@@ -160,6 +162,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_select_pts_reset, SIGNAL(clicked()), this, SLOT(SelectPointsReset()));
 
     connect(m_Controls.button_extractsurfs, SIGNAL(clicked()), this, SLOT(ExtractSurfaces()));
+    connect(m_Controls.button_uvclandmarks, SIGNAL(clicked()), this, SLOT(SelectLARALandmarks()));
     connect(m_Controls.button_calcuvcs, SIGNAL(clicked()), this, SLOT(CalculateUVCS()));
 
     // Set default variables and initialise objects
@@ -577,10 +580,11 @@ void FourChamberView::Meshing(){
 }
 
 void FourChamberView::SelectLARALandmarks(){
-    int reply = Ask("Question", "Placeholder");
-    if(reply==QMessageBox::Yes){
-        Inform("Answer", "OK!");
-    }
+    if (!RequestProjectDirectoryFromUser()) return;
+
+    this->GetSite()->GetPage()->ResetPerspective();
+    FourChamberLandmarksView::SetDirectoryFile(directory, SDIR.UVC_LA+"/la", "la.vtk", SDIR.UVC_RA+"/ra", "ra.vtk");
+    this->GetSite()->GetPage()->ShowView("org.mitk.views.fourchamberlandmarksview");
 }
 
 void FourChamberView::ExtractSurfaces(){

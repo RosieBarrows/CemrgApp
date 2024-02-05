@@ -8,26 +8,14 @@
 #include <QMap>
 #include <QFile>
 
+#include <vtkIdList.h>
+#include <vtkPoints.h>
+#include <vtkPolyData.h>
+
 #include "CemrgCommonUtils.h"
 
 enum ManualPoints { CYLINDERS, SLICERS, VALVE_PLAINS };
-// enum LabelsType {  
-//     BACKGROUND = 0,
-//     BLOODPOOL = 1, 
-//     LEFT_VENTRICLE = 2, 
-//     RIGHT_VENTRICLE = 3, 
-//     LEFT_ATRIUM = 4, 
-//     RIGHT_ATRIUM = 5, 
-//     AORTA = 6,
-//     PULMONARY_ARTERY = 7, 
-//     LSPV = 8, 
-//     LIPV = 9, 
-//     RSPV = 10, 
-//     RIPV = 11, 
-//     LAA = 12,
-//     SVC = 13,
-//     IVC = 14
-// };
+
 
 enum LabelsType {
     BACKGROUND = 0,
@@ -790,29 +778,65 @@ class PickedPointType {
             pointNames = QStringList();
         }
 
-        void AddPointFromSurface(mitk::Surface::Pointer surface, int pickedSeedId, int label = -1) { 
+        void AddPointFromSurface(mitk::Surface::Pointer surface, int pickedSeedId) { 
             double* point = surface->GetVtkPolyData()->GetPoint(pickedSeedId);
             seedIds->InsertNextId(pickedSeedId);
             lineSeeds->GetPoints()->InsertNextPoint(point);
             lineSeeds->Modified();
-
-            // 
-            if (label != -1) {
-                seedLabels.push_back(label);
-            }
         }
-
         void PushBackLabel(AtrialLandmarksType label) {
             seedLabels.push_back(static_cast<int>(label));
         }
 
+        void PushBackLabelFromAvailable(int index) {
+            seedLabels.push_back(availableLabels.at(index));
+        }
 
+        void CleanupLastPoint() {
+            // Clean up last dropped seed point
+            vtkSmartPointer<vtkPoints> newPoints = vtkSmartPointer<vtkPoints>::New();
+            vtkSmartPointer<vtkPoints> points = lineSeeds->GetPoints();
+            for (int i = 0; i < points->GetNumberOfPoints() - 1; i++) {
+                newPoints->InsertNextPoint(points->GetPoint(i));
+            }
+            lineSeeds->SetPoints(newPoints);
+            vtkSmartPointer<vtkIdList> newSeedIds = vtkSmartPointer<vtkIdList>::New();
+            newSeedIds->Initialize();
+            vtkSmartPointer<vtkIdList> roughSeedIds = seedIds;
+            for (int i = 0; i < roughSeedIds->GetNumberOfIds() - 1; i++) {
+                newSeedIds->InsertNextId(roughSeedIds->GetId(i));
+            }
+            seedIds = newSeedIds;
+        }
+
+        void Clear() {
+            seedIds->Reset();
+            lineSeeds->Reset();
+            seedLabels.clear();
+            pointNames.clear();
+            availableLabels.clear();
+        }
+
+        bool IsEmpty() {
+            return seedIds->GetNumberOfIds() == 0;
+        }
+
+        vtkSmartPointer<vtkPolyData> GetLineSeeds() {
+            return lineSeeds;
+        }
+
+        void SetAvailableLabels(QStringList names, std::vector<int> labels) {
+            pointNames = names;
+            availableLabels = labels;
+        }
+        
     private :
         std::vector<int> seedLabels;
         vtkSmartPointer<vtkIdList> seedIds;
         vtkSmartPointer<vtkPolyData> lineSeeds;
 
         QStringList pointNames;
-}
+        std::vector<int> availableLabels;
+};
 
 #endif
