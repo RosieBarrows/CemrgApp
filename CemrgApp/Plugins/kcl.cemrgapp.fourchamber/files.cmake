@@ -23,6 +23,7 @@ set(UI_FILES
 set(MOC_H_FILES
   src/internal/kcl_cemrgapp_fourchamber_Activator.h
   src/internal/FourChamberView.h
+  src/internal/FourChamberLandmarksView.h
   src/internal/CemrgDataInteractor.h
 )
 

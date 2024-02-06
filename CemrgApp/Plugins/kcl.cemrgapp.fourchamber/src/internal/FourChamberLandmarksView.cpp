@@ -37,6 +37,7 @@ PURPOSE.  See the above copyright notices for more information.
 #include <mitkProgressBar.h>
 #include <mitkNodePredicateProperty.h>
 #include <mitkManualSegmentationToSurfaceFilter.h>
+
 #include "FourChamberLandmarksView.h"
 #include "FourChamberView.h"
 
@@ -149,6 +150,9 @@ void FourChamberLandmarksView::SetFocus() {
 void FourChamberLandmarksView::OnSelectionChanged(
         berry::IWorkbenchPart::Pointer /*src*/, const QList<mitk::DataNode::Pointer>& /*nodes*/) {
 }
+FourChamberLandmarksView::~FourChamberLandmarksView() {
+    inputsPickedPoints->deleteLater();
+}
 
 void FourChamberLandmarksView::SetDirectoryFile(const QString directory, const QString laSubdir, const QString laName, const QString raSubdir, const QString raName) {
     FourChamberLandmarksView::directory = directory;
@@ -158,9 +162,6 @@ void FourChamberLandmarksView::SetDirectoryFile(const QString directory, const Q
     FourChamberLandmarksView::raName = raName;
 }
 
-FourChamberLandmarksView::~FourChamberLandmarksView() {
-    inputsPickedPoints->deleteLater();
-}
 
 // slots
 void FourChamberLandmarksView::Help(){
