@@ -46,6 +46,7 @@ PURPOSE.  See the above copyright notices for more information.
 #include <vtkSphere.h>
 #include <vtkSphereSource.h>
 #include <vtkPolyDataMapper.h>
+#include <vtkDataSetMapper.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
 #include <vtkProperty.h>
@@ -82,6 +83,7 @@ PURPOSE.  See the above copyright notices for more information.
 // Qt
 #include <QMessageBox>
 #include <QDesktopWidget>
+#include <QFileInfo>
 
 // CemrgAppModule
 #include <CemrgAtriaClipper.h>
@@ -102,7 +104,7 @@ void FourChamberLandmarksView::CreateQtPartControl(QWidget *parent) {
     m_Controls.setupUi(parent);
     connect(m_Controls.button_help, SIGNAL(clicked()), this, SLOT(Help()));
     connect(m_Controls.button_save, SIGNAL(clicked()), this, SLOT(SaveSelectedPoints()));
-    connect(m_Controls.combo_select, SIGNAL(currentIndexChanged(int)), this, SLOT(ComboSelectWorkingMesh(int)));
+    connect(m_Controls.combo_select, SIGNAL(activated(int)), this, SLOT(ComboSelectWorkingMesh(int)));
 
     //Create GUI widgets
     inputsPickedPoints = new QDialog(0,0);
@@ -125,6 +127,8 @@ void FourChamberLandmarksView::CreateQtPartControl(QWidget *parent) {
     txtActor->GetTextProperty()->SetColor(1.0, 1.0, 1.0);
     renderer->AddActor2D(txtActor);
 
+    glyphActor = vtkSmartPointer<vtkActor>::New();
+
     vtkSmartPointer<vtkGenericOpenGLRenderWindow> renderWindow =
             vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
     m_Controls.widget_1->SetRenderWindow(renderWindow);
@@ -141,6 +145,7 @@ void FourChamberLandmarksView::CreateQtPartControl(QWidget *parent) {
 
     //Initialisation
     iniPreSurf();
+    countChanges = 0;
 }
 
 void FourChamberLandmarksView::SetFocus() {
@@ -173,31 +178,84 @@ void FourChamberLandmarksView::Help(){
 }
 
 void FourChamberLandmarksView::SaveSelectedPoints() {
+    if (pickedPoint.IsEmpty()) {
+        QMessageBox::warning(NULL, "Warning", "No points have been picked!");
+        return;
+    }
 
+    if (!pickedPoint.AllLabelsSet()) {
+        QMessageBox::warning(NULL, "Warning", "Not all points have been labelled!");
+        return;
+    }
+
+    for (int ix = 0; ix < names.size(); ix++) {
+        std::string path = outputFilesSelected.at(ix).toStdString();
+        std::string toPrint = pickedPoint.PrintVtxFile(names.at(ix));
+
+        int reply;
+        if (QFile::exists(QString::fromStdString(path))) {
+            reply = QMessageBox::question(NULL, "Warning", "File already exists. Do you want to overwrite it?", QMessageBox::Yes|QMessageBox::No);
+        } else {
+            reply = QMessageBox::Yes;
+        }
+
+        if (reply == QMessageBox::Yes) {
+            std::ofstream file;
+            file.open(path);
+            file << toPrint;
+            file.close();
+        }
+    }
 } 
 
 void FourChamberLandmarksView::ComboSelectWorkingMesh(int index) {
+    if (m_Controls.combo_select->count() == 0) 
+        return;
+    
+    // Clear the existing actor from the renderer
+    renderer->RemoveAllViewProps();
+    RemoveGlyphActor();
+
     QString selected = m_Controls.combo_select->itemText(index);
-    surface = mitk::IOUtil::Load<mitk::Surface>(directory.toStdString() + "/" + selected.toStdString());    
-    if (surface) {
+    std::string pathToLoad = (directory + "/" + selected).toStdString();
+    MITK_INFO << "Loading surface: " << pathToLoad ;
+    // surface = mitk::IOUtil::Load<mitk::Surface>(pathToLoad);
+    ugrid = mitk::IOUtil::Load<mitk::UnstructuredGrid>(pathToLoad);
+    if (ugrid) {
         if (pickedPoint.IsEmpty()) {
             pickedPoint = PickedPointType();
         } else {
             m_PickedPoints.comboBox->clear();
             pickedPoint.Clear();
+            names.clear();
+            availableLabels.clear();
         }
-        
-        QStringList names;
-        std::vector<int> availableLabels;
+
+        // scale all ugrid points to be mm (divide by 1000)
+        vtkSmartPointer<vtkPoints> points = ugrid->GetVtkUnstructuredGrid()->GetPoints();
+        for (int i=0; i<points->GetNumberOfPoints(); i++) {
+            double* point = points->GetPoint(i);
+            points->SetPoint(i, point[0]/1000, point[1]/1000, point[2]/1000);
+        }
+        ugrid->GetVtkUnstructuredGrid()->SetPoints(points);
+
         if (selected.contains(laSubdir)) {
             names << "LA_APEX" << "LA_SEPTUM";
             availableLabels = {AtrialLandmarksType::LA_APEX, AtrialLandmarksType::LA_SEPTUM};
+            outputFilesSelected << directory + "/" + laSubdir + "/la.lvapex.vtx" << directory + "/" + laSubdir + "/la.rvsept_pt.vtx";
         } else if (selected.contains(raSubdir)) {
             names << "RA_APEX" << "RA_SEPTUM" << "RAA_APEX";
             availableLabels = {AtrialLandmarksType::RA_APEX, AtrialLandmarksType::RA_SEPTUM, AtrialLandmarksType::RAA_APEX};
+            outputFilesSelected << directory + "/" + raSubdir + "/ra.lvapex.vtx" << directory + "/" + raSubdir + "/ra.rvsept_pt.vtx" << directory + "/atrial_fibres/UAC/ra/raa.apex.vtx";
         }
         pickedPoint.SetAvailableLabels(names, availableLabels);
         m_PickedPoints.comboBox->addItems(names);
+
+        Visualiser();
+        countChanges++;
+    }
+    else {
+        QMessageBox::warning(NULL, "Warning", "Mesh could not be loaded!");
     }
 }
 
@@ -209,6 +267,7 @@ void FourChamberLandmarksView::iniPreSurf() {
     QString laPath = directory + "/" + laSubdir + "/" + laName;
     QString raPath = directory + "/" + raSubdir + "/" + raName;
 
+    MITK_INFO << "Checking for surfaces: \n\t" << laPath.toStdString() << "\n and \n\t" << raPath.toStdString();
     if (QFile::exists(laPath)) {
         m_Controls.combo_select->addItem(laSubdir + "/" + laName);
     }
@@ -216,7 +275,7 @@ void FourChamberLandmarksView::iniPreSurf() {
         m_Controls.combo_select->addItem(raSubdir + "/" + raName);
     }
 
-    if (m_Controls.combo_select->count() > 0) {
+    if (m_Controls.combo_select->count() == 0) {
         m_Controls.combo_select->setEnabled(false);
         QMessageBox::warning(NULL, "Warning", "No surfaces found in the selected directory!");
     } else { 
@@ -227,51 +286,28 @@ void FourChamberLandmarksView::iniPreSurf() {
 
 void FourChamberLandmarksView::Visualiser(double opacity){
     MITK_INFO << "[Visualiser]";
-    double max_scalar = 19;
-    double min_scalar = 1;
-    vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
-    this->maxScalar = max_scalar;
-    this->minScalar = min_scalar;
+    
+    MITK_INFO << "Visualising picked points";
+    QString colour = (countChanges % 2 == 0) ? "1.0,0.0,0.0" : "0.0,1.0,0.0";
 
-    if (!pickedPoint.IsEmpty()) {
-        SphereSourceVisualiser(pickedPoint.GetLineSeeds());
-    }
+    SphereSourceVisualiser(pickedPoint.GetLineSeeds(), colour, 0.01);
 
-    //Create a mapper and actor for surface
-    vtkSmartPointer<vtkPolyDataMapper> surfMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
-    surfMapper->SetInputData(surface->GetVtkPolyData());
-    surfMapper->SetScalarRange(min_scalar, max_scalar);
-    surfMapper->SetScalarModeToUseCellData();
-    surfMapper->ScalarVisibilityOn();
-    lut->SetTableRange(min_scalar, max_scalar);
-    lut->SetHueRange(0.5, 0.0);  // this is the way_neighbourhood_size you tell which colors you want to be displayed.
-    lut->Build();     // this is important
+    vtkSmartPointer<vtkDataSetMapper> gridMapper = vtkSmartPointer<vtkDataSetMapper>::New();
+    gridMapper->SetInputData(ugrid->GetVtkUnstructuredGrid());
+    gridMapper->ScalarVisibilityOff();
 
-    vtkSmartPointer<vtkScalarBarActor> scalarBar =
-            vtkSmartPointer<vtkScalarBarActor>::New();
-    scalarBar->SetLookupTable(surfMapper->GetLookupTable());
-    scalarBar->SetWidth(0.075);
-    scalarBar->SetHeight(0.3);
-    scalarBar->SetTextPositionToPrecedeScalarBar();
-    scalarBar->GetPositionCoordinate()->SetCoordinateSystemToNormalizedViewport();
-    scalarBar->GetPositionCoordinate()->SetValue( 0.9, 0.01 );
-    scalarBar->SetNumberOfLabels(5);
+    vtkSmartPointer<vtkActor> gridActor = vtkSmartPointer<vtkActor>::New();
+    gridActor->SetMapper(gridMapper);
+    gridActor->GetProperty()->SetOpacity(opacity);
 
-    std::string scalarBarTitle = "Atrium Labels";
-    scalarBar->SetTitle(scalarBarTitle.c_str());
-    scalarBar->SetVerticalTitleSeparation(15);
+    renderer->AddActor(gridActor);
+    renderer->ResetCamera();
+    renderer->ResetCameraClippingRange();
 
-    surfMapper->SetLookupTable(lut);
-    scalarBar->SetLookupTable(lut);
-
-    vtkSmartPointer<vtkActor> surfActor = vtkSmartPointer<vtkActor>::New();
-    surfActor->SetMapper(surfMapper);
-    surfActor->GetProperty()->SetOpacity(opacity);
-    renderer->AddActor(surfActor);
-    renderer->AddActor2D(scalarBar);
 }
 
 void FourChamberLandmarksView::SphereSourceVisualiser(vtkSmartPointer<vtkPolyData> pointSources, QString colour, double scaleFactor){
+    MITK_INFO << "[SphereSourceVisualiser]";
     // e.g colour = "0.4,0.1,0.0" - values for r,g, and b separated by commas.
     double r, g, b;
     bool okr, okg, okb;
@@ -288,13 +324,13 @@ void FourChamberLandmarksView::SphereSourceVisualiser(vtkSmartPointer<vtkPolyDat
     glyph3D->SetInputData(pointSources);
     glyph3D->SetSourceConnection(glyphSource->GetOutputPort());
     glyph3D->SetScaleModeToDataScalingOff();
-    glyph3D->SetScaleFactor(surface->GetVtkPolyData()->GetLength()*scaleFactor);
+    glyph3D->SetScaleFactor(ugrid->GetVtkUnstructuredGrid()->GetLength()*scaleFactor);
     glyph3D->Update();
 
     //Create a mapper and actor for glyph
     vtkSmartPointer<vtkPolyDataMapper> glyphMapper = vtkSmartPointer<vtkPolyDataMapper>::New();
     glyphMapper->SetInputConnection(glyph3D->GetOutputPort());
-    vtkSmartPointer<vtkActor> glyphActor = vtkSmartPointer<vtkActor>::New();
+    
     glyphActor->SetMapper(glyphMapper);
     glyphActor->GetProperty()->SetColor(r,g,b);
     glyphActor->PickableOff();
@@ -304,19 +340,19 @@ void FourChamberLandmarksView::SphereSourceVisualiser(vtkSmartPointer<vtkPolyDat
 void FourChamberLandmarksView::PickCallBack() {
 
     vtkSmartPointer<vtkCellPicker> picker = vtkSmartPointer<vtkCellPicker>::New();
-    picker->SetTolerance(1E-4 * surface->GetVtkPolyData()->GetLength());
+    picker->SetTolerance(1E-4 * ugrid->GetVtkUnstructuredGrid()->GetLength());
     int* eventPosition = interactor->GetEventPosition();
     int result = picker->Pick(float(eventPosition[0]), float(eventPosition[1]), 0.0, renderer);
     if (result == 0) return;
     double* pickPosition = picker->GetPickPosition();
-    vtkIdList* pickedCellPointIds = surface->GetVtkPolyData()->GetCell(picker->GetCellId())->GetPointIds();
+    vtkIdList* pickedCellPointIds = ugrid->GetVtkUnstructuredGrid()->GetCell(picker->GetCellId())->GetPointIds();
 
     double distance;
     int pickedSeedId = -1;
     double minDistance = 1E10;
     for (int i=0; i<pickedCellPointIds->GetNumberOfIds(); i++) {
         distance = vtkMath::Distance2BetweenPoints(
-                    pickPosition, surface->GetVtkPolyData()->GetPoint(pickedCellPointIds->GetId(i)));
+                    pickPosition, ugrid->GetVtkUnstructuredGrid()->GetPoint(pickedCellPointIds->GetId(i)));
         if (distance < minDistance) {
             minDistance = distance;
             pickedSeedId = pickedCellPointIds->GetId(i);
@@ -327,7 +363,11 @@ void FourChamberLandmarksView::PickCallBack() {
     }
 
     // update point
-    pickedPoint.AddPointFromSurface(surface, pickedSeedId);
+    double *point = ugrid->GetVtkUnstructuredGrid()->GetPoint(pickedSeedId);
+    std::cout << "[PickCallback] Picked point: " << point[0] << ", " << point[1] << ", " << point[2] << '\n';
+    std::cout << "[PickCallback] Picked seed id: " << pickedSeedId << '\n';
+
+    pickedPoint.AddPoint(point, pickedSeedId);
 
     m_Controls.widget_1->GetRenderWindow()->Render();
 }
@@ -342,6 +382,8 @@ void FourChamberLandmarksView::KeyCallBackFunc(vtkObject*, long unsigned int, vo
         //Ask the labels
         self->PickCallBack();
         self->UserSelectLabel();
+
+        MITK_INFO << self->pickedPoint.ToString();
 
     } else if (key == "Delete") {
 
@@ -365,10 +407,17 @@ void FourChamberLandmarksView::UserSelectLabel(){
     if (dialogCode == QDialog::Accepted) {
         int pickedIndex = m_PickedPoints.comboBox->currentIndex();
         pickedPoint.PushBackLabelFromAvailable(pickedIndex);
-        
-    } else if (dialogCode == QDialog::Rejected) {
+        m_PickedPoints.comboBox->setCurrentText(m_PickedPoints.comboBox->currentText() + " - picked");
+        } else if (dialogCode == QDialog::Rejected) {
         inputsPickedPoints->close();
     }//_if
+}
+
+void FourChamberLandmarksView::RemoveGlyphActor() {
+    if (glyphActor->GetMapper() != nullptr) {
+        std::cout << "Removing glyph actor" << '\n';
+        renderer->RemoveActor(glyphActor);
+    }
 }
 
 /*

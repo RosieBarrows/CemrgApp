@@ -582,8 +582,13 @@ void FourChamberView::Meshing(){
 void FourChamberView::SelectLARALandmarks(){
     if (!RequestProjectDirectoryFromUser()) return;
 
+    QString laSubdir = SDIR.UVC_LA + "/la";
+    QString raSubdir = SDIR.UVC_RA + "/ra";
+    QString laName = "la";
+    QString raName = "ra";
+
     this->GetSite()->GetPage()->ResetPerspective();
-    FourChamberLandmarksView::SetDirectoryFile(directory, SDIR.UVC_LA+"/la", "la.vtk", SDIR.UVC_RA+"/ra", "ra.vtk");
+    FourChamberLandmarksView::SetDirectoryFile(directory, SDIR.UVC_LA+"/la", laName + ".vtk", SDIR.UVC_RA+"/ra", raName + ".vtk");
     this->GetSite()->GetPage()->ShowView("org.mitk.views.fourchamberlandmarksview");
 }
 
@@ -619,7 +624,7 @@ void FourChamberView::ExtractSurfaces(){
         }
     }
 
-    // open point selector plugin
+    // open point selector plugin in SelectLARALandmarks
 
 }
 
@@ -891,14 +896,7 @@ void FourChamberView::VentricularFibres(){
 }
 
 void FourChamberView::UVCs(){
-    int reply = Ask("Question", "Is this the mesh for which you would like to calculate UVCs?");
-    if(reply==QMessageBox::Yes){
-        Inform("Answer", "OK!");
-    }
-    if(reply==QMessageBox::No){
-        Inform("Answer", "Choose a different mesh.");
-    }
-
+    
     if (m_Controls.button_extractsurfs->isVisible()) {
         m_Controls.button_extractsurfs->setVisible(true);
     } else {

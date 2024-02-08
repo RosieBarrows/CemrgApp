@@ -784,12 +784,34 @@ class PickedPointType {
             lineSeeds->GetPoints()->InsertNextPoint(point);
             lineSeeds->Modified();
         }
+
+        void AddPoint(double* point, int pickedSeedId) {
+            seedIds->InsertNextId(pickedSeedId);
+            lineSeeds->GetPoints()->InsertNextPoint(point);
+            lineSeeds->Modified();
+        }
         void PushBackLabel(AtrialLandmarksType label) {
             seedLabels.push_back(static_cast<int>(label));
         }
 
         void PushBackLabelFromAvailable(int index) {
             seedLabels.push_back(availableLabels.at(index));
+            labelSet.at(index) = true;
+        }
+
+        bool AllLabelsSet() {
+            bool result = true;
+            if (IsEmpty()) {
+                return false;
+            }
+
+            for (int ix = 0; ix < labelSet.size(); ix++) {
+                if (!labelSet.at(ix)) {
+                    result = false;
+                    break;
+                }
+            }
+            return result;
         }
 
         void CleanupLastPoint() {
@@ -821,6 +843,10 @@ class PickedPointType {
             return seedIds->GetNumberOfIds() == 0;
         }
 
+        int NumIds() {
+            return seedIds->GetNumberOfIds();
+        }
+
         vtkSmartPointer<vtkPolyData> GetLineSeeds() {
             return lineSeeds;
         }
@@ -828,6 +854,52 @@ class PickedPointType {
         void SetAvailableLabels(QStringList names, std::vector<int> labels) {
             pointNames = names;
             availableLabels = labels;
+            for (int ix = 0; ix < availableLabels.size(); ix++) {
+                labelSet.push_back(false);
+            }
+        }
+
+        std::string ToString() {
+            std::string res = "";
+            for (int i = 0; i < seedLabels.size(); i++) {
+                res += "Label: " + std::to_string(seedLabels.at(i)) + " Point ID: " + std::to_string(seedIds->GetId(i)) + '\n';
+            }
+
+            for (int j = 0; j < lineSeeds->GetPoints()->GetNumberOfPoints(); j++) {
+                double* point = lineSeeds->GetPoints()->GetPoint(j);
+                res += "Point: (" + std::to_string(point[0]) + ", " + std::to_string(point[1]) + ", " + std::to_string(point[2]) + ")\n";
+            }
+
+            for (int k = 0; k < seedLabels.size(); k++) {
+                res += "Label: " + std::to_string(seedLabels.at(k));
+            }
+
+                return res;
+        }
+
+        std::string PrintVtxFile(QString name) {
+            std::string res = ""; 
+            
+            // look for label with name in available labels
+            int thisLabel;
+            for (int i = 0; i < pointNames.size(); i++) {
+                if (pointNames.at(i) == name) { 
+                    thisLabel = availableLabels.at(i);
+                    break;
+                }
+            }
+
+            // look for ID with label in seedLabels
+            int thisId;
+            for (int j = 0; j < seedLabels.size(); j++) {
+                if (seedLabels.at(j) == thisLabel) {
+                    thisId = seedIds->GetId(j);
+                    break;
+                }
+            }
+
+            res = "1\nextra\n" + std::to_string(thisId) + '\n';
+            return res;
         }
         
     private :
@@ -837,6 +909,9 @@ class PickedPointType {
 
         QStringList pointNames;
         std::vector<int> availableLabels;
+        std::vector<int> labelSet;
+
+        QStringList saveFiles;
 };
 
 #endif

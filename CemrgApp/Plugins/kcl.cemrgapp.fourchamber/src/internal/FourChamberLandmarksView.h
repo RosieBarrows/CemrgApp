@@ -30,6 +30,7 @@ PURPOSE.  See the above copyright notices for more information.
 #define FourChamberLandmarksView_h
 
 #include <berryISelectionListener.h>
+#include <mitkUnstructuredGrid.h>
 #include <QmitkAbstractView.h>
 #include <QMessageBox>
 #include <vtkIdList.h>
@@ -87,17 +88,25 @@ private:
     void iniPreSurf();
     void Visualiser(double opacity=1.0);
 
-    void SphereSourceVisualiser(vtkSmartPointer<vtkPolyData> pointSources, QString colour="1.0,0.0,0.0", double scaleFactor=0.01);
+    void SphereSourceVisualiser(vtkSmartPointer<vtkPolyData> pointSources, QString colour="1.0,0.0,0.0", double scaleFactor=0.1);
     void PickCallBack();
     static void KeyCallBackFunc(vtkObject*, long unsigned int, void* ClientData, void*);
 
     void UserSelectLabel();
+    void RemoveGlyphActor();
 
     static QString directory;
     static QString laSubdir, laName;
     static QString raSubdir, raName;
 
+    QStringList outputFilesSelected;
+    QStringList names;
+    std::vector<int> availableLabels;
+
+    int countChanges; // count the number of changes in the selected combo box
+
     mitk::Surface::Pointer surface;
+    mitk::UnstructuredGrid::Pointer ugrid;
     vtkSmartPointer<vtkActor> surfActor;
 
     PickedPointType pickedPoint;
@@ -116,6 +125,7 @@ private:
     vtkSmartPointer<vtkRenderer> renderer;
     vtkSmartPointer<vtkCallbackCommand> callBack;
     vtkSmartPointer<vtkRenderWindowInteractor> interactor;
+    vtkSmartPointer<vtkActor> glyphActor;
 
 };
 
