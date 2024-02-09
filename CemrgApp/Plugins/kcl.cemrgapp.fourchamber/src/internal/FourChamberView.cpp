@@ -224,7 +224,8 @@ void FourChamberView::SetWorkingFolder(){
         Warn("CARP not found", "CARP not found. Some functionality will be disabled.");
         carp_directory = "";
     } else {
-        Inform("CARP found", "CARP found. All functionality will be enabled.");
+        std::string msg = "CARP found \n[" + carp_directory.toStdString() + "]\nAll functionality will be enabled.";
+        Inform("CARP found", msg);
     }
 
     bool load_geometry_file = CheckForExistingFile(directory, FourChamberView::GEOMETRY_FILE);
@@ -244,6 +245,7 @@ void FourChamberView::SetWorkingFolder(){
     }
 
     SetButtonsEnableToOn();
+    DisableCarpButtons();
     m_Controls.button_loaddicom->setVisible(true);
     m_Controls.button_origin_spacing->setVisible(true);
     m_Controls.button_segment_image->setVisible(true);
@@ -1700,7 +1702,6 @@ void FourChamberView::UpdateDataManager(mitk::Image::Pointer segmentation, std::
         mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
         mlseg->InitializeByLabeledImage(segmentation);
         mlseg->SetGeometry(segmentation->GetGeometry());
-
         MITK_INFO << "Adding to storage";
         CemrgCommonUtils::AddToStorage(mlseg, name, this->GetDataStorage());
         mlseg->Modified();
@@ -1721,6 +1722,14 @@ void FourChamberView::UpdateDataManager(mitk::Image::Pointer segmentation, std::
         this->GetDataStorage()->Remove(node);
     }
 
+}
+
+void FourChamberView::DisableCarpButtons() {
+    MITK_INFO(carpless) << "Disabling CARP buttons";
+    m_Controls.button_calcuvcs->setEnabled(!carpless);
+    m_Controls.button_ventfibres->setEnabled(!carpless);
+    m_Controls.button_surf2vol->setEnabled(!carpless);
+    m_Controls.button_definetags->setEnabled(!carpless);
 }
 
 // helper`

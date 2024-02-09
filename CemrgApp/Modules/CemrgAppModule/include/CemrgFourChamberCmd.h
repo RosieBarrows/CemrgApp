@@ -73,7 +73,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
         bool ExecuteGlElemCenters(QString meshPath, QString outputPath); 
 
         // CARP binaries getters
-        inline void SetCarpDirectory(QString carpDir) { _carp_dir = carpDir; };
+        inline void SetCarpDirectory(QString carpDir) { _carp_dir = carpDir; _carp_dir += (!carpDir.contains("bin")) ? "/bin" : ""; };
         inline QString CARP_DIR(QString subpath) { return _carp_dir + "/" + subpath; };
 
         // Docker calling cemrg/seg-4ch
@@ -118,6 +118,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
     private:
         QString _carp_dir = "";
         bool carpless;
+        QStringList fullPaths;
 
         QString _path2points = "";
         // "/data/" is the path inside the docker container

@@ -85,6 +85,7 @@ public:
     int Ask(std::string title, std::string msg);
     void Warn(std::string title, std::string msg);
     void Inform(std::string title, std::string msg);
+
     void PrintMeshingParameters(QString path_to_par);
     void LoadMeshingParametersFromJson(QString dir, QString json_file);
     QString GetPointTypeString(ManualPoints mpt);
@@ -97,6 +98,8 @@ public:
     void ReloadJsonPoints();
     std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
     void UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer &node, bool confirmLabels=false);
+
+    void DisableCarpButtons();
 
     template <typename T = double>
     QString ArrayToString(T *arr, int size, const QString &title);

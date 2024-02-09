@@ -81,6 +81,16 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="button_corrections">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
+     </property>
+     <property name="text">
+      <string>   Step X: Manual Corrections</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="button_prepseg">
      <property name="styleSheet">
       <string notr="true">text-align: left;</string>
@@ -177,16 +187,6 @@
      </property>
      <property name="text">
       <string>Reset Point Selection</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QPushButton" name="button_corrections">
-     <property name="styleSheet">
-      <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
-     </property>
-     <property name="text">
-      <string>   Step X: Manual Corrections</string>
      </property>
     </widget>
    </item>
