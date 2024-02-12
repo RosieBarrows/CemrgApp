@@ -104,8 +104,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <CemrgCommonUtils.h>
 #include <CemrgCommandLine.h>
 #include <CemrgFourChamberCmd.h>
-
-
+#include <CemrgAtrialModellingToolCmd.h>
 
 const std::string FourChamberView::VIEW_ID = "org.mitk.views.fourchamberheart";
 
@@ -638,10 +637,9 @@ void FourChamberView::SimulationSetup(){
 }
 
 void FourChamberView::AtrialFibres(){
-    int reply = Ask("Question", "Placeholder");
-    if(reply==QMessageBox::Yes){
-        Inform("Answer", "OK");
-    }
+    if (!RequestProjectDirectoryFromUser()) return;
+
+    
 }
 
 bool FourChamberView::MainLaplaceProcess(QString uacFolder, QString atrium){

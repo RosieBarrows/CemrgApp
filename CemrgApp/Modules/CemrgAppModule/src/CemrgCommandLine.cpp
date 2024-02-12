@@ -1467,6 +1467,16 @@ bool CemrgCommandLine::ExecuteCommand(QString executableName, QStringList argume
     return successful;
 }
 
+QString CemrgCommandLine::GetDockerExecutableName() {
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+    QString executableName = executablePath + "docker";
+
+    return executableName;
+}
+
 /***************************************************************************
  ************************** Protected Slots ********************************
  ***************************************************************************/

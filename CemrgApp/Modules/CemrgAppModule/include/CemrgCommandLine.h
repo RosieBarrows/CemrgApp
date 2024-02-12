@@ -115,6 +115,8 @@ public:
     bool IsOutputSuccessful(QString outputFullPath);
     std::string PrintFullCommand(QString command, QStringList arguments);
     bool ExecuteCommand(QString executableName, QStringList arguments, QString outputPath, bool isOutputFile = true);
+    QString GetDockerExecutableName(); 
+    
 
 protected slots:
 
