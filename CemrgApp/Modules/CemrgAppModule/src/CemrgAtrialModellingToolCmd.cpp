@@ -52,7 +52,7 @@ PURPOSE.  See the above copyright notices for more information.
 #include "CemrgAtrialModellingToolCmd.h"
 
 /// AtialToolkitMode {UAC, FIBREMAP, SCALARMAP, LATFIELD, STIM, LABELS, VIS, PARFILE}
-void CemrgAtrialModellingToolCmd::SetModeOfOperation(AtrialToolkitMode atkm) {
+void CemrgAtrialModellingToolCmd::SetModeOfOperation(AtialToolkitMode atkm) {
     switch (atkm) {
         case UAC: mode = "uac"; break;
         case FIBREMAP: mode = "fibremap"; break;
@@ -66,39 +66,39 @@ void CemrgAtrialModellingToolCmd::SetModeOfOperation(AtrialToolkitMode atkm) {
     }
 }
 
-QString CemrgAtrialModellingToolCmd::GetParfile(QtrialToolkitParamfiles atkm, QString meshname) {
+QString CemrgAtrialModellingToolCmd::GetParfile(AtrialToolkitParamfiles atkm, QString meshname) {
     QString parfileName = "";
     switch (atkm) {
-        case RAA: parfileName = "carpf_laplace_RAA.par"; break;
-        case PV2_4Ch: parfileName = "carpf_laplace_PV2_4Ch.par"; break;
-        case PA_4Ch: parfileName = "carpf_laplace_PA_4Ch.par"; break;
-        case LS: parfileName = "carpf_laplace_LS.par"; break;
-        case single_LR_P: parfileName = "carpf_laplace_single_LR_P.par"; break;
-        case single_LR_A: parfileName = "carpf_laplace_single_LR_A.par"; break;
-        case EE_RA: parfileName = "carpf_laplace_EE_RA.par"; break;
-        case PV4: parfileName = "carpf_laplace_PV4.par"; break;
-        case LAA_4Ch: parfileName = "carpf_laplace_LAA_4Ch.par"; break;
-        case alpha: parfileName = "carpf_laplace_alpha.par"; break;
-        case PV1: parfileName = "carpf_laplace_PV1.par"; break;
-        case PV3_4Ch: parfileName = "carpf_laplace_PV3_4Ch.par"; break;
-        case single_UD_P: parfileName = "carpf_laplace_single_UD_P.par"; break;
-        case alpha_RA: parfileName = "carpf_laplace_alpha_RA.par"; break;
-        case PA_4Ch_RA: parfileName = "carpf_laplace_PA_4Ch_RA.par"; break;
-        case EE: parfileName = "carpf_laplace_EE.par"; break;
-        case LS_4Ch_RA: parfileName = "carpf_laplace_LS_4Ch_RA.par"; break;
-        case LS_4Ch: parfileName = "carpf_laplace_LS_4Ch.par"; break;
-        case LAA: parfileName = "carpf_laplace_LAA.par"; break;
-        case PV4_4Ch: parfileName = "carpf_laplace_PV4_4Ch.par"; break;
-        case PV3: parfileName = "carpf_laplace_PV3.par"; break;
-        case beta: parfileName = "carpf_laplace_beta.par"; break;
-        case beta_RA: parfileName = "carpf_laplace_beta_RA.par"; break;
-        case PA_RA: parfileName = "carpf_laplace_PA_RA.par"; break;
-        case PV2: parfileName = "carpf_laplace_PV2.par"; break;
-        case PA: parfileName = "carpf_laplace_PA.par"; break;
-        case PV1_4Ch: parfileName = "carpf_laplace_PV1_4Ch.par"; break;
-        case single_UD_A: parfileName = "carpf_laplace_single_UD_A.par"; break;
-        case LS_RA: parfileName = "carpf_laplace_LS_RA.par"; break;
-        default:
+        case RAA_PARAM: parfileName = "carpf_laplace_RAA.par"; break;
+        case PV2_4Ch_PARAM: parfileName = "carpf_laplace_PV2_4Ch.par"; break;
+        case PA_4Ch_PARAM: parfileName = "carpf_laplace_PA_4Ch.par"; break;
+        case LS_PARAM: parfileName = "carpf_laplace_LS.par"; break;
+        case single_LR_P_PARAM: parfileName = "carpf_laplace_single_LR_P.par"; break;
+        case single_LR_A_PARAM: parfileName = "carpf_laplace_single_LR_A.par"; break;
+        case EE_RA_PARAM: parfileName = "carpf_laplace_EE_RA.par"; break;
+        case PV4_PARAM: parfileName = "carpf_laplace_PV4.par"; break;
+        case LAA_4Ch_PARAM: parfileName = "carpf_laplace_LAA_4Ch.par"; break;
+        case alpha_PARAM: parfileName = "carpf_laplace_alpha.par"; break;
+        case PV1_PARAM: parfileName = "carpf_laplace_PV1.par"; break;
+        case PV3_4Ch_PARAM: parfileName = "carpf_laplace_PV3_4Ch.par"; break;
+        case single_UD_P_PARAM: parfileName = "carpf_laplace_single_UD_P.par"; break;
+        case alpha_RA_PARAM: parfileName = "carpf_laplace_alpha_RA.par"; break;
+        case PA_4Ch_RA_PARAM: parfileName = "carpf_laplace_PA_4Ch_RA.par"; break;
+        case EE_PARAM: parfileName = "carpf_laplace_EE.par"; break;
+        case LS_4Ch_RA_PARAM: parfileName = "carpf_laplace_LS_4Ch_RA.par"; break;
+        case LS_4Ch_PARAM: parfileName = "carpf_laplace_LS_4Ch.par"; break;
+        case LAA_PARAM: parfileName = "carpf_laplace_LAA.par"; break;
+        case PV4_4Ch_PARAM: parfileName = "carpf_laplace_PV4_4Ch.par"; break;
+        case PV3_PARAM: parfileName = "carpf_laplace_PV3.par"; break;
+        case beta_PARAM: parfileName = "carpf_laplace_beta.par"; break;
+        case beta_RA_PARAM: parfileName = "carpf_laplace_beta_RA.par"; break;
+        case PA_RA_PARAM: parfileName = "carpf_laplace_PA_RA.par"; break;
+        case PV2_PARAM: parfileName = "carpf_laplace_PV2.par"; break;
+        case PA_PARAM: parfileName = "carpf_laplace_PA.par"; break;
+        case PV1_4Ch_PARAM: parfileName = "carpf_laplace_PV1_4Ch.par"; break;
+        case single_UD_A_PARAM: parfileName = "carpf_laplace_single_UD_A.par"; break;
+        case LS_RA_PARAM: parfileName = "carpf_laplace_LS_RA.par"; break;
+        default: parfileName = ""; break;
     }
     
     if (parfileName.isEmpty()) {
@@ -109,7 +109,7 @@ QString CemrgAtrialModellingToolCmd::GetParfile(QtrialToolkitParamfiles atkm, QS
 }
 QString CemrgAtrialModellingToolCmd::GetParfile(QString parfileName, QString meshname) {
     QString executableName, outAbsolutePath;
-    QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtrialToolkitMode::PARFILE);
+    QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtialToolkitMode::PARFILE);
 
     if (arguments.isEmpty()) return "VOLUME_NOT_SET";
 
@@ -129,7 +129,7 @@ QString CemrgAtrialModellingToolCmd::GetParfile(QString parfileName, QString mes
 
 QString CemrgAtrialModellingToolCmd::UniversalAtrialCoordinates(QString stage, QString atrium, QString layer, QString fibre, QString meshname, QStringList tags, QStringList landmarks, bool fourch, bool noraa, int scale) {
     QString executableName, outAbsolutePath;
-    QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtrialToolkitMode::UAC);
+    QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtialToolkitMode::UAC);
 
     if (arguments.isEmpty()) return "VOLUME_NOT_SET";
 
@@ -183,7 +183,7 @@ QString CemrgAtrialModellingToolCmd::UniversalAtrialCoordinates(QString stage, Q
 
 QString CemrgAtrialModellingToolCmd::FibreMapping(QString atrium, QString layer, QString fibre, QString meshname, bool msh_endo_epi, QString output, bool fourch, QString tags, QString biproj) {
     QString executableName, outAbsolutePath;
-    QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtrialToolkitMode::FIBREMAP);
+    QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtialToolkitMode::FIBREMAP);
 
     if (arguments.isEmpty()) return "VOLUME_NOT_SET";
 
@@ -215,7 +215,6 @@ QString CemrgAtrialModellingToolCmd::FibreMapping(QString atrium, QString layer,
    bool successful = ExecuteCommand(executableName, arguments, outPath);
 
     if(successful){
-        MITK_INFO << ("UAC command: " + uaccmd + " successful").toStdString();
         outAbsolutePath = outPath;
     } 
 
@@ -238,7 +237,7 @@ QString CemrgAtrialModellingToolCmd::ScalarMapping(QString atrium, QString meshn
         return "ERROR_INVALID_SCALAR";
     }
 
-    QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtrialToolkitMode::SCALARMAP);
+    QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtialToolkitMode::SCALARMAP);
 
     if (arguments.isEmpty()) return "VOLUME_NOT_SET";
 
@@ -260,7 +259,7 @@ QString CemrgAtrialModellingToolCmd::ScalarMapping(QString atrium, QString meshn
 }
 
 // helpers
-QStringList CemrgAtrialModellingToolCmd::PrepareDockerExecution(QString &executableName, QString &outAbsolutePath, AtrialToolkitMode atkm) {
+QStringList CemrgAtrialModellingToolCmd::PrepareDockerExecution(QString &executableName, QString &outAbsolutePath, AtialToolkitMode atkm) {
     SetDockerImageUac(dockerTag);
     executableName = GetDockerExecutableName();
     outAbsolutePath = "ERROR_IN_PROCESSING";

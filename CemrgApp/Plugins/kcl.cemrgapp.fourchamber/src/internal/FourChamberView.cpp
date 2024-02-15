@@ -639,7 +639,72 @@ void FourChamberView::SimulationSetup(){
 void FourChamberView::AtrialFibres(){
     if (!RequestProjectDirectoryFromUser()) return;
 
-    
+    QString uacFolder = Path(SDIR.AFIB);
+    QString landmarksFolder = uacFolder + "/" + "Landmarks";
+    QStringList expectedOutputs = {
+        landmarksFolder + "/LA/prodRaLandmarks.txt",
+        landmarksFolder + "/LA/prodRaRegion.txt",
+        landmarksFolder + "/RA/prodRaLandmarks.txt",
+        landmarksFolder + "/RA/prodRaRegion.txt"
+    };
+
+    bool prerquiredFilesExist = true;
+    for (QString output : expectedOutputs) {
+        if (!QFile::exists(output)) {
+            prerquiredFilesExist = false;
+            break;
+        }
+    }
+
+    if (!prerquiredFilesExist) {
+        std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+        fourch_cmd->SetCarpDirectory(carp_directory); 
+        fourch_cmd->SetBaseDirectory(directory);
+
+        QString meshname = Path(SDIR.UVC + "/myocardium_bayer_60_-60");
+        QString inputTags = "tags_atrial_fibres.json";
+        QString raaApex = "raa_apex.json";
+        fourch_cmd->DockerLandmarks(directory, meshname, "endo", SDIR.PAR, inputTags, raaApex, uacFolder);
+    } 
+
+    std::unique_ptr<CemrgAtrialModellingToolCmd> atmk_cmd(new CemrgAtrialModellingToolCmd());
+    // "ENDO"
+    // "-Copy landmark files from example dir to [$DATA/LA_$l]"
+    // "-finished"
+    // "-UAC Stage 1"
+    // "-finished (UAC Stage 1)"
+    // "-Laplace solves (1)"
+    // "--Copying parameter files (LS, PA)"
+    // "--openCARP"
+    // "---finished PA"
+    // "---finished LR"
+    // "-finished (Laplace solves 1)"
+    // "-UAC Stage 2a"
+    // "-finished (UAC Stage 2a)"
+    // "-Laplace solves (2)"
+    // "--Copying parameter files (LR_P, LR_A, UD_P, UD_A)"
+    // "--openCARP"
+    // "---finished LR_Ant"
+    // "---finished LR_Post"
+    // "---finished UD_Ant"
+    // "---finished UD_Post"
+    // "-finished (Laplace solves 2)"
+    // "-UAC Stage 2b"
+    // "-finished (UAC Stage 2b)"
+    // "-Scalar Mapping"
+    // "-finished Scalar Mapping"
+    // "-Fibre Mapping - single layer ENDO - Labarthe"
+    // "-finished (Fibre Mapping - single layer)"
+    // "finished ENDO"
+    // "-Fibre Mapping - single layer ENDO - average"
+    // "-finished (Fibre Mapping - single layer)"
+    // "finished ENDO"
+    // "-Fibre Mapping - single layer EPI - Labarthe"
+    // "-finished (Fibre Mapping - single layer)"
+    // "finished ENDO"
+    // "-Fibre Mapping - single layer EPI - average"
+    // "-finished (Fibre Mapping - single layer)"
+    // "finished ENDO"
 }
 
 bool FourChamberView::MainLaplaceProcess(QString uacFolder, QString atrium){

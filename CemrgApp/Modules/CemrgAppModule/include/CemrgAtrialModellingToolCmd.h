@@ -60,37 +60,36 @@ enum AtialToolkitMode
     VIS,
     PARFILE
 };
-enum AtrialToolkitParamfiles
-{
-    RAA,
-    PV2_4Ch,
-    PA_4Ch,
-    LS,
-    single_LR_P,
-    single_LR_A,
-    EE_RA,
-    PV4,
-    LAA_4Ch,
-    alpha,
-    PV1,
-    PV3_4Ch,
-    single_UD_P,
-    alpha_RA,
-    PA_4Ch_RA,
-    EE,
-    LS_4Ch_RA,
-    LS_4Ch,
-    LAA,
-    PV4_4Ch,
-    PV3,
-    beta,
-    beta_RA,
-    PA_RA,
-    PV2,
-    PA,
-    PV1_4Ch,
-    single_UD_A,
-    LS_RA
+enum AtrialToolkitParamfiles {
+    RAA_PARAM,
+    PV2_4Ch_PARAM,
+    PA_4Ch_PARAM,
+    LS_PARAM,
+    single_LR_P_PARAM,
+    single_LR_A_PARAM,
+    EE_RA_PARAM,
+    PV4_PARAM,
+    LAA_4Ch_PARAM,
+    alpha_PARAM,
+    PV1_PARAM,
+    PV3_4Ch_PARAM,
+    single_UD_P_PARAM,
+    alpha_RA_PARAM,
+    PA_4Ch_RA_PARAM,
+    EE_PARAM,
+    LS_4Ch_RA_PARAM,
+    LS_4Ch_PARAM,
+    LAA_PARAM,
+    PV4_4Ch_PARAM,
+    PV3_PARAM,
+    beta_PARAM,
+    beta_RA_PARAM,
+    PA_RA_PARAM,
+    PV2_PARAM,
+    PA_PARAM,
+    PV1_4Ch_PARAM,
+    single_UD_A_PARAM,
+    LS_RA_PARAM
 };
 
 enum AtrialToolkitScalarMap {
@@ -106,9 +105,9 @@ public:
     mitkClassMacro(CemrgAtrialModellingToolCmd, CemrgCommandLine)
     // [uac|fibremap|scalarmap|latfield|stim|labels|vis|getparfile
 
-    void SetModeOfOperation(AtrialToolkitMode atkm);
+    void SetModeOfOperation(AtialToolkitMode atkm);
 
-    QString GetParfile(QtrialToolkitParamfiles atkm, QString meshname="");
+    QString GetParfile(AtrialToolkitParamfiles atkm, QString meshname="");
     QString GetParfile(QString parfileName, QString meshname = ""); // meshname="" means use default name
 
     QString UniversalAtrialCoordinates(QString stage, QString atrium, QString layer, QString fibre, QString meshname, QStringList tags, QStringList landmarks, bool fourch=false, bool noraa=false, int scale=1000);
@@ -116,11 +115,11 @@ public:
     QString ScalarMapping(QString atrium, QString meshname, bool bb, AtrialToolkitScalarMap scalatSuffix);
 
     // Helper functions
-    QStringList PrepareDockerExecution(QString &executableName, QString &outAbsolutePath, AtrialToolkitMode atkm);
+    QStringList PrepareDockerExecution(QString &executableName, QString &outAbsolutePath, AtialToolkitMode atkm);
 
     // inlines 
     inline void SetDockerTag(QString tag) { dockerTag = tag; };
-    inline void SetVolume(QString volume) { dataVolume = volume; home(dataVolume); }
+    inline void SetVolume(QString volume) { dataVolume = volume; home = QDir(dataVolume); }
     inline bool IsVolumeSet() { return dataVolume.isEmpty(); };
 
 protected:

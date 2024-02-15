@@ -522,6 +522,69 @@ QString CemrgFourChamberCmd::DockerDefineTags(QString baseDirectory, QString dat
 
     return outAbsolutePath;
 }
+//////////
+/**
+ * @brief DockerLandmarks function performs a specific task using Docker.
+ *
+ * This function takes several input parameters and executes a specific task using Docker.
+ * The task involves processing a mesh and generating landmarks based on the provided input.
+ *
+ * @param baseDirectory The base directory ('heartFolder') where the task will be executed.
+ * @param meshname The name of the mesh file to be processed (do not include extension, relative path to mesh).
+ * @param surface The surface type to be used for landmark generation (endo or epi).
+ * @param parfolder The folder containing the necessary parameter files (relative path to baseDirectory).
+ * @param inputTagsFilename The filename of the input tags setup file (name only)
+ * @param raaApexFile The filename of the RAA apex file (relative path to baseDirectory).
+ * @param outputFolder The folder where the output will be saved (should be "atrial_fibres/UAC")
+ *
+ * @return The absolute path of the output file, or "ERROR_IN_PROCESSING" if an error occurred.
+ */
+//////////
+QString CemrgFourChamberCmd::DockerLandmarks(QString baseDirectory, QString meshname, QString surface, QString parfolder, QString inputTagsFilename, QString raaApexFile, QString outputFolder) {
+    SetDockerImageFourch();
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+    QString executableName = executablePath + "docker";
+    QString outAbsolutePath = "ERROR_IN_PROCESSING";
+
+    surface = surface.toLower();
+
+    if (surface.contains("endo")) {
+        surface = "endo";
+    } else if (surface.contains("epi")) {
+        surface = "epi";
+    } else {
+        MITK_ERROR << "Surface not recognized!";
+        return outAbsolutePath;
+    }
+
+    QDir home(baseDirectory);
+    QStringList arguments = GetDockerArguments(home.absolutePath());
+
+    QString fourchCmd = "landmarks";
+    arguments << fourchCmd;
+    arguments << "--meshname" << home.relativeFilePath(meshname);
+    arguments << "--surface" << surface;
+    arguments << "--par-folder" << home.relativeFilePath(parfolder);
+    arguments << "--input-tags-setup" << home.relativeFilePath(inputTagsFilename);
+    arguments << "--raa-apex-file" << home.relativeFilePath(raaApexFile);
+    arguments << "--output-folder" << home.relativeFilePath(outputFolder);
+
+    QString expectedOutput = home.absoluteFilePath(outputFolder + "/landmarks.json");
+    bool successful = ExecuteCommand(executableName, arguments, expectedOutput);
+
+    if(successful){
+        MITK_INFO << ("4Ch command: " + fourchCmd + " successful").toStdString();
+        outAbsolutePath = expectedOutput;
+    } else{
+        MITK_WARN << ("Error running 4Ch command: " + fourchCmd).toStdString();
+    }
+
+    return outAbsolutePath;
+
+}
 
 QString CemrgFourChamberCmd::DockerMeshtoolGeneric(QString directory, QString command, QString subcommand, QStringList meshtoolArgs, QString expectedOutput) {
     SetDockerImageOpenCarp();
