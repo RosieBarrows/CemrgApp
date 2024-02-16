@@ -678,40 +678,40 @@ void FourChamberView::AtrialFibres(){
     cp(landmarksFolder + "/LA/prodRaRegion.txt", dockerMountVolume + "/Region.txt");
     
     // "-UAC Stage 1"
-    QStringList landmarksList = {uacFolder + "/LA_endo/Landmarks.txt", uacFolder + "/LA_endo/Region.txt"};
+    QStringList landmarksList = {dockerMountVolume + "/Landmarks.txt", dockerMountVolume + "/Region.txt"};
     QString uacStage1 = atmk_cmd->UniversalAtrialCoordinates("1", "la", "endo", "", "LA_only", QStringList(), landmarksList, true, false, 1000);
 
     // "-Laplace solves (1)"
     // "--Copying parameter files (LS, PA)"
-    QString param_ls = atmk_cmd->GetParfile(AtrialToolkitParamfiles::LS_PARAM, "LA_endo/LA_only");
-    QString param_pa = atmk_cmd->GetParfile(AtrialToolkitParamfiles::PA_PARAM, "LA_endo/LA_only");
+    QString param_ls = atmk_cmd->GetParfile(AtrialToolkitParamfiles::LS_PARAM, "LA_only");
+    QString param_pa = atmk_cmd->GetParfile(AtrialToolkitParamfiles::PA_PARAM, "LA_only");
 
     // "--openCARP"
     std::unique_ptr<CemrgCommandLine> cmd(new CemrgCommandLine());
-    QString lapsolve_ls = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_ls, "LR_UAC_N2");
-    QString lapsolve_pa = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_pa, "PA_UAC_N2");
+    QString lapsolve_ls = cmd->OpenCarpDocker(dockerMountVolume, param_ls, "LR_UAC_N2");
+    QString lapsolve_pa = cmd->OpenCarpDocker(dockerMountVolume, param_pa, "PA_UAC_N2");
 
     // "-UAC Stage 2a"
     atmk_cmd->UniversalAtrialCoordinates("2a", "la", "endo", "", "LA_only", QStringList(), landmarksList, true, false, 1000);
 
     // "-Laplace solves (2)"
     // "--Copying parameter files (LR_P, LR_A, UD_P, UD_A)"
-    QString param_lr_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_P_PARAM, "LA_endo/LA_only");
-    QString param_lr_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_A_PARAM, "LA_endo/LA_only");
-    QString param_ud_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_P_PARAM, "LA_endo/LA_only");
-    QString param_ud_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_A_PARAM, "LA_endo/LA_only");
+    QString param_lr_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_P_PARAM, "LA_only");
+    QString param_lr_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_A_PARAM, "LA_only");
+    QString param_ud_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_P_PARAM, "LA_only");
+    QString param_ud_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_A_PARAM, "LA_only");
 
     // "--openCARP"
-    QString lapsolve_lr_p = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_lr_p, "LR_Post_UAC");
-    QString lapsolve_lr_a = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_lr_a, "LR_Ant_UAC");
-    QString lapsolve_ud_p = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_ud_p, "UD_Post_UAC");
-    QString lapsolve_ud_a = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_ud_a, "UD_Ant_UAC");
+    QString lapsolve_lr_p = cmd->OpenCarpDocker(dockerMountVolume, param_lr_p, "LR_Post_UAC");
+    QString lapsolve_lr_a = cmd->OpenCarpDocker(dockerMountVolume, param_lr_a, "LR_Ant_UAC");
+    QString lapsolve_ud_p = cmd->OpenCarpDocker(dockerMountVolume, param_ud_p, "UD_Post_UAC");
+    QString lapsolve_ud_a = cmd->OpenCarpDocker(dockerMountVolume, param_ud_a, "UD_Ant_UAC");
 
     // "-UAC Stage 2b"
     atmk_cmd->UniversalAtrialCoordinates("2b", "la", "endo", "", "LA_only", QStringList(), landmarksList, true, false, 1000);
    
     // "-Scalar Mapping"
-    atmk_cmd->ScalarMapping("la", )
+    atmk_cmd->ScalarMapping("la", "LA_only", true, AtrialToolkitScalarMap::BB);
     // "-Fibre Mapping - single layer ENDO - Labarthe"
     // "-finished (Fibre Mapping - single layer)"
     // "finished ENDO"
