@@ -98,8 +98,7 @@ enum AtrialToolkitScalarMap {
     PM, 
     BB
 };
-class MITKCEMRGAPPMODULE_EXPORT CemrgAtrialModellingToolCmd : public CemrgCommandLine
-{
+class MITKCEMRGAPPMODULE_EXPORT CemrgAtrialModellingToolCmd : public CemrgCommandLine {
 
 public:
     mitkClassMacro(CemrgAtrialModellingToolCmd, CemrgCommandLine)

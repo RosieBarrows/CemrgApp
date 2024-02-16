@@ -639,8 +639,9 @@ void FourChamberView::SimulationSetup(){
 void FourChamberView::AtrialFibres(){
     if (!RequestProjectDirectoryFromUser()) return;
 
-    QString uacFolder = Path(SDIR.AFIB);
-    QString landmarksFolder = uacFolder + "/" + "Landmarks";
+    QString afibFolder = Path(SDIR.AFIB);
+    QString uacFolder = afibFolder + "/UAC";
+    QString landmarksFolder = afibFolder + "/" + "Landmarks";
     QStringList expectedOutputs = {
         landmarksFolder + "/LA/prodRaLandmarks.txt",
         landmarksFolder + "/LA/prodRaRegion.txt",
@@ -664,35 +665,53 @@ void FourChamberView::AtrialFibres(){
         QString meshname = Path(SDIR.UVC + "/myocardium_bayer_60_-60");
         QString inputTags = "tags_atrial_fibres.json";
         QString raaApex = "raa_apex.json";
-        fourch_cmd->DockerLandmarks(directory, meshname, "endo", SDIR.PAR, inputTags, raaApex, uacFolder);
+        fourch_cmd->DockerLandmarks(directory, meshname, "endo", SDIR.PAR, inputTags, raaApex, afibFolder);
     } 
 
     std::unique_ptr<CemrgAtrialModellingToolCmd> atmk_cmd(new CemrgAtrialModellingToolCmd());
+    QString dockerMountVolume = uacFolder + "/LA_endo";
+    atmk_cmd->SetVolume(dockerMountVolume);
+    atmk_cmd->SetDockerTag("3.0-beta");
     // "ENDO"
     // "-Copy landmark files from example dir to [$DATA/LA_$l]"
-    // "-finished"
+    cp(landmarksFolder + "/LA/prodRaLandmarks.txt", dockerMountVolume + "/Landmarks.txt");
+    cp(landmarksFolder + "/LA/prodRaRegion.txt", dockerMountVolume + "/Region.txt");
+    
     // "-UAC Stage 1"
-    // "-finished (UAC Stage 1)"
+    QStringList landmarksList = {uacFolder + "/LA_endo/Landmarks.txt", uacFolder + "/LA_endo/Region.txt"};
+    QString uacStage1 = atmk_cmd->UniversalAtrialCoordinates("1", "la", "endo", "", "LA_only", QStringList(), landmarksList, true, false, 1000);
+
     // "-Laplace solves (1)"
     // "--Copying parameter files (LS, PA)"
+    QString param_ls = atmk_cmd->GetParfile(AtrialToolkitParamfiles::LS_PARAM, "LA_endo/LA_only");
+    QString param_pa = atmk_cmd->GetParfile(AtrialToolkitParamfiles::PA_PARAM, "LA_endo/LA_only");
+
     // "--openCARP"
-    // "---finished PA"
-    // "---finished LR"
-    // "-finished (Laplace solves 1)"
+    std::unique_ptr<CemrgCommandLine> cmd(new CemrgCommandLine());
+    QString lapsolve_ls = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_ls, "LR_UAC_N2");
+    QString lapsolve_pa = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_pa, "PA_UAC_N2");
+
     // "-UAC Stage 2a"
-    // "-finished (UAC Stage 2a)"
+    atmk_cmd->UniversalAtrialCoordinates("2a", "la", "endo", "", "LA_only", QStringList(), landmarksList, true, false, 1000);
+
     // "-Laplace solves (2)"
     // "--Copying parameter files (LR_P, LR_A, UD_P, UD_A)"
+    QString param_lr_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_P_PARAM, "LA_endo/LA_only");
+    QString param_lr_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_A_PARAM, "LA_endo/LA_only");
+    QString param_ud_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_P_PARAM, "LA_endo/LA_only");
+    QString param_ud_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_A_PARAM, "LA_endo/LA_only");
+
     // "--openCARP"
-    // "---finished LR_Ant"
-    // "---finished LR_Post"
-    // "---finished UD_Ant"
-    // "---finished UD_Post"
-    // "-finished (Laplace solves 2)"
+    QString lapsolve_lr_p = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_lr_p, "LR_Post_UAC");
+    QString lapsolve_lr_a = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_lr_a, "LR_Ant_UAC");
+    QString lapsolve_ud_p = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_ud_p, "UD_Post_UAC");
+    QString lapsolve_ud_a = cmd->OpenCarpDocker(uacFolder + "/LA_endo", param_ud_a, "UD_Ant_UAC");
+
     // "-UAC Stage 2b"
-    // "-finished (UAC Stage 2b)"
+    atmk_cmd->UniversalAtrialCoordinates("2b", "la", "endo", "", "LA_only", QStringList(), landmarksList, true, false, 1000);
+   
     // "-Scalar Mapping"
-    // "-finished Scalar Mapping"
+    atmk_cmd->ScalarMapping("la", )
     // "-Fibre Mapping - single layer ENDO - Labarthe"
     // "-finished (Fibre Mapping - single layer)"
     // "finished ENDO"

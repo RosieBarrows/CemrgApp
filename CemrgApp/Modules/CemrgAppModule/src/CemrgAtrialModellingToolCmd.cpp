@@ -136,12 +136,16 @@ QString CemrgAtrialModellingToolCmd::UniversalAtrialCoordinates(QString stage, Q
     arguments << "--uac-stage" << stage; 
     arguments << "--atrium" << atrium;
     arguments << "--layer" << layer;
-    arguments << "--fibre" << fibre;
+    if (!fibre.isEmpty()) 
+        arguments << "--fibre" << fibre;
+
     arguments << "--msh" << meshname;
 
-    arguments << "--tags";
-    for (int ix = 0; ix < tags.size(); ix++) {
-        arguments << tags.at(ix);
+    if (tags.size() > 0) {
+        arguments << "--tags";
+        for (int ix = 0; ix < tags.size(); ix++) {
+            arguments << tags.at(ix);
+        }
     }
 
     if (landmarks.size() > 0) {
