@@ -139,6 +139,8 @@ public:
     bool MeshtoolInsert(QString uacFolder, QString expOutputName, QString subMsh, QString msh);
     bool MeshtoolConvert(QString uacFolder, QString expOutputName, QString inputName="");
 
+    bool AtrialFibresProcess();
+
 protected slots:
     // here you add the functions that willl be linked to buttons
     void SetWorkingFolder();

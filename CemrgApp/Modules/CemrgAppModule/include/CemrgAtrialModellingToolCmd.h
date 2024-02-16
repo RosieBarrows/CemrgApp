@@ -109,16 +109,24 @@ public:
     QString GetParfile(AtrialToolkitParamfiles atkm, QString meshname="");
     QString GetParfile(QString parfileName, QString meshname = ""); // meshname="" means use default name
 
-    QString UniversalAtrialCoordinates(QString stage, QString atrium, QString layer, QString fibre, QString meshname, QStringList tags, QStringList landmarks, bool fourch=false, bool noraa=false, int scale=1000);
-    QString FibreMapping(QString atrium, QString layer, QString fibre, QString meshname, bool msh_endo_epi, QString output, bool fourch, QString tags, QString biproj);
-    QString ScalarMapping(QString atrium, QString meshname, bool bb, AtrialToolkitScalarMap scalatSuffix);
+    QString UniversalAtrialCoordinates(QString stage, QString layer, QString fibre, QString meshname, QStringList tags, QStringList landmarks, bool fourch=false, bool noraa=false, int scale=1000);
+    inline QString UacStage1(QString layer, QString fibre, QString meshname, QStringList tags, QStringList landmarks, bool fourch = false, bool noraa = false, int scale = 1000) { return UniversalAtrialCoordinates("1", layer, fibre, meshname, tags, landmarks, fourch, noraa, scale); };
+    inline QString UacStage2a(QString layer, QString fibre, QString meshname, QStringList tags, QStringList landmarks, bool fourch = false, bool noraa = false, int scale = 1000) { return UniversalAtrialCoordinates("2a", layer, fibre, meshname, tags, landmarks, fourch, noraa, scale); };
+    inline QString UacStage2b(QString layer, QString fibre, QString meshname, QStringList tags, QStringList landmarks, bool fourch = false, bool noraa = false, int scale = 1000) { return UniversalAtrialCoordinates("2b", layer, fibre, meshname, tags, landmarks, fourch, noraa, scale); };
+
+    QString FibreMapping(QString layer, QString fibre, QString meshname, bool msh_endo_epi, QString outputSuffix="Fibre", bool fourch=false, QString biproj="100");
+    QString ScalarMapping(QString meshname, bool bb, AtrialToolkitScalarMap scalatSuffix);
+    QString Labels(QString labelsStage, bool labelsLandmarks, double labelsThresh, QString meshname, QStringlist landmarks, int scale = 1000);
 
     // Helper functions
     QStringList PrepareDockerExecution(QString &executableName, QString &outAbsolutePath, AtialToolkitMode atkm);
 
     // inlines 
     inline void SetDockerTag(QString tag) { dockerTag = tag; };
-    inline void SetVolume(QString volume) { dataVolume = volume; home = QDir(dataVolume); }
+    inline void SetVolume(QString volume) { dataVolume = volume; home = QDir(dataVolume); };
+    inline void SetAtrium(QString atriumName) { atrium = atriumName; };
+    inline void SetAtriumToLA() { atrium = "la"; };
+    inline void SetAtriumToRA() { atrium = "ra"; };
     inline bool IsVolumeSet() { return dataVolume.isEmpty(); };
 
 protected:
@@ -127,5 +135,6 @@ private:
     QString dataVolume; // directory mounted in /data inside container
     QDir home;
     QString mode; // mode of operation of container
+    QString atrium; // atrium name "la" or "ra"
 };
 #endif // CemrgAtrialModellingToolCmd_h

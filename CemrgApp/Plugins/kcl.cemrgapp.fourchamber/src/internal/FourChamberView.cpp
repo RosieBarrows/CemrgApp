@@ -670,8 +670,10 @@ void FourChamberView::AtrialFibres(){
 
     std::unique_ptr<CemrgAtrialModellingToolCmd> atmk_cmd(new CemrgAtrialModellingToolCmd());
     QString dockerMountVolume = uacFolder + "/LA_endo";
+    QString meshname = "LA_only";
     atmk_cmd->SetVolume(dockerMountVolume);
     atmk_cmd->SetDockerTag("3.0-beta");
+    atmk_cmd->SetAtriumToLA();
     // "ENDO"
     // "-Copy landmark files from example dir to [$DATA/LA_$l]"
     cp(landmarksFolder + "/LA/prodRaLandmarks.txt", dockerMountVolume + "/Landmarks.txt");
@@ -679,27 +681,28 @@ void FourChamberView::AtrialFibres(){
     
     // "-UAC Stage 1"
     QStringList landmarksList = {dockerMountVolume + "/Landmarks.txt", dockerMountVolume + "/Region.txt"};
-    QString uacStage1 = atmk_cmd->UniversalAtrialCoordinates("1", "la", "endo", "", "LA_only", QStringList(), landmarksList, true, false, 1000);
+    QString uacStage1 = atmk_cmd->UacStage1("endo", "", meshname, QStringList(), landmarksList, true, false, 1000);
 
     // "-Laplace solves (1)"
     // "--Copying parameter files (LS, PA)"
-    QString param_ls = atmk_cmd->GetParfile(AtrialToolkitParamfiles::LS_PARAM, "LA_only");
-    QString param_pa = atmk_cmd->GetParfile(AtrialToolkitParamfiles::PA_PARAM, "LA_only");
+    QString param_ls = atmk_cmd->GetParfile(AtrialToolkitParamfiles::LS_PARAM, meshname);
+    QString param_pa = atmk_cmd->GetParfile(AtrialToolkitParamfiles::PA_PARAM, meshname);
 
     // "--openCARP"
     std::unique_ptr<CemrgCommandLine> cmd(new CemrgCommandLine());
     QString lapsolve_ls = cmd->OpenCarpDocker(dockerMountVolume, param_ls, "LR_UAC_N2");
     QString lapsolve_pa = cmd->OpenCarpDocker(dockerMountVolume, param_pa, "PA_UAC_N2");
 
-    // "-UAC Stage 2a"
-    atmk_cmd->UniversalAtrialCoordinates("2a", "la", "endo", "", "LA_only", QStringList(), landmarksList, true, false, 1000);
+    // "-UAC Stage 2a"e layer EPI - Labarthe"
+    QString fibre_map_epi_labarthe = atmk_cmd->FibreMapping("epi", "l", meshname, true, "Fibre", true, "");
+    atmk_cmd->UacStage2a("endo", "", meshname, QStringList(), landmarksList, true, false, 1000);
 
     // "-Laplace solves (2)"
     // "--Copying parameter files (LR_P, LR_A, UD_P, UD_A)"
-    QString param_lr_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_P_PARAM, "LA_only");
-    QString param_lr_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_A_PARAM, "LA_only");
-    QString param_ud_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_P_PARAM, "LA_only");
-    QString param_ud_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_A_PARAM, "LA_only");
+    QString param_lr_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_P_PARAM, meshname);
+    QString param_lr_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_A_PARAM, meshname);
+    QString param_ud_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_P_PARAM, meshname);
+    QString param_ud_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_A_PARAM, meshname);
 
     // "--openCARP"
     QString lapsolve_lr_p = cmd->OpenCarpDocker(dockerMountVolume, param_lr_p, "LR_Post_UAC");
@@ -708,22 +711,16 @@ void FourChamberView::AtrialFibres(){
     QString lapsolve_ud_a = cmd->OpenCarpDocker(dockerMountVolume, param_ud_a, "UD_Ant_UAC");
 
     // "-UAC Stage 2b"
-    atmk_cmd->UniversalAtrialCoordinates("2b", "la", "endo", "", "LA_only", QStringList(), landmarksList, true, false, 1000);
+    atmk_cmd->UacStage2b("endo", "", meshname, QStringList(), landmarksList, true, false, 1000);
    
     // "-Scalar Mapping"
-    atmk_cmd->ScalarMapping("la", "LA_only", true, AtrialToolkitScalarMap::BB);
+    QString scalarmapping = atmk_cmd->ScalarMapping(meshname, true, AtrialToolkitScalarMap::BB);
+
     // "-Fibre Mapping - single layer ENDO - Labarthe"
-    // "-finished (Fibre Mapping - single layer)"
-    // "finished ENDO"
-    // "-Fibre Mapping - single layer ENDO - average"
-    // "-finished (Fibre Mapping - single layer)"
-    // "finished ENDO"
-    // "-Fibre Mapping - single layer EPI - Labarthe"
-    // "-finished (Fibre Mapping - single layer)"
-    // "finished ENDO"
-    // "-Fibre Mapping - single layer EPI - average"
-    // "-finished (Fibre Mapping - single layer)"
-    // "finished ENDO"
+    QString fibre_map_endo_labarthe = atmk_cmd->FibreMapping("endo", "l", meshname, true, "Fibre", true, "");
+    
+    // "-Fibre Mapping - singl
+    
 }
 
 bool FourChamberView::MainLaplaceProcess(QString uacFolder, QString atrium){

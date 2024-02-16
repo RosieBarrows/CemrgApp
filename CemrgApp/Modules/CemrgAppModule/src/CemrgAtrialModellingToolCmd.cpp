@@ -127,7 +127,7 @@ QString CemrgAtrialModellingToolCmd::GetParfile(QString parfileName, QString mes
     return outAbsolutePath;
 }
 
-QString CemrgAtrialModellingToolCmd::UniversalAtrialCoordinates(QString stage, QString atrium, QString layer, QString fibre, QString meshname, QStringList tags, QStringList landmarks, bool fourch, bool noraa, int scale) {
+QString CemrgAtrialModellingToolCmd::UniversalAtrialCoordinates(QString stage, QString layer, QString fibre, QString meshname, QStringList tags, QStringList landmarks, bool fourch, bool noraa, int scale) {
     QString executableName, outAbsolutePath;
     QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtialToolkitMode::UAC);
 
@@ -185,7 +185,7 @@ QString CemrgAtrialModellingToolCmd::UniversalAtrialCoordinates(QString stage, Q
     return outAbsolutePath;
 }
 
-QString CemrgAtrialModellingToolCmd::FibreMapping(QString atrium, QString layer, QString fibre, QString meshname, bool msh_endo_epi, QString output, bool fourch, QString tags, QString biproj) {
+QString CemrgAtrialModellingToolCmd::FibreMapping(QString layer, QString fibre, QString meshname, bool msh_endo_epi, QString outputSuffix, bool fourch, QString biproj) {
     QString executableName, outAbsolutePath;
     QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtialToolkitMode::FIBREMAP);
 
@@ -206,11 +206,11 @@ QString CemrgAtrialModellingToolCmd::FibreMapping(QString atrium, QString layer,
        arguments << "--msh-epi" << "Labelled";
    }
 
-   arguments << "--tags" << tags;
-   arguments << "--fibre-biproj" << biproj;
+   if (!biproj.isEmpty())
+        arguments << "--fibre-biproj" << biproj;
 
-   QString omsh = output;
-   omsh += layer.contains("bilayer") ? "Bilayer" : "";
+   QString omsh = outputSuffix + "_" + layer + "_" + fibre;
+   omsh += layer.contains("bilayer") ? "_Bilayer" : "";
 
    QStringList outputs;
    outputs << omsh+".pts" << omsh+".elem";
@@ -225,7 +225,7 @@ QString CemrgAtrialModellingToolCmd::FibreMapping(QString atrium, QString layer,
     return outAbsolutePath;
 }
 
-QString CemrgAtrialModellingToolCmd::ScalarMapping(QString atrium, QString meshname, bool bb, AtrialToolkitScalarMap scalatSuffix) {
+QString CemrgAtrialModellingToolCmd::ScalarMapping(QString meshname, bool bb, AtrialToolkitScalarMap scalatSuffix) {
     QString executableName, outAbsolutePath;
 
     QString scalarFilesuffix;
@@ -254,6 +254,36 @@ QString CemrgAtrialModellingToolCmd::ScalarMapping(QString atrium, QString meshn
     arguments << "--scalar-file-suffix" << scalarFilesuffix;
 
     QString expectedOutput = home.absoluteFilePath("MappedScalar_"+scalarFilesuffix+".dat");
+    bool successful = ExecuteCommand(executableName, arguments, expectedOutput);
+    if (successful) {
+        outAbsolutePath = expectedOutput;
+    }
+
+    return outAbsolutePath;
+}
+
+QString CemrgAtrialModellingToolCmd::Labels(QString labelsStage, bool labelsLandmarks, double labelsThresh, QString meshname, QStringlist landmarks, int scale) {
+    QString executableName, outAbsolutePath;
+    QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtialToolkitMode::LABELS);
+
+    if (arguments.isEmpty()) return "VOLUME_NOT_SET";
+
+    arguments << "--labels-stage" << labelsStage;
+    if (labelsLandmarks) {
+        arguments << "--labels-landmarks";
+    }
+    arguments << "--labels-thresh" << QString::number(labelsThresh);
+    arguments << "--msh" << meshname;
+    arguments << "--landmarks" << home.relativeFilePath(landmarks.at(0));
+    if (landmarks.size() > 1) {
+        arguments << "--regions" << home.relativeFilePath(landmarks.at(1));
+    }
+    arguments << QString::number(scale);
+
+    QStringList outputs;
+    outputs << "Labelled_Coords_2D_Rescaling_v3_C.elem" << "Labelled_Coords_2D_Rescaling_v3_C.pts";
+
+    QString expectedOutput = home.absoluteFilePath(outputs.at(0));
     bool successful = ExecuteCommand(executableName, arguments, expectedOutput);
     if (successful) {
         outAbsolutePath = expectedOutput;
