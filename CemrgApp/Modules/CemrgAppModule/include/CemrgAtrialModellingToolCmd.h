@@ -116,7 +116,7 @@ public:
 
     QString FibreMapping(QString layer, QString fibre, QString meshname, bool msh_endo_epi, QString outputSuffix="Fibre", bool fourch=false, QString biproj="100");
     QString ScalarMapping(QString meshname, bool bb, AtrialToolkitScalarMap scalatSuffix);
-    QString Labels(QString labelsStage, bool labelsLandmarks, double labelsThresh, QString meshname, QStringlist landmarks, int scale = 1000);
+    QString Labels(QString labelsStage, bool labelsLandmarks, double labelsThresh, QString meshname, QStringList landmarks, int scale = 1000);
 
     // Helper functions
     QStringList PrepareDockerExecution(QString &executableName, QString &outAbsolutePath, AtialToolkitMode atkm);

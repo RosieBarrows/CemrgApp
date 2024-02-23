@@ -195,7 +195,7 @@ QString CemrgAtrialModellingToolCmd::FibreMapping(QString layer, QString fibre, 
     arguments << "--layer" << layer;
     arguments << "--fibre" << fibre;
     arguments << "--msh" << meshname;
-    arguments << "--output" << output;
+    arguments << "--output" << outputSuffix;
 
     if (fourch) {
        arguments << "--fourch";
@@ -262,7 +262,7 @@ QString CemrgAtrialModellingToolCmd::ScalarMapping(QString meshname, bool bb, At
     return outAbsolutePath;
 }
 
-QString CemrgAtrialModellingToolCmd::Labels(QString labelsStage, bool labelsLandmarks, double labelsThresh, QString meshname, QStringlist landmarks, int scale) {
+QString CemrgAtrialModellingToolCmd::Labels(QString labelsStage, bool labelsLandmarks, double labelsThresh, QString meshname, QStringList landmarks, int scale) {
     QString executableName, outAbsolutePath;
     QStringList arguments = PrepareDockerExecution(executableName, outAbsolutePath, AtialToolkitMode::LABELS);
 
