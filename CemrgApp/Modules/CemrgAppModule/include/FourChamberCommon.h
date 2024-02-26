@@ -204,9 +204,11 @@ class SegmentationLabels {
         }
 
 
-        bool LabelExists(unsigned int label) const {
+        bool LabelExists(unsigned int label, LabelsType& ltt) const {
+            ltt = BACKGROUND;
             for (const auto &pair : labelMap) {
                 if (pair.second == label) {
+                    ltt = pair.first;
                     return true;
                 }
             }
@@ -267,6 +269,12 @@ class SegmentationLabels {
                 Update(other);
             }
             return *this;
+        }
+
+        void toString() { 
+            for (const auto &pair : labelMap) {
+                std::cout << "Label: " << LabelName(pair.first) << " Tag: " << pair.second << '\n';
+            }
         }
 };
 

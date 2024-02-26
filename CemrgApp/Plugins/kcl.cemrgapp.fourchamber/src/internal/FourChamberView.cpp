@@ -1111,18 +1111,22 @@ void FourChamberView::CorrectionConfirmLabels() {
             int usrLabel = userLabels.Get(ltt);
             int segLabel = segmentationLabels.Get(ltt);
 
+            std::cout << "User label: " << usrLabel << " Segmentation label: " << segLabel << '\n';
             if (usrLabel != segLabel) {
-                std::cout << "User label: " << usrLabel << " Segmentation label: " << segLabel << '\n';
-                if (segmentationLabels.LabelExists(usrLabel)) {
-                    
+                std::cout << "Labels are different\n";
+                LabelsType ltt2;
+                if (segmentationLabels.LabelExists(usrLabel, ltt2)) {
+                    std::cout << "Label :" << usrLabel << " already exists in segmentation\n";
                     int auxLabel = segmentationLabels.GenerateNewLabel();
 
                     MITK_INFO << "Swapping labels: (" + QString::number(usrLabel) + "->" + QString::number(auxLabel) + "), then (" + QString::number(segLabel) + "->" + QString::number(usrLabel) + ")\n";
                     seg = multilabelUtils->ReplaceLabel(seg, usrLabel, auxLabel);
                     seg = multilabelUtils->ReplaceLabel(seg, segLabel, usrLabel);
 
-                    segmentationLabels.Set(ltt, auxLabel);
-                    labelsToReprocess.push_back(ltt);
+                    // find the LabelsType that already exists in segmentationLabels
+
+                    segmentationLabels.Set(ltt2, auxLabel);
+                    labelsToReprocess.push_back(ltt2);
                 } else {
                     MITK_INFO << "Replacing labels (" + QString::number(segLabel) + "->" + QString::number(usrLabel) + ")\n";
                     seg = multilabelUtils->ReplaceLabel(seg, segLabel, usrLabel);
@@ -1162,10 +1166,10 @@ void FourChamberView::CorrectionConfirmLabels() {
         multilabelUtils->GetLabels(seg, auxLabelsInSeg);
         foreach (int label, auxLabelsInSeg) {
             auto test =  std::find(labelsInSegmentation.begin(), labelsInSegmentation.end(), label);
-            if (test == labelsInSegmentation.end()) {
+            if (test == labelsInSegmentation.end()) { // label not found
                 labelsInSegmentation.push_back(label);
                 m_Controls.combo_corrections_id->addItem(QString::number(label));
-            }
+            } // _if
         }
         labelsToSplit.clear();
     }
@@ -1222,6 +1226,7 @@ void FourChamberView::CorrectionIdLabels(int index) {
                     }
 
                     labelsToSplit.push_back(label);
+                    m_Controls.combo_corrections_id->removeItem(index);
 
                 } else if (deleteCurrentLabel) {
                     m_Controls.combo_corrections_id->removeItem(index);
@@ -2155,6 +2160,7 @@ bool FourChamberView::UserSelectIdentifyLabels(int index, unsigned int label, QC
         if (!ok) {
             userLabel = defaultLabel;
         }
+        std::cout << "[UserSelectIdentifyLabels] Label for " << pickedLabelName.toStdString() << " is " << userLabel << '\n';
 
         splitCurrentLabel = (pickedLabelName == "MIXED_LABEL");
         deleteCurrentLabel = (pickedLabelName == "DELETE");

@@ -130,7 +130,7 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::SplitLabelsOnRepeat(mitk:
 
     for (long unsigned int ix = 0; ix < tagsInLabel.size(); ix++) {
         int tag = tagsInLabel.at(ix);
-        int newLabel = (ix==0) ? label : label*10 + (tag-1);
+        int newLabel = label*10 + (tag-1);
 
         int qx = 1;
         // Use std::find to check if the variable is in the vector
