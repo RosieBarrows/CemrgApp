@@ -658,6 +658,7 @@ void FourChamberView::AtrialFibres(){
     }
 
     if (!prerquiredFilesExist) {
+        Inform("Information", "Running Landmarks Selection Code");
         std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
         fourch_cmd->SetCarpDirectory(carp_directory); 
         fourch_cmd->SetBaseDirectory(directory);
@@ -678,7 +679,7 @@ void FourChamberView::AtrialFibres(){
     // "-Copy landmark files from example dir to [$DATA/LA_$l]"
     cp(landmarksFolder + "/LA/prodRaLandmarks.txt", dockerMountVolume + "/Landmarks.txt");
     cp(landmarksFolder + "/LA/prodRaRegion.txt", dockerMountVolume + "/Region.txt");
-    
+
     // "-UAC Stage 1"
     QStringList landmarksList = {dockerMountVolume + "/Landmarks.txt", dockerMountVolume + "/Region.txt"};
     QString uacStage1 = atmk_cmd->UacStage1("endo", "", meshname, QStringList(), landmarksList, true, false, 1000);
@@ -718,9 +719,56 @@ void FourChamberView::AtrialFibres(){
 
     // "-Fibre Mapping - single layer ENDO - Labarthe"
     QString fibre_map_endo_labarthe = atmk_cmd->FibreMapping("endo", "l", meshname, true, "Fibre", true, "");
+    fibre_map_endo_labarthe = atmk_cmd->FibreMapping("epi", "l", meshname, true, "Fibre", true, "");
+
+    dockerMountVolume = uacFolder + "/RA_endo";
+    meshname = "RA_only";
+    atmk_cmd->SetVolume(dockerMountVolume);
+    atmk_cmd->SetDockerTag("3.0-beta");
+    atmk_cmd->SetAtriumToRA();
+
+    landmarksList.clear();
+    landmarksList << dockerMountVolume + "/Landmarks.txt" <<  dockerMountVolume + "/Region.txt";
+    atmk_cmd->Labels("1", true, 0.6, meshname, landmarksList, 1000);
+
+    QString param_raa = atmk_cmd->GetParfile(AtrialToolkitParamfiles::RAA_PARAM);
+    QString param_laa = atmk_cmd->GetParfile(AtrialToolkitParamfiles::LAA_PARAM);
+
+    QString lapsolve_mv_laa = cmd->OpenCarpDocker(dockerMountVolume, param_raa, "MV_LAA");
     
-    // "-Fibre Mapping - singl
-    
+    atmk_cmd->Labels("2", true, 0.6, meshname, landmarksList, 1000);
+
+    meshname+="_RAA";
+    atmk_cmd->UacStage1("endo", "", meshname, QStringList(), landmarksList, true, false, 1000);
+
+    param_ls = atmk_cmd->GetParfile(AtrialToolkitParamfiles::LS_PARAM, meshname);
+    param_pa = atmk_cmd->GetParfile(AtrialToolkitParamfiles::PA_PARAM, meshname);
+
+    lapsolve_ls = cmd->OpenCarpDocker(dockerMountVolume, param_ls, "LR_UAC_N2");
+    lapsolve_pa = cmd->OpenCarpDocker(dockerMountVolume, param_pa, "PA_UAC_N2");
+
+    atmk_cmd->UacStage2a("endo", "", meshname, QStringList(), landmarksList, true, false, 1000);
+
+    param_lr_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_P_PARAM, meshname);
+    param_lr_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_LR_A_PARAM, meshname);
+    param_ud_p = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_P_PARAM, meshname);
+    param_ud_a = atmk_cmd->GetParfile(AtrialToolkitParamfiles::single_UD_A_PARAM, meshname);
+
+    lapsolve_lr_p = cmd->OpenCarpDocker(dockerMountVolume, param_lr_p, "LR_Post_UAC");
+    lapsolve_lr_a = cmd->OpenCarpDocker(dockerMountVolume, param_lr_a, "LR_Ant_UAC");
+    lapsolve_ud_p = cmd->OpenCarpDocker(dockerMountVolume, param_ud_p, "UD_Post_UAC");
+    lapsolve_ud_a = cmd->OpenCarpDocker(dockerMountVolume, param_ud_a, "UD_Ant_UAC");
+
+    atmk_cmd->UacStage2b("endo", "", meshname, QStringList(), landmarksList, true, false, 1000);
+
+    scalarmapping = atmk_cmd->ScalarMapping(meshname, true, AtrialToolkitScalarMap::BB);
+    scalarmapping = atmk_cmd->ScalarMapping(meshname, false, AtrialToolkitScalarMap::SAN);
+    scalarmapping = atmk_cmd->ScalarMapping(meshname, false, AtrialToolkitScalarMap::CT);
+    scalarmapping = atmk_cmd->ScalarMapping(meshname, false, AtrialToolkitScalarMap::PM);
+
+    fibre_map_endo_labarthe = atmk_cmd->FibreMapping("endo", "l", meshname, true, "Fibre", true, "");
+    fibre_map_endo_labarthe = atmk_cmd->FibreMapping("epi", "l", meshname, true, "Fibre", true, "");
+
 }
 
 bool FourChamberView::MainLaplaceProcess(QString uacFolder, QString atrium){
