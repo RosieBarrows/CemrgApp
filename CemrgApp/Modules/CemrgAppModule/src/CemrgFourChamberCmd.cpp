@@ -508,8 +508,8 @@ QString CemrgFourChamberCmd::DockerDefineTags(QString baseDirectory, QString dat
     arguments << "--input-tags-setup" << inputTagsFilename;
     arguments << "--bb-settings" << bbSettingsFilename;
 
-    // msh_bb = f"{msh}_av_fec_bb"
-    QString mshBB = meshname + "_av_fec_bb";
+    // msh_bb = f"{msh}_AV_FEC_BB"
+    QString mshBB = meshname + "_AV_FEC_BB";
     QString outputPath = home.relativeFilePath(dataSubdir + "/" + mshBB + ".vtk");
     bool successful = ExecuteCommand(executableName, arguments, outputPath);
 
@@ -521,6 +521,78 @@ QString CemrgFourChamberCmd::DockerDefineTags(QString baseDirectory, QString dat
     }
 
     return outAbsolutePath;
+}
+QString CemrgFourChamberCmd::DockerSurfsPresim(QString baseDirectory, QString dataSubdir, QString parfolder, QString inputTagsFilename, QString mapSettingsFilename, QString apexCoordFilename, QString saCoordFilename) {
+    SetDockerImageFourch();
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+
+    QString executableName = executablePath + "docker";
+    QString outAbsolutePath = "ERROR_IN_PROCESSING";
+
+    QDir home(baseDirectory);
+    QStringList arguments = GetDockerArguments(home.absolutePath());
+
+    QString fourchCmd = "presim";
+    arguments << fourchCmd;
+    arguments << "--data-subdir" << dataSubdir;
+    arguments << "--par-folder" << parfolder;
+    arguments << "--input-tags-setup" << inputTagsFilename;
+    arguments << "--map-settings" << mapSettingsFilename;
+    arguments << "--fch-apex" << apexCoordFilename;
+    arguments << "--fch-sa" << saCoordFilename;
+
+    QString mshBB = "myocardium_AV_FEC_BB"; // matching name in docker
+
+    QString outputPath = home.absolutePath() + "/" + dataSubdir + "/surfaces_simulation/surfaces_rings/SVC.surf";
+
+    bool successful = ExecuteCommand(executableName, arguments, outputPath);
+
+    if(successful){
+        MITK_INFO << ("4Ch command: " + fourchCmd + " successful").toStdString();
+        outAbsolutePath = outputPath;
+    } else{
+        MITK_WARN << ("Error running 4Ch command: " + fourchCmd).toStdString();
+    }
+
+    return outAbsolutePath;
+
+    // after calling this function, CARP needs to be called too
+}
+QString CemrgFourChamberCmd::DockerSplitFec(QString baseDirectory, QString meshPath, QString meshname, QString parfolder, QString inputTagsFilename, QString lvlrvTagsFilename) {
+    SetDockerImageFourch();
+    QString executablePath;
+#if defined(__APPLE__)
+    executablePath = "/usr/local/bin/";
+#endif
+    QString executableName = executablePath + "docker";
+    QString outAbsolutePath = "ERROR_IN_PROCESSING";
+
+    QDir home(baseDirectory);
+    QStringList arguments = GetDockerArguments(home.absolutePath());
+
+    QString fourchCmd = "fec";
+    arguments << fourchCmd;
+    arguments << "--mesh-path" << home.relativeFilePath(meshPath);
+    arguments << "--meshname" << meshname;
+    arguments << "--par-folder" << home.relativeFilePath(parfolder);
+    arguments << "--input-tags-setup" << inputTagsFilename;
+    arguments << "--lvlrv-tags" << lvlrvTagsFilename;
+
+    QString outputPath = home.absolutePath() + "/sims_folder/" + meshname + "_lvrv.vtk";
+
+    bool successful = ExecuteCommand(executableName, arguments, outputPath);
+
+    if(successful){
+        MITK_INFO << ("4Ch command: " + fourchCmd + " successful").toStdString();
+        outAbsolutePath = outputPath;
+    } else{
+        MITK_WARN << ("Error running 4Ch command: " + fourchCmd).toStdString();
+    }
+
+    return QString();
 }
 //////////
 /**

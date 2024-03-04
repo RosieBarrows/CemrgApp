@@ -103,6 +103,8 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgFourChamberCmd : public CemrgCommandLine {
         QString DockerLaplacePrep(QString baseDirectory, QString atrium, QString afibSubdir, QString surfEndo, QString surfEpi);
         QString DockerSurfaceToVolume(QString baseDirectory, QString atrium, QString fibresEndo, QString fibresEpi, QString meshPathSuffix);
         QString DockerDefineTags(QString baseDirectory, QString dataSubdir, QString atriaSubdir, QString meshname, QString parfolder, QString inputTagsFilename, QString bbSettingsFilename);
+        QString DockerSurfsPresim(QString baseDirectory, QString dataSubdir, QString parfolder, QString inputTagsFilename, QString mapSettingsFilename, QString apexCoordFilename, QString saCoordFilename);
+        QString DockerSplitFec(QString baseDirectory, QString meshPath, QString meshname, QString parfolder, QString inputTagsFilename, QString lvlrvTagsFilename);
         QString DockerLandmarks(QString baseDirectory, QString meshname, QString surface, QString parfolder, QString inputTagsFilename, QString raaApexFile, QString outputFolder);
         QString DockerMeshtoolGeneric(QString directory, QString command, QString subcommand, QStringList arguments, QString expectedOutput);
 

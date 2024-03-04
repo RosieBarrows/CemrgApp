@@ -625,15 +625,23 @@ void FourChamberView::ExtractSurfaces(){
         }
     }
 
-    // open point selector plugin in SelectLARALandmarks
-
 }
 
 void FourChamberView::SimulationSetup(){
-    int reply = Ask("Question", "Placeholder");
-    if(reply==QMessageBox::Yes){
-        Inform("Answer", "OK");
-    }
+    if (!RequestProjectDirectoryFromUser()) return;
+
+    std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+    fourch_cmd->SetCarpDirectory(carp_directory);
+    fourch_cmd->SetCarpless(carpless);
+    
+    // call to cemrg:4ch presim 
+    Inform("Information", "Running Presimulation Code");
+
+    // finalise presim with CARP calls
+    Inform("Calls to CARP", "Presim code");
+
+    // call to cemrg:4ch fec
+    Inform("Information", "Running Fec Code");
 }
 
 void FourChamberView::AtrialFibres(){
