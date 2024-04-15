@@ -70,19 +70,16 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgMultilabelSegmentationUtils {
 
         mitk::Image::Pointer ResampleSmoothLabel(mitk::Image::Pointer image, std::vector<double> spacing, double sigmaFraction=0.5);
 
-        enum MaskLabelBehaviour { ZEROS, ONLY, REPLACE, FORBID };
-        mitk::Image::Pointer AddMaskToSegmentation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel, MaskLabelBehaviour mlb, std::vector<int> labelsToProcess = std::vector<int>());
-        inline mitk::Image::Pointer AddMask(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel) { return AddMaskToSegmentation(seg, mask, newLabel, MaskLabelBehaviour::ZEROS); };
-        inline mitk::Image::Pointer AddMaskReplace(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel) { return AddMaskToSegmentation(seg, mask, newLabel, MaskLabelBehaviour::REPLACE); };
-        inline mitk::Image::Pointer AddMaskReplaceOnly(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel, std::vector<int> labelsToProcess) { return AddMaskToSegmentation(seg, mask, newLabel, MaskLabelBehaviour::REPLACE, labelsToProcess); };
-        inline mitk::Image::Pointer AddMaskReplaceExcept(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel, std::vector<int> labelsToProcess) { return AddMaskToSegmentation(seg, mask, newLabel, MaskLabelBehaviour::FORBID, labelsToProcess); };
-
         mitk::Image::Pointer LabelMaskAndOperation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int oldLabel, int newLabel);
         mitk::Image::Pointer ConnectedComponent(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int label, bool keep=false);
         inline mitk::Image::Pointer ConnectedComponentKeep(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int label) { return ConnectedComponent(seg, seedIdx, label, true); };
+        mitk::Image::Pointer ExtractLargestComponent(mitk::Image::Pointer seg, int numLabels=1, int outputLabel=1);
+        mitk::Image::Pointer CleanMultilabelSegmentation(mitk::Image::Pointer seg, int background=0);
 
         mitk::Image::Pointer DistanceMap(mitk::Image::Pointer seg, int label);
         mitk::Image::Pointer Threshold(mitk::Image::Pointer seg, int label, int lower, int upper);
+
+        mitk::Image::Pointer ZerosLike(mitk::Image::Pointer image);
 
         // helper functions
         void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0);
@@ -97,6 +94,8 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgMultilabelSegmentationUtils {
 
         void WorldToIndexOriginSpacing(std::vector<double> world, std::vector<unsigned int>& index, std::vector<double> origin, std::vector<double> spacing);
         void IndexToWorldOriginSpacing(std::vector<unsigned int> index, std::vector<double> &world, std::vector<double> origin, std::vector<double> spacing);
+
+        ImageType::Pointer MitkImageToItkImage(mitk::Image::Pointer image);
 
     protected:
 

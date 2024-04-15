@@ -225,56 +225,13 @@ bool CemrgMultilabelSegmentationUtils::CheckExisting(mitk::Image::Pointer seg, i
     return (it != labelsInSeg.end()); 
 }
 
-mitk::Image::Pointer CemrgMultilabelSegmentationUtils::AddMaskToSegmentation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int newLabel, MaskLabelBehaviour mlb, std::vector<int> labelsToProcess) {
-
-    ImageType::Pointer itkImage = ImageType::New();
-    ImageType::Pointer itkMask = ImageType::New();
-    CastToItkImage(seg, itkImage);
-    CastToItkImage(mask, itkMask);
-
-    IteratorType segIt(itkImage, itkImage->GetLargestPossibleRegion());
-    IteratorType maskIt(itkMask, itkMask->GetLargestPossibleRegion());
-
-    for (segIt.GoToBegin(), maskIt.GoToBegin(); !segIt.IsAtEnd(); ++segIt, ++maskIt) {
-        bool conditionToProcess = false;
-        uint8_t value = segIt.Get();
-
-        if (maskIt.Get() > 0) {
-            auto testValueInLabels = std::find(labelsToProcess.begin(), labelsToProcess.end(), value);
-            switch(mlb) { 
-                case MaskLabelBehaviour::ZEROS: 
-                    conditionToProcess = (value == 0);
-                    break;
-                case MaskLabelBehaviour::ONLY:
-                    conditionToProcess = (value == 0) || (testValueInLabels != labelsToProcess.end());
-                    break;
-                case MaskLabelBehaviour::REPLACE:
-                    conditionToProcess = true;
-                    break;
-                case MaskLabelBehaviour::FORBID:
-                    conditionToProcess = (testValueInLabels == labelsToProcess.end());
-                    break;
-                default:
-                    conditionToProcess = false;
-                }
-
-            if (conditionToProcess) {
-                segIt.Set(newLabel);
-            }
-        }
-    }
-
-    mitk::Image::Pointer newSeg = mitk::ImportItkImage(itkImage)->Clone();
-    newSeg->SetGeometry(seg->GetGeometry());
-    return newSeg;
-
-}
-
 mitk::Image::Pointer CemrgMultilabelSegmentationUtils::LabelMaskAndOperation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int oldLabel, int newLabel) {
-    ImageType::Pointer itkImage = ImageType::New();
-    ImageType::Pointer itkMask = ImageType::New();
-    CastToItkImage(seg, itkImage);
-    CastToItkImage(mask, itkMask);
+    ImageType::Pointer itkImage = MitkImageToItkImage(seg);
+    ImageType::Pointer itkMask = MitkImageToItkImage(mask);
+
+    if (itkImage.IsNull() || itkMask.IsNull()) {
+        return nullptr;
+    }
 
     IteratorType segIt(itkImage, itkImage->GetLargestPossibleRegion());
     IteratorType maskIt(itkMask, itkMask->GetLargestPossibleRegion());
@@ -436,6 +393,15 @@ void CemrgMultilabelSegmentationUtils::IndexToWorldOriginSpacing(std::vector<uns
     }
 }
 
+ImageType::Pointer CemrgMultilabelSegmentationUtils::MitkImageToItkImage(mitk::Image::Pointer image) {
+    ImageType::Pointer itkImage = ImageType::New();
+    if (!mitk::CastToItkImage(image, itkImage)) {
+        MITK_ERROR << "Failed to cast image to ITK image";
+        return nullptr;
+    }
+    return itkImage;
+}
+
 mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ConnectedComponent(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int layer, bool keep) {
     using ConnectedThresholdType = itk::ConnectedThresholdImageFilter<ImageType, ImageType>;
     ImageType::Pointer itkImage = ImageType::New();
@@ -466,6 +432,93 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ConnectedComponent(mitk::
 
     return AddMaskReplace(seg, ccImage, replaceValue);
 
+}
+
+mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ExtractLargestComponent(mitk::Image::Pointer seg, int numLabels, int outputLabel) {
+    using ConnectedComponentImageFilterType = itk::ConnectedComponentImageFilter<ImageType, ImageType>;
+    using KeepNObjectsImageFilterType = itk::LabelShapeKeepNObjectsImageFilter<ImageType>;
+
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(seg, itkImage);
+
+    ConnectedComponentImageFilterType::Pointer conn1 = ConnectedComponentImageFilterType::New();
+    conn1->SetInput(itkImage);
+    conn1->Update();
+
+    KeepNObjectsImageFilterType::Pointer keepNObjects = KeepNObjectsImageFilterType::New();
+    keepNObjects->SetInput(conn1->GetOutput());
+    keepNObjects->SetBackgroundValue(0);
+    keepNObjects->SetNumberOfObjects(numLabels);
+    keepNObjects->SetAttribute(KeepNObjectsImageFilterType::LabelObjectType::NUMBER_OF_PIXELS);
+    keepNObjects->Update();
+
+    ImageType::Pointer outImage = keepNObjects->GetOutput();
+    IteratorType it(outImage, outImage->GetLargestPossibleRegion());
+
+    it.GoToBegin();
+    while (!it.IsAtEnd()) {
+        if (it.Get() > 0) {
+            it.Set(outputLabel);
+        }
+        ++it;
+    }
+
+    mitk::Image::Pointer outSeg = mitk::ImportItkImage(outImage)->Clone();
+    outSeg->SetGeometry(seg->GetGeometry());
+
+    return outSeg;
+}
+
+/**
+ * @brief Cleans a multilabel segmentation by removing small connected components.
+ *
+ * This function takes a multilabel segmentation image and removes small connected components
+ * that have the same label as the background label. It iterates over each label in the image,
+ * extracts the connected components for that label, and checks if there are multiple components.
+ * If there are multiple components, it removes all components except the largest one by setting
+ * their label to the background label. The resulting cleaned segmentation image is returned.
+ *
+ * @param seg The input multilabel segmentation image.
+ * @param background The label value representing the background.
+ * @return The cleaned multilabel segmentation image.
+ */
+mitk::Image::Pointer CemrgMultilabelSegmentationUtils::CleanMultilabelSegmentation(mitk::Image::Pointer seg, int background) {
+    std::vector<int> labels;
+    GetLabels(seg, labels);
+
+    mitk::Image::Pointer outImage = seg->Clone();
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(outImage, itkImage);
+
+    for (unsigned int ix = 0; ix < labels.size(); ix++) {
+        int label = labels.at(ix);
+        if (label == background) {
+            continue;
+        }
+
+        std::vector<int> testLabels;
+        ImageType::Pointer labelImage = BwLabelN(ExtractSingleLabel(seg, label), testLabels);
+
+        if (testLabels.size() > 1) {
+            MITK_INFO << "Cleaning label " << label;
+            for (unsigned int jx = 1; jx < testLabels.size(); jx++) {
+                int rmLabel = testLabels.at(jx);
+
+                IteratorType it(itkImage, itkImage->GetLargestPossibleRegion());
+                IteratorType itLabel(labelImage, labelImage->GetLargestPossibleRegion());
+                for (it.GoToBegin(), itLabel.GoToBegin(); !it.IsAtEnd(); ++it, ++itLabel) {
+                    if (itLabel.Get() == rmLabel) {
+                        it.Set(background);
+                    }
+                }
+            } //_for jx
+        } //_if
+    } //_for ix
+
+    outImage = mitk::ImportItkImage(itkImage)->Clone();
+    outImage->SetGeometry(seg->GetGeometry());
+
+    return outImage;
 }
 
 mitk::Image::Pointer CemrgMultilabelSegmentationUtils::DistanceMap(mitk::Image::Pointer seg, int label) {
@@ -505,6 +558,20 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::Threshold(mitk::Image::Po
 
     mitk::Image::Pointer outImage = mitk::ImportItkImage(threshold->GetOutput())->Clone();
     outImage->SetGeometry(seg->GetGeometry());
+
+    return outImage;
+}
+
+mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ZerosLike(mitk::Image::Pointer image) {
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(image, itkImage);
+    
+    itkImage->SetRegions(itkImage->GetLargestPossibleRegion());
+    itkImage->Allocate();
+    itkImage->FillBuffer(0);
+    
+    mitk::Image::Pointer outImage = mitk::ImportItkImage(itkImage)->Clone();
+    outImage->SetGeometry(image->GetGeometry());
 
     return outImage;
 }
