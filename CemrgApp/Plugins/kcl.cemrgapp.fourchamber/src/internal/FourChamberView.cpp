@@ -139,6 +139,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_prepseg, SIGNAL(clicked()), this, SLOT(PrepareSegmentation()));
     connect(m_Controls.button_corrections, SIGNAL(clicked()), this, SLOT(Corrections()));
     connect(m_Controls.button_smooth_segmentation, SIGNAL(clicked()), this, SLOT(SmoothSegmentation()));
+    connect(m_Controls.button_clean_segmentation, SIGNAL(clicked()), this, SLOT(CleanMultilabelSegmentation()));
     connect(m_Controls.button_meshing, SIGNAL(clicked()), this, SLOT(Meshing()));
     connect(m_Controls.button_uvcs, SIGNAL(clicked()), this, SLOT(UVCs()));
     connect(m_Controls.button_ventfibres, SIGNAL(clicked()), this, SLOT(VentricularFibres()));
@@ -1091,6 +1092,30 @@ void FourChamberView::SmoothSegmentation() {
             std::unique_ptr<CemrgMultilabelSegmentationUtils> multilabelUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
             mitk::Image::Pointer seg_smooth = multilabelUtils->ResampleSmoothLabel(seg, std::vector<double>(3, 0.15), 0.5);
             mitk::IOUtil::Save(seg_smooth, StdStringPath(SDIR.SEG + "/seg_final_smooth.nrrd"));
+        }
+    }
+}
+
+void FourChamberView::CleanMultilabelSegmentation() {
+    //Check for selection of images
+    QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+    if (nodes.size() != 1) {
+        Warn("Attention", "Please load and select only the Segmentation from the Data Manager to convert!");
+        return;
+    }//_if
+
+    mitk::BaseData::Pointer data = nodes[0]->GetData();
+    std::string nodeName = nodes[0]->GetName();
+    if (data) {
+        mitk::Image::Pointer seg = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (seg) {
+            std::unique_ptr<CemrgMultilabelSegmentationUtils> multilabelUtils = std::unique_ptr<CemrgMultilabelSegmentationUtils>(new CemrgMultilabelSegmentationUtils());
+            mitk::Image::Pointer seg_clean = multilabelUtils->CleanMultilabelSegmentation(seg);
+
+            QString fileName = QFileDialog::getSaveFileName(NULL, "Save Segmentation", StdStringPath(SDIR.SEG).c_str(), "NRRD Files (*.nrrd)");
+            if (fileName.isEmpty()) return;
+
+            mitk::IOUtil::Save(seg_clean, fileName.toStdString());
         }
     }
 }
@@ -2393,7 +2418,8 @@ void FourChamberView::SetButtonsEnable(bool enable) {
     m_Controls.button_prepseg->setEnabled(enable) ;
     m_Controls.button_corrections->setVisible(enable);
     m_Controls.button_smooth_segmentation->setVisible(enable);
-    m_Controls.button_meshing->setEnabled(enable) ; 
+    m_Controls.button_clean_segmentation->setVisible(enable);
+    m_Controls.button_meshing->setEnabled(enable);
     m_Controls.button_uvcs->setEnabled(enable) ; 
     m_Controls.button_ventfibres->setEnabled(enable) ; 
     m_Controls.button_atrfibres->setEnabled(enable) ;

@@ -191,12 +191,22 @@
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="button_clean_segmentation">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
+     </property>
+     <property name="text">
+      <string>   Step Y: Clean Multilabel Segmentation</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="button_smooth_segmentation">
      <property name="styleSheet">
       <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
      </property>
      <property name="text">
-      <string>   Step Y: Smooth Segmentation</string>
+      <string>   Step Z: Smooth Segmentation</string>
      </property>
     </widget>
    </item>

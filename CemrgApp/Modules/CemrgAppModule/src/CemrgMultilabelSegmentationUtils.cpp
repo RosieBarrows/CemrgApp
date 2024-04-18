@@ -79,7 +79,7 @@ void CemrgMultilabelSegmentationUtils::ExploreLabelsToSplit(mitk::Image::Pointer
     for (long unsigned int ix = 0; ix < labelsInSeg.size(); ix++) { 
         int label = labelsInSeg.at(ix);
         std::vector<int> tagsInLabel;
-        mitk::Image::Pointer bwlabelnInLabel = BwLabelN(ExtractSingleLabel(seg, label), tagsInLabel);
+        mitk::Image::Pointer bwlabelnInLabel = BwLabelN(ExtractSingleLabel(seg, label), tagsInLabel, true);
         if (tagsInLabel.size() > 1) {
             labels.push_back(label);
         }
@@ -108,7 +108,7 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::SplitLabelsOnRepeat(mitk:
     imopen->Update();
 
     std::vector<int> tagsInLabel;
-    mitk::Image::Pointer ccImLabel = BwLabelN(mitk::ImportItkImage(imopen->GetOutput()) , tagsInLabel);
+    mitk::Image::Pointer ccImLabel = BwLabelN(mitk::ImportItkImage(imopen->GetOutput()) , tagsInLabel, true);
 
     if (tagsInLabel.size() == 1) {
         MITK_INFO << "No repeated labels found";
@@ -226,10 +226,14 @@ bool CemrgMultilabelSegmentationUtils::CheckExisting(mitk::Image::Pointer seg, i
 }
 
 mitk::Image::Pointer CemrgMultilabelSegmentationUtils::LabelMaskAndOperation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int oldLabel, int newLabel) {
-    ImageType::Pointer itkImage = MitkImageToItkImage(seg);
-    ImageType::Pointer itkMask = MitkImageToItkImage(mask);
+    ImageType::Pointer itkImage = ImageType::New() ;
+    mitk::CastToItkImage(seg, itkImage);
+
+    ImageType::Pointer itkMask = ImageType::New() ;
+    mitk::CastToItkImage(mask, itkMask);
 
     if (itkImage.IsNull() || itkMask.IsNull()) {
+        MITK_ERROR << "LabelMaskAndOperation: Invalid input image or mask";
         return nullptr;
     }
 
@@ -289,12 +293,14 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ExtractSingleLabel(mitk::
     return outSeg;
 }
 
-mitk::Image::Pointer CemrgMultilabelSegmentationUtils::BwLabelN(mitk::Image::Pointer seg, std::vector<int> &labels) {
+mitk::Image::Pointer CemrgMultilabelSegmentationUtils::BwLabelN(mitk::Image::Pointer seg, std::vector<int> &labels, bool openImage) {
     // assumes seg is a binary image
     using ConnectedComponentImageFilterType = itk::ConnectedComponentImageFilter<ImageType, ImageType>;
     using RelabelFilterType = itk::RelabelComponentImageFilter<ImageType, ImageType> ;
 
-    mitk::MorphologicalOperations::Opening(seg, 1, mitk::MorphologicalOperations::StructuralElementType::Ball);
+    if (openImage) {
+        mitk::MorphologicalOperations::Opening(seg, 1, mitk::MorphologicalOperations::StructuralElementType::Ball);
+    }
 
     ImageType::Pointer itkImage = ImageType::New();
     mitk::CastToItkImage(seg, itkImage);
@@ -312,6 +318,13 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::BwLabelN(mitk::Image::Poi
     GetLabels(outImage, labels);
     
     return outImage;
+}
+
+itk::Image<uint8_t, 3>::Pointer CemrgMultilabelSegmentationUtils::ItkBwLabelN(mitk::Image::Pointer seg, std::vector<int> &labels, bool openImage) {
+    mitk::Image::Pointer outImage = BwLabelN(seg, labels, openImage);
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(outImage, itkImage);
+    return itkImage;
 }
 
 bool CemrgMultilabelSegmentationUtils::GetLabelCentreOfMassIndex(mitk::Image::Pointer seg, int label, std::vector<unsigned int> &cogIndx) {
@@ -393,15 +406,6 @@ void CemrgMultilabelSegmentationUtils::IndexToWorldOriginSpacing(std::vector<uns
     }
 }
 
-ImageType::Pointer CemrgMultilabelSegmentationUtils::MitkImageToItkImage(mitk::Image::Pointer image) {
-    ImageType::Pointer itkImage = ImageType::New();
-    if (!mitk::CastToItkImage(image, itkImage)) {
-        MITK_ERROR << "Failed to cast image to ITK image";
-        return nullptr;
-    }
-    return itkImage;
-}
-
 mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ConnectedComponent(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int layer, bool keep) {
     using ConnectedThresholdType = itk::ConnectedThresholdImageFilter<ImageType, ImageType>;
     ImageType::Pointer itkImage = ImageType::New();
@@ -419,7 +423,6 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ConnectedComponent(mitk::
 
     mitk::Image::Pointer ccImage = mitk::ImportItkImage(cc->GetOutput())->Clone();
     ccImage->SetGeometry(seg->GetGeometry());
-
     
     MITK_INFO << "Saving connected threshold.";
     mitk::IOUtil::Save(ccImage, (debugDir + "/CC.nii").toStdString());
@@ -430,7 +433,26 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ConnectedComponent(mitk::
         replaceValue = layer;
     }
 
-    return AddMaskReplace(seg, ccImage, replaceValue);
+    // AddMasksReplace 
+    ImageType::Pointer itkCcImage = ImageType::New();
+    mitk::CastToItkImage(ccImage, itkCcImage);
+    mitk::CastToItkImage(seg, itkImage);
+
+    IteratorType it(itkImage, itkImage->GetLargestPossibleRegion());
+    IteratorType itCc(itkCcImage, itkCcImage->GetLargestPossibleRegion());
+    it.GoToBegin();
+    itCc.GoToBegin();
+    while (!it.IsAtEnd()) {
+        if (itCc.Get() > 0) {
+            it.Set(replaceValue);
+        }
+        ++it;
+        ++itCc;
+    }
+    
+    mitk::Image::Pointer outSeg = mitk::ImportItkImage(itkImage)->Clone();
+
+    return outSeg;
 
 }
 
@@ -497,10 +519,11 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::CleanMultilabelSegmentati
         }
 
         std::vector<int> testLabels;
-        ImageType::Pointer labelImage = BwLabelN(ExtractSingleLabel(seg, label), testLabels);
+        ImageType::Pointer labelImage = ItkBwLabelN(ExtractSingleLabel(seg, label), testLabels);
 
-        if (testLabels.size() > 1) {
-            MITK_INFO << "Cleaning label " << label;
+        int numLabels = testLabels.size();
+        if (numLabels > 1) {
+            MITK_INFO << "Cleaning label " << label << " with " << numLabels << " components.";
             for (unsigned int jx = 1; jx < testLabels.size(); jx++) {
                 int rmLabel = testLabels.at(jx);
 

@@ -147,6 +147,7 @@ protected slots:
     void PrepareSegmentation();
     void Corrections();
     void SmoothSegmentation();
+    void CleanMultilabelSegmentation();
     void Meshing();
     void UVCs();
     void VentricularFibres();

@@ -84,7 +84,8 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgMultilabelSegmentationUtils {
         // helper functions
         void GetLabels(mitk::Image::Pointer seg, std::vector<int>& labels, int background=0);
         mitk::Image::Pointer ExtractSingleLabel(mitk::Image::Pointer seg, int label, bool binarise=true);
-        mitk::Image::Pointer BwLabelN(mitk::Image::Pointer seg, std::vector<int>& labels);
+        mitk::Image::Pointer BwLabelN(mitk::Image::Pointer seg, std::vector<int>& labels, bool openImage=false);
+        ImageType::Pointer ItkBwLabelN(mitk::Image::Pointer seg, std::vector<int>& labels, bool openImage=false);
 
         bool GetLabelCentreOfMassIndex(mitk::Image::Pointer seg, int label, std::vector<unsigned int> &cogIndx);
         bool GetLabelCentreOfMass(mitk::Image::Pointer seg, int label, std::vector<double> &cog);
@@ -94,8 +95,6 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgMultilabelSegmentationUtils {
 
         void WorldToIndexOriginSpacing(std::vector<double> world, std::vector<unsigned int>& index, std::vector<double> origin, std::vector<double> spacing);
         void IndexToWorldOriginSpacing(std::vector<unsigned int> index, std::vector<double> &world, std::vector<double> origin, std::vector<double> spacing);
-
-        ImageType::Pointer MitkImageToItkImage(mitk::Image::Pointer image);
 
     protected:
 
