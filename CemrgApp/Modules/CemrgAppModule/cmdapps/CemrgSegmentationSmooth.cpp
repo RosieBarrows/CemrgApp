@@ -96,10 +96,10 @@ int main(int argc, char* argv[]) {
         "spacing", "spacing", mitkCommandLineParser::String,
         "Spacing string (comma-separated)", "String of the form 'x,y,z' (default=1,1,1)");
     parser.addArgument( // optional
-        "sigma-fraction", "sigma", mitkCommandLineParser::Float,
+        "sigma-fraction", "sigma", mitkCommandLineParser::String,
         "Scalar determining the width of the interpolation function", "Calculated as spacing[x]*sigma-fraction (default=0.5)");
     parser.addArgument( // optional
-        "alpha-fraction", "alpha", mitkCommandLineParser::Float,
+        "alpha-fraction", "alpha", mitkCommandLineParser::String,
         "Scalar determining the cutoff distance over which the function is calculated", "Common values: 0=NN, 1, 2, or 3 (default=3)");
     parser.addArgument( // optional
         "verbose", "v", mitkCommandLineParser::Bool,
@@ -125,18 +125,18 @@ int main(int argc, char* argv[]) {
     // Default values for optional arguments
     auto verbose = false;
     std::string spacingStr = "1,1,1";
-    double sigmaFraction = 0.5;
-    double alphaFraction = 3.0;
+    std::string sigmaStr = "0.5";
+    std::string alphaStr = "3.0";
 
     // Parse, cast and set optional arguments
     if (parsedArgs.end() != parsedArgs.find("verbose")) {
         verbose = us::any_cast<bool>(parsedArgs["verbose"]);
     }
     if (parsedArgs.end() != parsedArgs.find("sigma-fraction")) {
-        sigmaFraction = us::any_cast<double>(parsedArgs["sigma-fraction"]);
+        sigmaStr = us::any_cast<std::string>(parsedArgs["sigma-fraction"]);
     }
     if (parsedArgs.end() != parsedArgs.find("alpha-fraction")) {
-        alphaFraction = us::any_cast<double>(parsedArgs["alpha-fraction"]);
+        alphaStr = us::any_cast<std::string>(parsedArgs["alpha-fraction"]);
     }
     if (parsedArgs.end() != parsedArgs.find("spacing")) {
         spacingStr = us::any_cast<std::string>(parsedArgs["spacing"]);
@@ -148,6 +148,19 @@ int main(int argc, char* argv[]) {
         MITK_INFO << "Input file: " << inFilename;
         MITK_INFO(verbose) << "Output file: " << outFilename;
         MITK_INFO << "Spacing: " << spacingStr;
+
+        bool ok1, ok2;
+        double sigmaFraction = QString::fromStdString(sigmaStr).toDouble(&ok1);
+        if (!ok1) {
+            MITK_ERROR << "Wrong input sigma-fraction: " << sigmaStr;
+            return EXIT_FAILURE;
+        }
+        double alphaFraction = QString::fromStdString(alphaStr).toDouble(&ok2);
+        if (!ok2) {
+            MITK_ERROR << "Wrong input alpha-fraction: " << alphaStr;
+            return EXIT_FAILURE;
+        }
+
         MITK_INFO << "Sigma fraction: " << sigmaFraction;
         MITK_INFO << "Alpha fraction: " << alphaFraction;
 
