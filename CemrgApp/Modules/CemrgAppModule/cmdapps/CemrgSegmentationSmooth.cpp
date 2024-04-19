@@ -125,8 +125,8 @@ int main(int argc, char* argv[]) {
     // Default values for optional arguments
     auto verbose = false;
     std::string spacingStr = "1,1,1";
-    auto sigmaFraction = 0.5;
-    auto alphaFraction = 3.0;
+    double sigmaFraction = 0.5;
+    double alphaFraction = 3.0;
 
     // Parse, cast and set optional arguments
     if (parsedArgs.end() != parsedArgs.find("verbose")) {
