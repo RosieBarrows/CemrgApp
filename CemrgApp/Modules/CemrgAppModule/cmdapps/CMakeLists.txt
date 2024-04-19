@@ -10,6 +10,7 @@ option(BUILD_CEMRG_MORPH_ANALYSIS "Build atrial morph analysis" ON)
 option(BUILD_CEMRG_IMAGE_CONVERT "Build image convert format" ON)
 option(BUILD_CEMRG_SURFACE_AREA "Build surface area calculator" ON)
 option(BUILD_CEMRG_JSON_READER "Build JSON file reader" ON)
+option(BUILD_CEMRG_SEGSMOOTH "Build segmentation smoothing command line app. " ON)
 
 if(BUILD_CemrgCMDApps)
   mitkFunctionCreateCommandLineApp(
@@ -104,5 +105,13 @@ if(BUILD_CEMRG_JSON_READER)
     NAME CemrgJsonFileReader
     DEPENDS MitkSegmentation MitkCemrgAppModule
     CPP_FILES CemrgJsonFileReader.cpp
+  )
+endif()
+
+if(BUILD_CEMRG_SEGSMOOTH)
+  mitkFunctionCreateCommandLineApp(
+    NAME CemrgSegmentationSmooth
+    DEPENDS MitkSegmentation MitkCemrgAppModule
+    CPP_FILES CemrgSegmentationSmooth.cpp
   )
 endif()

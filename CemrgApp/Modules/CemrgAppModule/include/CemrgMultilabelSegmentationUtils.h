@@ -68,7 +68,7 @@ class MITKCEMRGAPPMODULE_EXPORT CemrgMultilabelSegmentationUtils {
         mitk::Image::Pointer ReplaceLabel(mitk::Image::Pointer seg, int oldLabel, int newLabel);
         inline mitk::Image::Pointer RemoveLabel(mitk::Image::Pointer seg, int label) { return ReplaceLabel(seg, label, 0); };
 
-        mitk::Image::Pointer ResampleSmoothLabel(mitk::Image::Pointer image, std::vector<double> spacing, double sigmaFraction=0.5);
+        mitk::Image::Pointer ResampleSmoothLabel(mitk::Image::Pointer image, std::vector<double> spacing, double sigmaFraction=0.5, double alphaFraction=3.0);
 
         mitk::Image::Pointer LabelMaskAndOperation(mitk::Image::Pointer seg, mitk::Image::Pointer mask, int oldLabel, int newLabel);
         mitk::Image::Pointer ConnectedComponent(mitk::Image::Pointer seg, std::vector<unsigned int> seedIdx, int label, bool keep=false);

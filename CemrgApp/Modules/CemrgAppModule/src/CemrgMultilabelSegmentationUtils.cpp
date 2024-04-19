@@ -176,7 +176,7 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ReplaceLabel(mitk::Image:
 }
 
 
-mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ResampleSmoothLabel(mitk::Image::Pointer image, std::vector<double> spacing, double sigmaFraction) {
+mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ResampleSmoothLabel(mitk::Image::Pointer image, std::vector<double> spacing, double sigmaFraction, double alphaFraction) {
 
     using ImageType = itk::Image<unsigned char, 3>;
     using ResampleImageFilterType = itk::ResampleImageFilter<ImageType, ImageType>;
@@ -199,7 +199,7 @@ mitk::Image::Pointer CemrgMultilabelSegmentationUtils::ResampleSmoothLabel(mitk:
         sigma[dim] = output_spacing[dim] * sigmaFraction;
     }
     gaussianInterpolator->SetSigma(sigma);
-    gaussianInterpolator->SetAlpha(3.0);
+    gaussianInterpolator->SetAlpha(alphaFraction);
 
     ResampleImageFilterType::Pointer resizeFilter = ResampleImageFilterType::New();
     resizeFilter->SetInput(input);
