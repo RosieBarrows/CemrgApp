@@ -522,7 +522,7 @@ void FourChamberView::Meshing(){
         // create cmd object (CemrgCommandLine) outputs to directory/meshing
         std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
 
-        QString inr_path = CemrgCommonUtils::ConvertToInr(seg_dir, segname, true, "converted.inr");
+        QString inr_path = CemrgCommonUtils::ConvertToInr(seg_dir, segname, true, fi.baseName() + ".inr");
         if (inr_path.isEmpty()) {
             Warn("Failed to convert segmentation", "Error converting segmentation to INR format");
             return; 
@@ -541,44 +541,10 @@ void FourChamberView::Meshing(){
         }
     }
 
-
     MITK_INFO << ("Mesh path: " + mesh_path).toStdString();
     if (mesh_path.isEmpty()) return;
 
     QMessageBox::information(NULL, "Attention", "Meshing complete. Press OK to continue.");
-
-    // meshtool extract surface -msh=myocardium -ifmt=carp_txt -surf=test  -ofmt=vtk_polydata
-    // QStringList arguments;
-    // arguments << "extract"
-    //           << "surface";
-    // arguments << "-msh=" + meshing_parameters.out_name;
-    // arguments << "-surf=" + meshing_parameters.out_name;
-    // arguments << "-ifmt=carp_txt";
-    // arguments << "-ofmt=vtk_polydata";
-
-    // QString outname = meshing_parameters.out_name + ".surfmesh";
-    // cmd_object->SetDockerImageOpenCarp();
-    // QString visualisation_surf_path = cmd_object->ExecuteCustomDocker(cmd_object->GetDockerImage(), mesh_dir, "meshtool", arguments, outname+".vtk");
-
-    // QFileInfo fvtk(visualisation_surf_path);
-
-    // visualisation_surf_path = cmd_object->DockerConvertMeshFormat(mesh_dir, outname, "vtk", outname, "vtk_polydata", 0.001);
-    // std::cout << "Visualisation surface loaded" << visualisation_surf_path << '\n';
-    // if (fvtk.exists()) {
-    //     mitk::Surface::Pointer visualisation_surf = mitk::IOUtil::Load<mitk::Surface>(visualisation_surf_path.toStdString());
-
-    //     vtkSmartPointer<vtkTransform> transform = vtkSmartPointer<vtkTransform>::New();
-    //     transform->Translate(origin[0], origin[1], origin[2]);
-
-    //     vtkSmartPointer<vtkTransformPolyDataFilter> transformFilter = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
-    //     transformFilter->SetTransform(transform);
-    //     transformFilter->SetInputData(visualisation_surf->GetVtkPolyData());
-    //     transformFilter->Update();
-
-    //     visualisation_surf->SetVtkPolyData(transformFilter->GetOutput());
-
-    //     CemrgCommonUtils::AddToStorage(visualisation_surf, fvtk.baseName().toStdString(), this->GetDataStorage());
-    // }
 }
 
 void FourChamberView::SelectLARALandmarks(){
