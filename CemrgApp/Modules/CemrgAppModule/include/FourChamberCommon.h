@@ -59,6 +59,34 @@ enum LabelsType {
     IVC_ring = 227
 };
 
+enum MeshLabelsType
+{
+    LV_mesh = 1,
+    RV_mesh = 2,
+    LA_mesh = 3,
+    RA_mesh = 4,
+    Ao_mesh = 5,
+    PArt_mesh = 6,
+    MV_mesh = 7,
+    TV_mesh = 8,
+    AV_mesh = 9,
+    PV_mesh = 10,
+    LSPV_mesh = 11,
+    LIPV_mesh = 12,
+    RSPV_mesh = 13,
+    RIPV_mesh = 14,
+    LAA_mesh = 15,
+    SVC_mesh = 16,
+    IVC_mesh = 17,
+    LAA_ring_mesh = 18,
+    SVC_ring_mesh = 19,
+    IVC_ring_mesh = 20,
+    LSPV_ring_mesh = 21,
+    LIPV_ring_mesh = 22,
+    RSPV_ring_mesh = 23,
+    RIPV_ring_mesh = 24
+};
+
 class SegmentationLabels {
     private:
         std::unordered_map<LabelsType, unsigned int> labelMap;
@@ -276,6 +304,21 @@ class SegmentationLabels {
                 std::cout << "Label: " << LabelName(pair.first) << " Tag: " << pair.second << '\n';
             }
         }
+
+        QString ExtractMeshingLabels() {
+            std::vector<LabelsType> meshingLabels = {
+                LV_myo, RV_myo, LA_myo, RA_myo, Ao_wall, PArt_wall, MV, TV, AV, PV,
+                plane_LPV1, plane_LPV2, plane_RPV1, plane_RPV2, plane_LAA, plane_SVC, plane_IVC,
+                LAA_ring, SVC_ring, IVC_ring, LPV1_ring, LPV2_ring, RPV1_ring, RPV2_ring
+            };
+            QString meshingLabelsString = "";
+            for (const auto &label : meshingLabels) {
+                meshingLabelsString += QString::number(Get(label)) + ",";
+            }
+            meshingLabelsString.chop(1); // Remove the last comma
+
+            return meshingLabelsString;
+        }
 };
 
 struct FourChamberSubfolders {
@@ -358,7 +401,7 @@ struct ManualPointsStruct {
 
 /// @brief Meshtool3D static libraries parameters structures
 struct M3DParameters {
-    QString seg_dir, seg_name, out_dir, out_name;
+    QString seg_dir, seg_name, out_dir, out_name, working_mesh;
 
     bool mesh_from_segmentation, boundary_relabelling, verbose, eval_thickness;
 
@@ -393,7 +436,8 @@ struct M3DParameters {
      out_carp_binary(false),
      out_vtk(false),
      out_vtk_binary(false),
-     out_potential(false)
+     out_potential(false), 
+     working_mesh("")
     {}
 
     bool CheckFormats(){
@@ -409,17 +453,18 @@ struct M3DParameters {
         keys << "seg_dir" << "seg_name" << "mesh_from_segmentation" << "boundary_relabelling" << 
                 "facet_angle" << "facet_size" << "facet_distance" << "cell_rad_edge_ratio" << "cell_size" << "rescaleFactor" << 
                 "abs_tol" << "rel_tol" << "itr_max" << "dimKrilovSp" << "verbose" << "eval_thickness" << 
-                "out_dir" << "out_name" << "out_medit" << "out_carp" << "out_carp_binary" << "out_vtk" << "out_vtk_binary" << "out_potential";
+                "out_dir" << "out_name" << "out_medit" << "out_carp" << "out_carp_binary" << "out_vtk" << "out_vtk_binary" << "out_potential" << "working_mesh";
         values << seg_dir << seg_name << QString::number(mesh_from_segmentation) << QString::number(boundary_relabelling)
                << QString::number(facet_angle) << QString::number(facet_size) << QString::number(facet_distance) << QString::number(cell_rad_edge_ratio) 
                << QString::number(cell_size) << QString::number(rescaleFactor) << QString::number(abs_tol)
                << QString::number(rel_tol) << QString::number(itr_max) << QString::number(dimKrilovSp) << QString::number(verbose) << QString::number(eval_thickness) 
                << out_dir << out_name
-               << QString::number(out_medit) << QString::number(out_carp) << QString::number(out_carp_binary) << QString::number(out_vtk) << QString::number(out_vtk_binary) << QString::number(out_potential);
+               << QString::number(out_medit) << QString::number(out_carp) << QString::number(out_carp_binary) << QString::number(out_vtk) << QString::number(out_vtk_binary) << QString::number(out_potential) <<
+               working_mesh;
         types << "string" << "string" << "int" << "int" << 
                 "float" << "float" << "float" << "float" << "float" << "int" << 
                 "float" << "float" << "int" << "int" << "int" << "int" << 
-                "string" << "string" << "int" << "int" << "int" << "int" << "int" << "int";
+                "string" << "string" << "int" << "int" << "int" << "int" << "int" << "int" << "string";
     }
 
 };

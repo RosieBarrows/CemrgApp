@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>287</width>
+    <width>297</width>
     <height>887</height>
    </rect>
   </property>
@@ -217,6 +217,16 @@
      </property>
      <property name="text">
       <string>   Step 3: Meshing</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="button_extract_myo">
+     <property name="styleSheet">
+      <string notr="true">text-align: left; color: rgb(132, 174, 235);</string>
+     </property>
+     <property name="text">
+      <string>   Step W: Extract Myocardium</string>
      </property>
     </widget>
    </item>

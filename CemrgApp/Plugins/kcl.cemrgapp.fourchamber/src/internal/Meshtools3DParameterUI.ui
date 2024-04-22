@@ -80,7 +80,7 @@
      <item row="3" column="0">
       <widget class="QLineEdit" name="lineEdit_out_name">
        <property name="placeholderText">
-        <string>Output Name (default=myocardium)</string>
+        <string>Output Name (default=heart_mesh)</string>
        </property>
       </widget>
      </item>
@@ -256,6 +256,13 @@
        </property>
       </widget>
      </item>
+     <item row="1" column="2">
+      <widget class="QCheckBox" name="checkBox_out_vtk">
+       <property name="text">
+        <string>VTK</string>
+       </property>
+      </widget>
+     </item>
      <item row="1" column="1">
       <widget class="QCheckBox" name="checkBox_out_carp">
        <property name="text">
@@ -269,10 +276,10 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="2">
-      <widget class="QCheckBox" name="checkBox_out_vtk">
+     <item row="1" column="3">
+      <widget class="QCheckBox" name="checkBox_out_medit">
        <property name="text">
-        <string>VTK</string>
+        <string>Medit</string>
        </property>
       </widget>
      </item>
@@ -286,10 +293,10 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="3">
-      <widget class="QCheckBox" name="checkBox_out_medit">
-       <property name="text">
-        <string>Medit</string>
+     <item row="2" column="0">
+      <widget class="QLineEdit" name="lineEdit_working_mesh">
+       <property name="placeholderText">
+        <string>Output mesh (myocardium)</string>
        </property>
       </widget>
      </item>

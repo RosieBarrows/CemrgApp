@@ -161,6 +161,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     connect(m_Controls.button_select_pts_check, SIGNAL(clicked()), this, SLOT(SelectPointsCheck()));
     connect(m_Controls.button_select_pts_reset, SIGNAL(clicked()), this, SLOT(SelectPointsReset()));
 
+    connect(m_Controls.button_extract_myo, SIGNAL(clicked()), this, SLOT(ExtractMyocardium()));
     connect(m_Controls.button_extractsurfs, SIGNAL(clicked()), this, SLOT(ExtractSurfaces()));
     connect(m_Controls.button_uvclandmarks, SIGNAL(clicked()), this, SLOT(SelectLARALandmarks()));
     connect(m_Controls.button_calcuvcs, SIGNAL(clicked()), this, SLOT(CalculateUVCS()));
@@ -182,6 +183,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     m_Controls.button_confirm_labels->setEnabled(false);
     m_Controls.combo_corrections_id->setVisible(false);
 
+    m_Controls.button_extract_myo->setVisible(false);
     m_Controls.button_extractsurfs->setVisible(false);
     m_Controls.button_uvclandmarks->setVisible(false);
     m_Controls.button_calcuvcs->setVisible(false);
@@ -432,6 +434,54 @@ void FourChamberView::UserDefineLabels() {
 
 }
 
+void FourChamberView::ExtractMyocardium() {
+    std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
+    QStringList arguments = QStringList();
+    arguments << "-msh=" + meshing_parameters.out_name;
+    arguments << "-tags=" + segmentationLabels.ExtractMeshingLabels();
+    arguments << "-submsh=" + meshing_parameters.working_mesh;
+    arguments << "-ifmt=carp_txt";
+    QString extract_mesh = fourch_cmd->DockerMeshtoolGeneric(Path(SDIR.MESH), "extract", "mesh", arguments, meshing_parameters.working_mesh + ".pts");
+
+    if (extract_mesh == "ERROR_IN_PROCESSING") {
+        Warn("Error in processing", "Error in extract myocardium");
+        return;
+    }
+
+    arguments.clear();
+    
+    arguments << "-msh=" + meshing_parameters.working_mesh;
+    arguments << "-omsh=" + meshing_parameters.working_mesh;
+    arguments << "-ifmt=carp_txt";
+    arguments << "-ofmt=vtk";
+    QString convert_mesh = fourch_cmd->DockerMeshtoolGeneric(Path(SDIR.MESH), "convert", "", arguments, meshing_parameters.working_mesh + ".vtk");
+
+    if (convert_mesh == "ERROR_IN_PROCESSING") {
+        Warn("Error in processing", "Error in convert myocardium");
+        return;
+    }
+
+    arguments.clear();
+
+    // simplify topology 
+
+    arguments << "-msh=" + meshing_parameters.working_mesh;
+    arguments << "-tags=" + segmentationLabels.ExtractMeshingLabels();
+    arguments << "-smth=0.15";
+    arguments << "-outmsh=" + meshing_parameters.working_mesh + "_smooth";
+    arguments << "-ifmt=carp_txt";
+    arguments << "-ofmt=carp_txt";
+    QString smooth_mesh = fourch_cmd->DockerMeshtoolGeneric(Path(SDIR.MESH), "smooth", "mesh", arguments, meshing_parameters.working_mesh + "_smooth.pts");
+
+    if (smooth_mesh == "ERROR_IN_PROCESSING") {
+        Warn("Error in processing", "Error in smooth myocardium");
+        return;
+    }
+    meshing_parameters.working_mesh = meshing_parameters.working_mesh + "_smooth";
+    PrintMeshingParameters(Path(SDIR.MESH) + "/heart_mesh_data.par");
+
+}
+
 bool FourChamberView::cp(QString src, QString dst) {
     bool exists = false;
     bool overwrite = false;
@@ -496,12 +546,15 @@ void FourChamberView::Meshing(){
     QString mesh_path = "";
     int reply_load = Ask("Question", "Do you have a mesh to load?");
     if (reply_load == QMessageBox::Yes) {
-        mesh_path = QFileDialog::getOpenFileName(NULL, "Open Mesh Points File (.pts)", mesh_dir.toStdString().c_str(), tr("Points file (*.pts)"));
+        mesh_path = QFileDialog::getOpenFileName(NULL, "Open Meshtools3d parameter file (.json)", mesh_dir.toStdString().c_str(), tr("M3d Parameter file (*.json)"));
         QFileInfo fi(mesh_path);
-        meshing_parameters.out_name = fi.baseName();
+        LoadMeshingParametersFromJson(fi.absolutePath(), fi.fileName());
 
+        QFileInfo testWorkMesh(meshing_parameters.out_dir + "/" + meshing_parameters.working_mesh + ".pts");
+       
     } else if (reply_load == QMessageBox::No) {
-        QString segname = "seg_final_smooth.nrrd";
+        QString basename = "seg_final_smooth";
+        QString segname = basename + ".nrrd";
         QString path = seg_dir + "/" + segname;
         bool ask_to_load = true;
         if (!QFile::exists(path)) {
@@ -516,13 +569,14 @@ void FourChamberView::Meshing(){
             QFileInfo fi(path);
             seg_dir = fi.absolutePath();
             segname = fi.fileName();
+            basename = fi.baseName();
             MITK_INFO << ("Segmentation path: " + path).toStdString();
         } 
 
         // create cmd object (CemrgCommandLine) outputs to directory/meshing
         std::unique_ptr<CemrgCommandLine> cmd_object(new CemrgCommandLine());
 
-        QString inr_path = CemrgCommonUtils::ConvertToInr(seg_dir, segname, true, fi.baseName() + ".inr");
+        QString inr_path = CemrgCommonUtils::ConvertToInr(seg_dir, segname, true, basename + ".inr");
         if (inr_path.isEmpty()) {
             Warn("Failed to convert segmentation", "Error converting segmentation to INR format");
             return; 
@@ -545,6 +599,9 @@ void FourChamberView::Meshing(){
     if (mesh_path.isEmpty()) return;
 
     QMessageBox::information(NULL, "Attention", "Meshing complete. Press OK to continue.");
+
+    m_Controls.button_extract_myo->setVisible(true);
+    m_Controls.button_extract_myo->setEnabled(true);
 }
 
 void FourChamberView::SelectLARALandmarks(){
@@ -563,10 +620,12 @@ void FourChamberView::SelectLARALandmarks(){
 void FourChamberView::ExtractSurfaces(){
     if (!RequestProjectDirectoryFromUser()) return;
 
+    LoadMeshingParametersFromJson(Path(SDIR.MESH), "heart_mesh_data.json");
+
     QString outLa = Path(SDIR.UVC_LA + "/la/la.vtk");
     QString outRa = Path(SDIR.UVC_RA + "/ra/ra.vtk");
 
-    bool recalculateOutputs = false;
+    bool recalculateOutputs = true;
     if (QFile::exists(outLa) && QFile::exists(outRa)) {
         int reply = Ask("Question", "LA and RA surfaces already exist. Overwrite?");
         recalculateOutputs = (reply == QMessageBox::Yes);
@@ -580,6 +639,7 @@ void FourChamberView::ExtractSurfaces(){
         if (apexSeptumFolder.isEmpty()) return;
 
         QString meshname = meshing_parameters.out_dir + "/" + meshing_parameters.out_name;
+        MITK_INFO << ("Mesh name: " + meshname).toStdString();
 
         std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
         fourch_cmd->SetCarpDirectory(carp_directory);
@@ -2024,6 +2084,8 @@ void FourChamberView::LoadMeshingParametersFromJson(QString dir, QString json_fi
     meshing_parameters.out_vtk = json["out_vtk"].toBool();
     meshing_parameters.out_vtk_binary = json["out_vtk_binary"].toBool();
     meshing_parameters.out_potential = json["out_potential"].toBool();
+    meshing_parameters.working_mesh = json["working_mesh"].toString();
+    MITK_INFO << "Loaded meshing parameters from json file";
 }
 
 QString FourChamberView::GetPointTypeString(ManualPoints mpt) {
@@ -2145,9 +2207,19 @@ bool FourChamberView::UserSelectMeshtools3DParameters(QString pre_input_path){
 
         meshing_parameters.out_dir = m_m3d.lineEdit_out_dir->text();
         if (m_m3d.lineEdit_out_name->text().isEmpty()) {
-            meshing_parameters.out_name = "myocardium";
+            meshing_parameters.out_name = "heart_mesh";
         } else {
             meshing_parameters.out_name = m_m3d.lineEdit_out_name->text();
+        }
+
+        if (m_m3d.lineEdit_working_mesh->text().isEmpty()) {
+            meshing_parameters.working_mesh = "myocardium";
+        } else {
+            meshing_parameters.working_mesh = m_m3d.lineEdit_working_mesh->text();
+        }
+
+        if (meshing_parameters.out_name == meshing_parameters.working_mesh) {
+            meshing_parameters.out_name = meshing_parameters.out_name + "_OUT";
         }
 
         // parse all numbers
@@ -2386,6 +2458,7 @@ void FourChamberView::SetButtonsEnable(bool enable) {
     m_Controls.button_smooth_segmentation->setVisible(enable);
     m_Controls.button_clean_segmentation->setVisible(enable);
     m_Controls.button_meshing->setEnabled(enable);
+    m_Controls.button_extract_myo->setEnabled(enable);
     m_Controls.button_uvcs->setEnabled(enable) ; 
     m_Controls.button_ventfibres->setEnabled(enable) ; 
     m_Controls.button_atrfibres->setEnabled(enable) ;

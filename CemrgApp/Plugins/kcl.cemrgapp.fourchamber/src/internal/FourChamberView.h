@@ -160,6 +160,7 @@ protected slots:
     void GetOriginSpacing();
     void SegmentImgs();
     void UserDefineLabels();
+    void ExtractMyocardium(); 
     void ExtractSurfaces();
     void SelectLARALandmarks();
     void CalculateUVCs();
