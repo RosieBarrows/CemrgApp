@@ -668,9 +668,13 @@ QString CemrgFourChamberCmd::DockerMeshtoolGeneric(QString directory, QString co
     QString outAbsolutePath = "ERROR_IN_PROCESSING";
 
     QDir home(directory);
-    QStringList arguments = GetDockerArguments(home.absolutePath());
+    QStringList arguments = QStringList();
+    arguments << "run" << "--rm" << ("--volume=" + home.absolutePath() + ":/shared:z") << "--workdir=/shared";
+    arguments << "docker.opencarp.org/opencarp/opencarp:latest";
+    arguments << "meshtool";
 
     arguments << command;
+
     if (!subcommand.isEmpty()) {
         arguments << subcommand;
     }

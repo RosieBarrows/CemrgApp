@@ -437,11 +437,12 @@ void FourChamberView::UserDefineLabels() {
 void FourChamberView::ExtractMyocardium() {
     std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
     QStringList arguments = QStringList();
-    arguments << "-msh=" + meshing_parameters.out_name;
-    arguments << "-tags=" + segmentationLabels.ExtractMeshingLabels();
-    arguments << "-submsh=" + meshing_parameters.working_mesh;
-    arguments << "-ifmt=carp_txt";
-    QString extract_mesh = fourch_cmd->DockerMeshtoolGeneric(Path(SDIR.MESH), "extract", "mesh", arguments, meshing_parameters.working_mesh + ".pts");
+    QString wmsh = meshing_parameters.working_mesh;
+    QString wdir = meshing_parameters.out_dir;
+    QString mytags = segmentationLabels.ExtractMeshingLabels();
+
+    arguments << "-msh=" + meshing_parameters.out_name << "-tags=" + mytags << "-submsh=" + wmsh << "-ifmt=carp_txt";
+    QString extract_mesh = fourch_cmd->DockerMeshtoolGeneric(wdir, "extract", "mesh", arguments, wmsh + ".pts");
 
     if (extract_mesh == "ERROR_IN_PROCESSING") {
         Warn("Error in processing", "Error in extract myocardium");
@@ -450,11 +451,8 @@ void FourChamberView::ExtractMyocardium() {
 
     arguments.clear();
     
-    arguments << "-msh=" + meshing_parameters.working_mesh;
-    arguments << "-omsh=" + meshing_parameters.working_mesh;
-    arguments << "-ifmt=carp_txt";
-    arguments << "-ofmt=vtk";
-    QString convert_mesh = fourch_cmd->DockerMeshtoolGeneric(Path(SDIR.MESH), "convert", "", arguments, meshing_parameters.working_mesh + ".vtk");
+    arguments << "-msh=" + wmsh << "-omsh=" + wmsh << "-ifmt=carp_txt" << "-ofmt=vtk";
+    QString convert_mesh = fourch_cmd->DockerMeshtoolGeneric(wdir, "convert", "", arguments, wmsh + ".vtk");
 
     if (convert_mesh == "ERROR_IN_PROCESSING") {
         Warn("Error in processing", "Error in convert myocardium");
@@ -463,22 +461,32 @@ void FourChamberView::ExtractMyocardium() {
 
     arguments.clear();
 
-    // simplify topology 
+    // simplify topology
 
-    arguments << "-msh=" + meshing_parameters.working_mesh;
-    arguments << "-tags=" + segmentationLabels.ExtractMeshingLabels();
-    arguments << "-smth=0.15";
-    arguments << "-outmsh=" + meshing_parameters.working_mesh + "_smooth";
-    arguments << "-ifmt=carp_txt";
-    arguments << "-ofmt=carp_txt";
-    QString smooth_mesh = fourch_cmd->DockerMeshtoolGeneric(Path(SDIR.MESH), "smooth", "mesh", arguments, meshing_parameters.working_mesh + "_smooth.pts");
+    arguments << "-msh=" + wmsh << "-tags=" + mytags << "-smth=0.15" << "-outmsh=" + wmsh + "_smooth" << "-ifmt=carp_txt" << "-ofmt=carp_txt";
+    wmsh += "_smooth";
+    QString smooth_mesh = fourch_cmd->DockerMeshtoolGeneric(wdir, "smooth", "mesh", arguments, wmsh + ".pts");
 
     if (smooth_mesh == "ERROR_IN_PROCESSING") {
         Warn("Error in processing", "Error in smooth myocardium");
         return;
     }
-    meshing_parameters.working_mesh = meshing_parameters.working_mesh + "_smooth";
+    meshing_parameters.working_mesh = wmsh;
     PrintMeshingParameters(Path(SDIR.MESH) + "/heart_mesh_data.par");
+
+    arguments.clear();
+
+    arguments << "-msh=" + wmsh << "-surf=whole_surface" << "-ofmt=vtk";
+    QString extract_surface = fourch_cmd->DockerMeshtoolGeneric(wdir, "extract", "surface", arguments, "whole_surface.surfmesh.vtk");
+
+    if (extract_surface == "ERROR_IN_PROCESSING") {
+        Warn("Error in processing", "Error in extract surface");
+        return;
+    }
+
+    arguments.clear();
+    arguments << "-msh=whole_surface.surfmesh.vtk" << "-submsh=" + wdir + "/whole_surface_CC" << "-ofmt=vtk";
+    QString extract_unreachable = fourch_cmd->DockerMeshtoolGeneric(wdir, "extract", "unreachable", arguments, "whole_surface_CC.vtk");
 
 }
 
