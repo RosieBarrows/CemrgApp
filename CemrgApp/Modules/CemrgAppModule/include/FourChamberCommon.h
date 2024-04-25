@@ -2,6 +2,7 @@
 #define FOURCHAMBERCOMMON_H
 
 #include <QString>
+#include <QFileInfo>
 #include <QStringList>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -57,34 +58,6 @@ enum LabelsType {
     LAA_ring = 225,
     SVC_ring = 226,
     IVC_ring = 227
-};
-
-enum MeshLabelsType
-{
-    LV_mesh = 1,
-    RV_mesh = 2,
-    LA_mesh = 3,
-    RA_mesh = 4,
-    Ao_mesh = 5,
-    PArt_mesh = 6,
-    MV_mesh = 7,
-    TV_mesh = 8,
-    AV_mesh = 9,
-    PV_mesh = 10,
-    LSPV_mesh = 11,
-    LIPV_mesh = 12,
-    RSPV_mesh = 13,
-    RIPV_mesh = 14,
-    LAA_mesh = 15,
-    SVC_mesh = 16,
-    IVC_mesh = 17,
-    LAA_ring_mesh = 18,
-    SVC_ring_mesh = 19,
-    IVC_ring_mesh = 20,
-    LSPV_ring_mesh = 21,
-    LIPV_ring_mesh = 22,
-    RSPV_ring_mesh = 23,
-    RIPV_ring_mesh = 24
 };
 
 class SegmentationLabels {
@@ -305,20 +278,216 @@ class SegmentationLabels {
             }
         }
 
-        QString ExtractMeshingLabels() {
-            std::vector<LabelsType> meshingLabels = {
+        std::vector<int> GetMeshingLabels() { 
+            std::vector<int> meshingLabels = {
                 LV_myo, RV_myo, LA_myo, RA_myo, Ao_wall, PArt_wall, MV, TV, AV, PV,
                 plane_LPV1, plane_LPV2, plane_RPV1, plane_RPV2, plane_LAA, plane_SVC, plane_IVC,
                 LAA_ring, SVC_ring, IVC_ring, LPV1_ring, LPV2_ring, RPV1_ring, RPV2_ring
             };
+
+            return meshingLabels;
+        }
+
+        QString ExtractMeshingLabels() {
+            std::vector<int> meshingLabels = GetMeshingLabels();
             QString meshingLabelsString = "";
             for (const auto &label : meshingLabels) {
-                meshingLabelsString += QString::number(Get(label)) + ",";
+                meshingLabelsString += QString::number(Get((LabelsType)label)) + ",";
             }
             meshingLabelsString.chop(1); // Remove the last comma
 
             return meshingLabelsString;
         }
+};
+
+enum MeshLabelsType {
+    LV_mesh = 1,
+    RV_mesh = 2,
+    LA_mesh = 3,
+    RA_mesh = 4,
+    Ao_mesh = 5,
+    PArt_mesh = 6,
+    MV_mesh = 7,
+    TV_mesh = 8,
+    AV_mesh = 9,
+    PV_mesh = 10,
+    LSPV_mesh = 11,
+    LIPV_mesh = 12,
+    RSPV_mesh = 13,
+    RIPV_mesh = 14,
+    LAA_mesh = 15,
+    SVC_mesh = 16,
+    IVC_mesh = 17,
+    LAA_ring_mesh = 18,
+    SVC_ring_mesh = 19,
+    IVC_ring_mesh = 20,
+    LSPV_ring_mesh = 21,
+    LIPV_ring_mesh = 22,
+    RSPV_ring_mesh = 23,
+    RIPV_ring_mesh = 24
+};
+
+class MeshingLabels { 
+    private:
+        std::unordered_map<MeshLabelsType, unsigned int> labelMap;
+
+        void UpdateLabels(const MeshingLabels& other) {
+            for (const auto& pair : other.labelMap) {
+                labelMap[pair.first] = pair.second; // Update the labelMap
+            }
+        }
+    
+    public: 
+        MeshingLabels() {
+            labelMap = {
+                {LV_mesh, 1},
+                {RV_mesh, 2},
+                {LA_mesh, 3},
+                {RA_mesh, 4},
+                {Ao_mesh, 5},
+                {PArt_mesh, 6},
+                {MV_mesh, 7},
+                {TV_mesh, 8},
+                {AV_mesh, 9},
+                {PV_mesh, 10},
+                {LSPV_mesh, 11},
+                {LIPV_mesh, 12},
+                {RSPV_mesh, 13},
+                {RIPV_mesh, 14},
+                {LAA_mesh, 15},
+                {SVC_mesh, 16},
+                {IVC_mesh, 17},
+                {LAA_ring_mesh, 18},
+                {SVC_ring_mesh, 19},
+                {IVC_ring_mesh, 20},
+                {LSPV_ring_mesh, 21},
+                {LIPV_ring_mesh, 22},
+                {RSPV_ring_mesh, 23},
+                {RIPV_ring_mesh, 24}
+            };
+        }
+
+        MeshingLabels(const MeshingLabels& other) {
+            Update(other);
+        }
+
+        unsigned int Get(MeshLabelsType labelType) const {
+            auto it = labelMap.find(labelType);
+            if (it != labelMap.end()) {
+                return it->second;
+            }
+            return 0; // Default to 0
+        }
+
+        void Set(MeshLabelsType labelType, unsigned int value) {
+            labelMap[labelType] = value;
+        }
+
+        void Update(const MeshingLabels& other) {
+            std::unordered_map<MeshLabelsType, unsigned int> otherMap;
+            other.GetMap(otherMap); // Retrieve the labelMap from the other instance
+            labelMap = otherMap;    // Synchronize the maps
+        }
+
+        void GetMap(std::unordered_map<MeshLabelsType, unsigned int>& map) const {
+            map = labelMap; // Fill the provided map with the unsigned internal labelMap
+        }
+
+        unsigned int GetLargestLabel() const {
+            unsigned int largestLabel = 0;
+            for (const auto &pair : labelMap) {
+                if (pair.second > largestLabel) {
+                    largestLabel = pair.second;
+                }
+            }
+            return largestLabel;
+        }
+
+        unsigned int GenerateNewLabel() const {
+            return GetLargestLabel() + 1;
+        }
+
+        std::vector<int> GetLabelsVector() {
+            std::vector<int> labelsVector;
+            for (const auto &pair : labelMap) {
+                labelsVector.push_back(pair.second);
+            }
+            return labelsVector;
+        }
+
+        std::unordered_map<int, int> SetLabelCorrespondence(SegmentationLabels& segLabelsObject) {
+            std::unordered_map<int, int> correspondence;
+
+            std::vector<int> segLabels = segLabelsObject.GetMeshingLabels();
+            std::vector<int> availableMeshLabels = GetLabelsVector();
+            std::unordered_map<int, int> auxCorr;
+
+            for (int ix = 0; ix < segLabels.size(); ix++) {
+                int source = segLabels.at(ix);
+                int target = availableMeshLabels.at(ix);
+
+                auto it = std::find(segLabels.begin(), segLabels.end(), target);
+                if (it != segLabels.end()) { // target exists in segLabels
+                    int auxLabel = GenerateNewLabel();
+                    correspondence[source] = auxLabel;
+                    auxCorr[auxLabel] = target;
+                } else {
+                    correspondence[source] = target;
+                }
+            }
+
+            // append auxCorr to correspondence
+            correspondence.insert(auxCorr.begin(), auxCorr.end());
+
+            return correspondence;
+        }
+
+        void UpdateElemFileLabels(QString elemFile, SegmentationLabels& segLabelsObject) {
+            std::unordered_map<int, int> correspondence = SetLabelCorrespondence(segLabelsObject);
+            QFileInfo fi(elemFile);
+            QString oldElemFile = fi.absolutePath() + "/" + fi.baseName() + "_old_labels.elem";
+            QFile::copy(elemFile, oldElemFile);
+
+            int p0, p1, p2, p3, nElem;
+            std::ifstream elemFileRead;
+            std::ofstream elemFileWrite(elemFile.toStdString());
+            elemFileRead.open(oldElemFile.toStdString());
+            if (!elemFileRead.is_open()) {
+                MITK_INFO << ("Error: Failed to open input file:" + oldElemFile).toStdString();
+                return;
+            }
+            elemFileRead >> nElem;
+            std::string type;
+
+            elemFileWrite << nElem;
+
+            for (int ix = 0; ix < nElem; ix++) {
+                elemFileRead >> type;
+                elemFileRead >> p0;
+                elemFileRead >> p1;
+                elemFileRead >> p2;
+                elemFileWrite << type << " " << p0 << " " << p1 << " " << p2;
+                if (type.compare("Tt") == 0) {
+                    elemFileRead >> p3;
+                    elemFileWrite << " " << p3 << " ";
+                }
+
+                int label;
+                elemFileRead >> label;
+
+                auto it = correspondence.find(label);
+                if (it != correspondence.end()) {
+                    elemFileWrite << it->second;
+                } else {
+                    elemFileWrite << label;
+                }
+                elemFileWrite << '\n';
+            }
+
+            elemFileRead.close();
+            elemFileWrite.close();
+        }
+
 };
 
 struct FourChamberSubfolders {

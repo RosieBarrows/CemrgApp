@@ -451,7 +451,7 @@ void FourChamberView::ExtractMyocardium() {
 
     arguments.clear();
     
-    arguments << "-msh=" + wmsh << "-omsh=" + wmsh << "-ifmt=carp_txt" << "-ofmt=vtk";
+    arguments << "-imsh=" + wmsh << "-omsh=" + wmsh << "-ifmt=carp_txt" << "-ofmt=vtk";
     QString convert_mesh = fourch_cmd->DockerMeshtoolGeneric(wdir, "convert", "", arguments, wmsh + ".vtk");
 
     if (convert_mesh == "ERROR_IN_PROCESSING") {
@@ -485,9 +485,12 @@ void FourChamberView::ExtractMyocardium() {
     }
 
     arguments.clear();
-    arguments << "-msh=whole_surface.surfmesh.vtk" << "-submsh=" + wdir + "/whole_surface_CC" << "-ofmt=vtk";
+    arguments << "-msh=whole_surface.surfmesh.vtk" << "-submsh=whole_surface_CC" << "-ofmt=vtk";
     QString extract_unreachable = fourch_cmd->DockerMeshtoolGeneric(wdir, "extract", "unreachable", arguments, "whole_surface_CC.vtk");
 
+    MeshingLabels mshLabels;
+    MITK_INFO << ("Updating file: " + wdir + "/" + wmsh + ".elem, with mesh labels").toStdString();
+    mshLabels.UpdateElemFileLabels(wdir + "/" + wmsh + ".elem", segmentationLabels);
 }
 
 bool FourChamberView::cp(QString src, QString dst) {
@@ -558,7 +561,13 @@ void FourChamberView::Meshing(){
         QFileInfo fi(mesh_path);
         LoadMeshingParametersFromJson(fi.absolutePath(), fi.fileName());
 
-        QFileInfo testWorkMesh(meshing_parameters.out_dir + "/" + meshing_parameters.working_mesh + ".pts");
+        QFileInfo testHeartMesh(meshing_parameters.out_dir + "/" + meshing_parameters.out_name + ".pts");
+
+        if (!testHeartMesh.exists()) {
+            Warn("Mesh file not found", "Paths can be wrong if a different computer was used. \nSelect the meshes from the correct paths");
+            bool success_m3d_params = UserSelectMeshtools3DParameters(Path(SDIR.SEG));
+            MITK_INFO(success_m3d_params) << "Amended meshing folders";
+        }
        
     } else if (reply_load == QMessageBox::No) {
         QString basename = "seg_final_smooth";
