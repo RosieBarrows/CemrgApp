@@ -439,6 +439,11 @@ class MeshingLabels {
             // append auxCorr to correspondence
             correspondence.insert(auxCorr.begin(), auxCorr.end());
 
+            // print correspondence
+            for (const auto &pair : correspondence) {
+                std::cout << "Source: " << pair.first << " Target: " << pair.second << '\n';
+            }
+
             return correspondence;
         }
 

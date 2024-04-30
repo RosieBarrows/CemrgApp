@@ -444,6 +444,10 @@ void FourChamberView::ExtractMyocardium() {
     arguments << "-msh=" + meshing_parameters.out_name << "-tags=" + mytags << "-submsh=" + wmsh << "-ifmt=carp_txt";
     QString extract_mesh = fourch_cmd->DockerMeshtoolGeneric(wdir, "extract", "mesh", arguments, wmsh + ".pts");
 
+    MeshingLabels mshLabels;
+    MITK_INFO << ("Updating file: " + wdir + "/" + wmsh + ".elem, with mesh labels").toStdString();
+    mshLabels.UpdateElemFileLabels(wdir + "/" + wmsh + ".elem", segmentationLabels);
+    
     if (extract_mesh == "ERROR_IN_PROCESSING") {
         Warn("Error in processing", "Error in extract myocardium");
         return;
@@ -488,9 +492,9 @@ void FourChamberView::ExtractMyocardium() {
     arguments << "-msh=whole_surface.surfmesh.vtk" << "-submsh=whole_surface_CC" << "-ofmt=vtk";
     QString extract_unreachable = fourch_cmd->DockerMeshtoolGeneric(wdir, "extract", "unreachable", arguments, "whole_surface_CC.vtk");
 
-    MeshingLabels mshLabels;
-    MITK_INFO << ("Updating file: " + wdir + "/" + wmsh + ".elem, with mesh labels").toStdString();
-    mshLabels.UpdateElemFileLabels(wdir + "/" + wmsh + ".elem", segmentationLabels);
+
+    arguments << "-imsh=" + wmsh << "-omsh=" + wmsh << "-ifmt=carp_txt" << "-ofmt=vtk";
+    convert_mesh = fourch_cmd->DockerMeshtoolGeneric(wdir, "convert", "", arguments, wmsh + ".vtk");
 }
 
 bool FourChamberView::cp(QString src, QString dst) {
