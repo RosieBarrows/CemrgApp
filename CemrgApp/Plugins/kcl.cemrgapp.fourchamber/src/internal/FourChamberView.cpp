@@ -441,6 +441,12 @@ void FourChamberView::ExtractMyocardium() {
     QString wdir = meshing_parameters.out_dir;
     QString mytags = segmentationLabels.ExtractMeshingLabels();
 
+    if (wmsh.isEmpty()) {
+        MITK_INFO << "No working mesh found. Setting default value [myocardium].";
+        wmsh = "myocardium";
+        meshing_parameters.working_mesh = wmsh;
+    }
+
     arguments << "-msh=" + meshing_parameters.out_name << "-tags=" + mytags << "-submsh=" + wmsh << "-ifmt=carp_txt";
     QString extract_mesh = fourch_cmd->DockerMeshtoolGeneric(wdir, "extract", "mesh", arguments, wmsh + ".pts");
 
@@ -466,6 +472,7 @@ void FourChamberView::ExtractMyocardium() {
     arguments.clear();
 
     // simplify topology
+    int reply_local_meshtool = Ask("Do you have meshtool locally?", "Select YES if you want to use the [simplify_topology] standalone");
 
     arguments << "-msh=" + wmsh << "-tags=" + mytags << "-smth=0.15" << "-outmsh=" + wmsh + "_smooth" << "-ifmt=carp_txt" << "-ofmt=carp_txt";
     wmsh += "_smooth";
@@ -492,6 +499,7 @@ void FourChamberView::ExtractMyocardium() {
     arguments << "-msh=whole_surface.surfmesh.vtk" << "-submsh=whole_surface_CC" << "-ofmt=vtk";
     QString extract_unreachable = fourch_cmd->DockerMeshtoolGeneric(wdir, "extract", "unreachable", arguments, "whole_surface_CC.vtk");
 
+    arguments.clear();
 
     arguments << "-imsh=" + wmsh << "-omsh=" + wmsh << "-ifmt=carp_txt" << "-ofmt=vtk";
     convert_mesh = fourch_cmd->DockerMeshtoolGeneric(wdir, "convert", "", arguments, wmsh + ".vtk");
@@ -641,7 +649,14 @@ void FourChamberView::SelectLARALandmarks(){
 void FourChamberView::ExtractSurfaces(){
     if (!RequestProjectDirectoryFromUser()) return;
 
-    LoadMeshingParametersFromJson(Path(SDIR.MESH), "heart_mesh_data.json");
+    int reply_load = Ask("Question", "Do you have a mesh to load?");
+    if (meshing_parameters.working_mesh.isEmpty()) {
+        if (reply_load == QMessageBox::Yes) {
+            QString meshInfoPath = QFileDialog::getOpenFileName(NULL, "Open Meshtools3d parameter file (.json)", mesh_dir.toStdString().c_str(), tr("M3d Parameter file (*.json)"));
+            QFileInfo fi(meshInfoPath);
+            LoadMeshingParametersFromJson(fi.absolutePath(), fi.fileName());
+        }
+    } 
 
     QString outLa = Path(SDIR.UVC_LA + "/la/la.vtk");
     QString outRa = Path(SDIR.UVC_RA + "/ra/ra.vtk");
@@ -659,7 +674,7 @@ void FourChamberView::ExtractSurfaces(){
         QString apexSeptumFolder = QFileDialog::getExistingDirectory(NULL, "Open Apex Septum Folder", StdStringPath(SDIR.PAR).c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
         if (apexSeptumFolder.isEmpty()) return;
 
-        QString meshname = meshing_parameters.out_dir + "/" + meshing_parameters.out_name;
+        QString meshname = meshing_parameters.out_dir + "/" + meshing_parameters.working_mesh;
         MITK_INFO << ("Mesh name: " + meshname).toStdString();
 
         std::unique_ptr<CemrgFourChamberCmd> fourch_cmd(new CemrgFourChamberCmd());
@@ -2106,6 +2121,12 @@ void FourChamberView::LoadMeshingParametersFromJson(QString dir, QString json_fi
     meshing_parameters.out_vtk_binary = json["out_vtk_binary"].toBool();
     meshing_parameters.out_potential = json["out_potential"].toBool();
     meshing_parameters.working_mesh = json["working_mesh"].toString();
+
+    if (meshing_parameters.working_mesh.isEmpty()) {
+        Inform("Working mesh not set", "Defaulting to myocardium");
+        meshing_parameters.working_mesh = "myocardium";
+    }
+
     MITK_INFO << "Loaded meshing parameters from json file";
 }
 
