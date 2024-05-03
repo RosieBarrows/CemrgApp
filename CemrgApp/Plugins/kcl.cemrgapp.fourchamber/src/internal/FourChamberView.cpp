@@ -369,16 +369,29 @@ void FourChamberView::SegmentImgs() {
         path = QFileDialog::getOpenFileName(NULL, "Open Segmentation File", StdStringPath(SDIR.SEG).c_str(), QmitkIOUtil::GetFileOpenFilterString()); 
 
     } else if (reply_load == QMessageBox::No) {
-        Inform("Attention", "Creating Multilabel Segmentation From CT data.\nSelect DICOM folder");
-        QString dicom_folder = QFileDialog::getExistingDirectory(NULL, "Open DICOM folder",
-             StdStringPath().c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
+        //Check for selection of images
+        QList<mitk::DataNode::Pointer> nodes = this->GetDataManagerSelection();
+        if (nodes.size() != 1) {
+            Warn("Attention", "Please load and select only the image from the Data Manager to convert!");
+            return;
+        }//_if
 
-        if (dicom_folder.isEmpty()) return;
+        mitk::BaseData::Pointer data = nodes[0]->GetData();
+        if (!data) {
+            return; 
+        }
+        mitk::Image::Pointer image = dynamic_cast<mitk::Image *>(data.GetPointer());
+        if (!image) {
+            return;
+        }
+
+        QString imagePath = Path(SDIR.SEG + "/ct.nii");
+        mitk::IOUtil::Save(image, imagePath.toStdString());
 
         int reply_saveas = Ask("Question", "Do you want to save the DICOM as NIFTI?");
         std::unique_ptr<CemrgCommandLine> cmd(new CemrgCommandLine());
         cmd->SetUseDockerContainers(true);
-        path = cmd->DockerCctaMultilabelSegmentation(Path(SDIR.SEG), dicom_folder, (reply_saveas==QMessageBox::Yes));
+        path = cmd->DockerCctaMultilabelSegmentation(Path(SDIR.SEG), imagePath, (reply_saveas == QMessageBox::Yes));
     }
 
     if (path.isEmpty()) return;
@@ -652,7 +665,7 @@ void FourChamberView::ExtractSurfaces(){
     int reply_load = Ask("Question", "Do you have a mesh to load?");
     if (meshing_parameters.working_mesh.isEmpty()) {
         if (reply_load == QMessageBox::Yes) {
-            QString meshInfoPath = QFileDialog::getOpenFileName(NULL, "Open Meshtools3d parameter file (.json)", mesh_dir.toStdString().c_str(), tr("M3d Parameter file (*.json)"));
+            QString meshInfoPath = QFileDialog::getOpenFileName(NULL, "Open Meshtools3d parameter file (.json)", StdStringPath(SDIR.MESH).c_str(), tr("M3d Parameter file (*.json)"));
             QFileInfo fi(meshInfoPath);
             LoadMeshingParametersFromJson(fi.absolutePath(), fi.fileName());
         }
