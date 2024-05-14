@@ -262,7 +262,7 @@ void FourChamberView::LoadDICOM() {
     
     int replyNii = Ask("Question: Data type", "Do you have a Nifti file to load? \n(NO = DICOMs)"); 
     if (replyNii == QMessageBox::Yes) {
-        QString niiFile = QFileDialog::getOpenFileName(NULL, "Open Nifti file.", StdStringPath(SDIR.SEG).c_str(), tr("Nifti file (*.nii)"));
+        QString niiFile = QFileDialog::getOpenFileName(NULL, "Open Nifti file.", StdStringPath(SDIR.SEG).c_str(), tr("Nifti file (*.nii, *.nii.gz)"));
         QFileInfo fnii(niiFile);
         if (fnii.exists()) {
             std::string key = "dicom.series.SeriesDescription";
@@ -1938,7 +1938,7 @@ std::string FourChamberView::PrintPoints(QJsonObject json, QStringList keysList,
 void FourChamberView::UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer& node, bool confirmLabels) {
     try {
 
-        MITK_INFO << "Updating Data Manager";
+        MITK_INFO << "[UpdateDataManager]";
         mitk::LabelSetImage::Pointer mlseg = mitk::LabelSetImage::New();
         mlseg->InitializeByLabeledImage(segmentation);
         mlseg->SetGeometry(segmentation->GetGeometry());
