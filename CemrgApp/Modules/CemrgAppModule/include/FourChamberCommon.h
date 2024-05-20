@@ -493,6 +493,51 @@ class MeshingLabels {
             elemFileWrite.close();
         }
 
+        QString GetMeshingLabelString(MeshLabelsType labelType) { 
+            QString res;
+            switch (labelType) {
+            case LV_mesh : res = "LV" ; break; 
+            case RV_mesh : res = "RV" ; break;
+            case LA_mesh : res = "LA" ; break;
+            case RA_mesh : res = "RA" ; break;
+            case Ao_mesh : res = "Ao" ; break;  
+            case PArt_mesh : res = "PArt" ; break;
+            case MV_mesh : res = "MV" ; break;
+            case TV_mesh : res = "TV" ; break;
+            case AV_mesh : res = "AV" ; break;
+            case PV_mesh : res = "PV" ; break;
+            case LSPV_mesh : res = "LSPV" ; break;
+            case LIPV_mesh : res = "LIPV" ; break;
+            case RSPV_mesh : res = "RSPV" ; break;
+            case RIPV_mesh : res = "RIPV" ; break;
+            case LAA_mesh : res = "LAA" ; break;
+            case SVC_mesh : res = "SVC" ; break;
+            case IVC_mesh : res = "IVC" ; break;
+            case LAA_ring_mesh : res = "LAA_ring" ; break;
+            case SVC_ring_mesh : res = "SVC_ring" ; break;
+            case IVC_ring_mesh : res = "IVC_ring" ; break;
+            case LSPV_ring_mesh : res = "LSPV_ring" ; break;
+            case LIPV_ring_mesh : res = "LIPV_ring" ; break;
+            case RSPV_ring_mesh : res = "RSPV_ring" ; break;
+            case RIPV_ring_mesh : res = "RIPV_ring" ; break;
+            default: res = "UNKNOWN" ; break;
+            }
+            return res;
+        }
+
+        void SaveToJson(QString pathToSave) { 
+            // Save to json
+            QStringList keys, values, types;
+            for (const auto &pair : labelMap) {
+                keys << GetMeshingLabelString((MeshLabelsType)pair.first);
+                values << QString::number(pair.second);
+                types << "int";
+            }
+            QJsonObject json = CemrgCommonUtils::CreateJSONObject(keys, values, types);
+            QFileInfo fi(pathToSave);
+            bool success = CemrgCommonUtils::WriteJSONFile(json, fi.absolutePath(), fi.baseName() + ".json");
+            MITK_INFO(success) << "Meshing labels saved to " << pathToSave.toStdString();
+        }
 };
 
 struct FourChamberSubfolders {
@@ -643,7 +688,59 @@ struct M3DParameters {
 
 };
 
-struct VentricularFibresParams {
+struct ParfilesNamesStruct {
+    QString dir, dirApexSeptumTemplates, dirEtags;
+    QString tagsVentFibres, tagsPresim, tagsLvrv, tagsAtrialFibres, settingsBachmannBundleFec, SettingsAtriaMapSettings;
+    QStringList apexSeptumTemplatesList, etagsList;
+
+    ParfilesNamesStruct()
+    : dir(""),
+      dirApexSeptumTemplates("apex_septum_templates"),
+      dirEtags("etags"),
+      tagsVentFibres("tags_vent_fibres.json"),
+      tagsPresim("tags_presim.json"),
+      tagsLvrv("tags_lvrv.json"),
+      tagsAtrialFibres("tags_atrial_fibres.json"),
+      settingsBachmannBundleFec("bachmann_bundles_fec_settings.json"),
+      SettingsAtriaMapSettings("atria_map_settings.json")
+    {
+        apexSeptumTemplatesList = QStringList() << "la.lvapex.vtx" << "la.rvsept_pt.vtx" << "raa_apex.txt"  "ra.lvapex.vtx" << "ra.rvsept_pt.vtx";
+        etagsList = QStringList() << "etags_la.sh" << "etags_ra.sh" << "etags.sh";
+    }
+
+    inline void SetDirectory(QString directory) { dir = directory; };
+    
+    void ResetApexSeptumTemplates() {
+        QString apexSeptumTemplates = dir + "/" + dirApexSeptumTemplates;
+        foreach (QString file, apexSeptumTemplatesList) {
+            QString filePath = apexSeptumTemplates + "/" + file;
+            if (QFile::exists(filePath)) {
+                QFile::remove(filePath);
+            }
+
+            std::ofstream fo(filePath.toStdString());
+            if (file.contains("raa_apex")) {
+                fo << "replace this text with the 3 coordinates of the RAA_apex";
+            }
+            else
+            {
+                fo << "1\nextra\nsave_vtx_here";
+            }
+        }    
+    }
+
+    QString VentFibres() { return dir + "/" + tagsVentFibres; };
+    QString ApexSeptumTemplates() { return dir + "/" + dirApexSeptumTemplates; };
+    QString Etags() { return dir + "/" + dirEtags; };
+    QString Presim() { return dir + "/" + tagsPresim; };
+    QString LVRV() { return dir + "/" + tagsLvrv; };
+    QString AtrialFibres() { return dir + "/" + tagsAtrialFibres; };
+    QString BachmannBundleFecSettings() { return dir + "/" + settingsBachmannBundleFec; };
+    QString AtriaMapSettings() { return dir + "/" + SettingsAtriaMapSettings; };
+};
+
+struct VentricularFibresParams
+{
     double _alpha_endo, _alpha_epi, _beta_endo, _beta_epi;
     QString _bad_elem, _type, _apex_to_base, _epi, _lv, _rv;
     QString _directory, _meshname, _output;

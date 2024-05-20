@@ -38,6 +38,8 @@ PURPOSE.  See the above copyright notices for more information.
 #include <QDebug>
 #include <QDir>
 #include <QMessageBox>
+#include <QProcessEnvironment>
+#include <QThread>
 
 // C++ Standard
 #include <thread>
@@ -161,9 +163,19 @@ QString CemrgCommandLine::ExecuteCreateCGALMesh(QString dir, QString outputName,
     }//_if
 
     //Setup EnVariable - TBB_NUM_THREADS should be set in the system environment variables
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert("TBB_NUM_THREADS","12");
-    process->setProcessEnvironment(env);
+    int numThreads = QThread::idealThreadCount();
+    QString numThreadsStr = QString::number(numThreads);
+    MITK_INFO << "Number of threads: " + numThreadsStr.toStdString();
+
+#if defined(_WIN32) || defined(_WIN64)
+    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+    environment.insert("TBB_NUM_THREADS", "12");
+    process->setProcessEnvironment(environment);
+#else 
+    QStringList environment = QProcess::systemEnvironment();
+    environment << "TBB_NUM_THREADS=12";
+    process->setEnvironment(environment);
+#endif
 
     bool successful = ExecuteCommand(executableName, arguments, outAbsolutePath);
     if (!successful) {

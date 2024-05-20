@@ -467,6 +467,11 @@ void FourChamberView::ExtractMyocardium() {
     MITK_INFO << ("Updating file: " + wdir + "/" + wmsh + ".elem, with mesh labels").toStdString();
     mshLabels.UpdateElemFileLabels(wdir + "/" + wmsh + ".elem", segmentationLabels);
     
+    ParfilesNamesStruct pfn;
+    pfn.SetDirectory(Path(SDIR.PAR));
+    mshLabels.SaveToJson(pfn.VentFibres());
+    pfn.ResetApexSeptumTemplates();
+
     if (extract_mesh == "ERROR_IN_PROCESSING") {
         Warn("Error in processing", "Error in extract myocardium");
         return;
@@ -485,7 +490,29 @@ void FourChamberView::ExtractMyocardium() {
     arguments.clear();
 
     // simplify topology
-    int reply_local_meshtool = Ask("Do you have meshtool locally?", "Select YES if you want to use the [simplify_topology] standalone");
+    std::string msg = "Select YES if you want to use the [simplify_topology] standalone";
+    msg += "\nThe binary is often in the CARP directory."; 
+    int reply_local_meshtool = Ask("Do you have meshtool locally?", msg);
+
+    if (reply_local_meshtool == QMessageBox::Yes) {
+        QString whichDir = (carpless) ? directory : carp_directory;
+        QString simplify_topology_bin = QFileDialog::getOpenFileName(NULL, "Open meshtool binary", whichDir.toStdString().c_str(), tr("Meshtool binary (*)"));
+        if (simplify_topology_bin.isEmpty() || !QFile::exists(simplify_topology_bin) || !simplify_topology_bin.contains("simplify_tag_topology")) {
+            Warn("Error in processing", "Simplify topology binary not found");
+            return;
+        }
+
+        arguments << "-msh=" + wdir + "/" + wmsh << "-outmsh=" + wdir + "/" + wmsh + "_clean" << "-neigh=50" << "-ifmt=carp_txt" << "-ofmt=carp_txt";
+        bool simplify_topology = fourch_cmd->ExecuteCommand(simplify_topology_bin, arguments, wdir + "/" + wmsh + "_clean.pts", true);
+
+        if (!simplify_topology) {
+            Warn("Error in processing", "Error in simplify topology");
+        } else {
+            wmsh = wmsh + "_clean";
+        }
+
+        arguments.clear();
+    }
 
     arguments << "-msh=" + wmsh << "-tags=" + mytags << "-smth=0.15" << "-outmsh=" + wmsh + "_smooth" << "-ifmt=carp_txt" << "-ofmt=carp_txt";
     wmsh += "_smooth";
@@ -668,11 +695,24 @@ void FourChamberView::ExtractSurfaces(){
             QString meshInfoPath = QFileDialog::getOpenFileName(NULL, "Open Meshtools3d parameter file (.json)", StdStringPath(SDIR.MESH).c_str(), tr("M3d Parameter file (*.json)"));
             QFileInfo fi(meshInfoPath);
             LoadMeshingParametersFromJson(fi.absolutePath(), fi.fileName());
+
+            if (meshing_parameters.working_mesh.isEmpty()) {
+                Warn("Mesh file not found", "Paths can be wrong if a different computer was used. \nSelect the meshes from the correct paths");
+                return;
+            }
         }
     } 
 
-    QString outLa = Path(SDIR.UVC_LA + "/la/la.vtk");
-    QString outRa = Path(SDIR.UVC_RA + "/ra/ra.vtk");
+    QString laDir = SDIR.UVC_LA + "/la";
+    QString raDir = SDIR.UVC_RA + "/ra";
+    QString outLa = laDir + "/la.vtk";
+    QString outRa = raDir + "/ra.vtk";
+
+    QDir().mkpath(laDir);
+    QDir().mkpath(raDir);
+
+    ParfilesNamesStruct pfn;
+    pfn.SetDirectory(Path(SDIR.PAR));
 
     bool recalculateOutputs = true;
     if (QFile::exists(outLa) && QFile::exists(outRa)) {
@@ -681,11 +721,13 @@ void FourChamberView::ExtractSurfaces(){
     }
 
     if (recalculateOutputs) {
-        QString inputTagsFilename = QFileDialog::getOpenFileName(NULL, "Open Input Tags File", StdStringPath(SDIR.PAR).c_str(), tr("JSON file (*.json)"));
-        if (inputTagsFilename.isEmpty()) return;
+        QString inputTagsFilename = pfn.tagsVentFibres;
+        QString apexSeptumFolder = pfn.dirApexSeptumTemplates;
+        // QString inputTagsFilename = QFileDialog::getOpenFileName(NULL, "Open Input Tags File", StdStringPath(SDIR.PAR).c_str(), tr("JSON file (*.json)"));
+        // if (inputTagsFilename.isEmpty()) return;
 
-        QString apexSeptumFolder = QFileDialog::getExistingDirectory(NULL, "Open Apex Septum Folder", StdStringPath(SDIR.PAR).c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
-        if (apexSeptumFolder.isEmpty()) return;
+        // QString apexSeptumFolder = QFileDialog::getExistingDirectory(NULL, "Open Apex Septum Folder", StdStringPath(SDIR.PAR).c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
+        // if (apexSeptumFolder.isEmpty()) return;
 
         QString meshname = meshing_parameters.out_dir + "/" + meshing_parameters.working_mesh;
         MITK_INFO << ("Mesh name: " + meshname).toStdString();
