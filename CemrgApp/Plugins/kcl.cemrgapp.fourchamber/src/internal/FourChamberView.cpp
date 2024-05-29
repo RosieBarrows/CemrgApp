@@ -1373,7 +1373,7 @@ void FourChamberView::CorrectionConfirmLabels() {
     }
 
     std::string name = "seg_corrected";
-    QString path = Path(SDIR.SEG + "/" + QString::fromStdString(name) + ".nii" );
+    QString path = Path(SDIR.SEG + "/" + QString::fromStdString(name) + ".nrrd" );
 
     mitk::IOUtil::Save(seg, path.toStdString());
 
