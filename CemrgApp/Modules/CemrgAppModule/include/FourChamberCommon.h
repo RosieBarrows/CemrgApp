@@ -408,10 +408,10 @@ class MeshingLabels {
         }
 
         std::vector<int> GetLabelsVector() {
-            std::vector<int> labelsVector;
-            for (const auto &pair : labelMap) {
-                labelsVector.push_back(pair.second);
-            }
+            std::vector<int> labelsVector = {LV_mesh, RV_mesh, LA_mesh, RA_mesh, Ao_mesh, PArt_mesh, MV_mesh, TV_mesh, AV_mesh, 
+                                            PV_mesh, LSPV_mesh, LIPV_mesh, RSPV_mesh, RIPV_mesh, LAA_mesh, SVC_mesh, IVC_mesh, 
+                                            LAA_ring_mesh, SVC_ring_mesh, IVC_ring_mesh, LSPV_ring_mesh, LIPV_ring_mesh, RSPV_ring_mesh, RIPV_ring_mesh};
+            
             return labelsVector;
         }
 
@@ -419,20 +419,25 @@ class MeshingLabels {
             std::unordered_map<int, int> correspondence;
 
             std::vector<int> segLabels = segLabelsObject.GetMeshingLabels();
-            std::vector<int> availableMeshLabels = GetLabelsVector();
+            std::vector<int> meshLabels = GetLabelsVector();
             std::unordered_map<int, int> auxCorr;
 
             for (int ix = 0; ix < segLabels.size(); ix++) {
-                int source = segLabels.at(ix);
-                int target = availableMeshLabels.at(ix);
+                int sourceId = segLabels.at(ix);
+                int targetId = meshLabels.at(ix);
+                
+                unsigned int sourceLabel = segLabelsObject.Get((LabelsType)sourceId);
+                int targetLabel = Get((MeshLabelsType)targetId);
 
-                auto it = std::find(segLabels.begin(), segLabels.end(), target);
+                auto it = std::find(segLabels.begin(), segLabels.end(), targetLabel);
                 if (it != segLabels.end()) { // target exists in segLabels
+                    std::cout << "Target label " << targetLabel << " already exists in segmentation labels.\n";
                     int auxLabel = GenerateNewLabel();
-                    correspondence[source] = auxLabel;
-                    auxCorr[auxLabel] = target;
+                    correspondence[sourceLabel] = auxLabel;
+                    auxCorr[auxLabel] = targetLabel;
+                    std::cout << "Source: " << sourceLabel << " aux Target: " << auxLabel << ". Then, Target: " << targetLabel << '\n';
                 } else {
-                    correspondence[source] = target;
+                    correspondence[sourceLabel] = targetLabel;
                 }
             }
 
@@ -453,19 +458,29 @@ class MeshingLabels {
             QString oldElemFile = fi.absolutePath() + "/" + fi.baseName() + "_old_labels.elem";
             QFile::copy(elemFile, oldElemFile);
 
+            for (const auto &pair : correspondence) {
+                UpdateSingleLabelInMesh(elemFile, pair.first, pair.second);
+            }
+        }
+
+        void UpdateSingleLabelInMesh(QString elemFile, int oldLabel, int newLabel) {
+            MITK_INFO << ("Updating label: " + QString::number(oldLabel) + " to " + QString::number(newLabel)).toStdString();
+            QFileInfo fi(elemFile);
+            QString auxElemFile = fi.absolutePath() + "/" + fi.baseName() + "_aux_labels_" + QString::number(oldLabel) + "_to_" + QString::number(newLabel) + ".elem";
+            QFile::copy(elemFile, auxElemFile);
+
             int p0, p1, p2, p3, nElem;
             std::ifstream elemFileRead;
             std::ofstream elemFileWrite(elemFile.toStdString());
-            elemFileRead.open(oldElemFile.toStdString());
+            elemFileRead.open(auxElemFile.toStdString());
             if (!elemFileRead.is_open()) {
-                MITK_INFO << ("Error: Failed to open input file:" + oldElemFile).toStdString();
+                MITK_INFO << ("Error: Failed to open input file:" + auxElemFile).toStdString();
                 return;
             }
             elemFileRead >> nElem;
             std::string type;
 
             elemFileWrite << nElem << '\n';
-
             for (int ix = 0; ix < nElem; ix++) {
                 elemFileRead >> type;
                 elemFileRead >> p0;
@@ -479,13 +494,12 @@ class MeshingLabels {
 
                 int label;
                 elemFileRead >> label;
-
-                auto it = correspondence.find(label);
-                if (it != correspondence.end()) {
-                    elemFileWrite << it->second;
+                if (label == oldLabel) {
+                    elemFileWrite << newLabel;
                 } else {
                     elemFileWrite << label;
                 }
+
                 elemFileWrite << '\n';
             }
 
@@ -493,7 +507,8 @@ class MeshingLabels {
             elemFileWrite.close();
         }
 
-        QString GetMeshingLabelString(MeshLabelsType labelType) { 
+            QString GetMeshingLabelString(MeshLabelsType labelType)
+        {
             QString res;
             switch (labelType) {
             case LV_mesh : res = "LV" ; break; 
