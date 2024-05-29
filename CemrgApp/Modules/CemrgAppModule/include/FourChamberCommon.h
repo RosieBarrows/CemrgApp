@@ -464,7 +464,7 @@ class MeshingLabels {
             elemFileRead >> nElem;
             std::string type;
 
-            elemFileWrite << nElem;
+            elemFileWrite << nElem << '\n';
 
             for (int ix = 0; ix < nElem; ix++) {
                 elemFileRead >> type;
@@ -722,8 +722,7 @@ struct ParfilesNamesStruct {
             if (file.contains("raa_apex")) {
                 fo << "replace this text with the 3 coordinates of the RAA_apex";
             }
-            else
-            {
+            else {
                 fo << "1\nextra\nsave_vtx_here";
             }
         }    

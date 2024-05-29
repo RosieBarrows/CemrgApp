@@ -713,6 +713,14 @@ void FourChamberView::ExtractSurfaces(){
 
     ParfilesNamesStruct pfn;
     pfn.SetDirectory(Path(SDIR.PAR));
+    QDir().mkpath(pfn.ApexSeptumTemplates());
+    pfn.ResetApexSeptumTemplates();
+    QFileInfo fi(pfn.VentFibres());
+    if (!fi.exists()) {
+        Inform("Information", "Ventricular Fibres parfiles not found. Creating with default tags. Press OK to continue.");
+        MeshingLabels mshLabels;
+        mshLabels.SaveToJson(pfn.VentFibres());
+    }
 
     bool recalculateOutputs = true;
     if (QFile::exists(outLa) && QFile::exists(outRa)) {
@@ -723,11 +731,6 @@ void FourChamberView::ExtractSurfaces(){
     if (recalculateOutputs) {
         QString inputTagsFilename = pfn.tagsVentFibres;
         QString apexSeptumFolder = pfn.dirApexSeptumTemplates;
-        // QString inputTagsFilename = QFileDialog::getOpenFileName(NULL, "Open Input Tags File", StdStringPath(SDIR.PAR).c_str(), tr("JSON file (*.json)"));
-        // if (inputTagsFilename.isEmpty()) return;
-
-        // QString apexSeptumFolder = QFileDialog::getExistingDirectory(NULL, "Open Apex Septum Folder", StdStringPath(SDIR.PAR).c_str(), QFileDialog::ShowDirsOnly|QFileDialog::DontUseNativeDialog);
-        // if (apexSeptumFolder.isEmpty()) return;
 
         QString meshname = meshing_parameters.out_dir + "/" + meshing_parameters.working_mesh;
         MITK_INFO << ("Mesh name: " + meshname).toStdString();
