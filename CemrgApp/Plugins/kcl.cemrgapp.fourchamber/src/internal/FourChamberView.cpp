@@ -465,7 +465,7 @@ void FourChamberView::ExtractMyocardium() {
 
     MeshingLabels mshLabels;
     MITK_INFO << ("Updating file: " + wdir + "/" + wmsh + ".elem, with mesh labels").toStdString();
-    mshLabels.UpdateElemFileLabels(wdir + "/" + wmsh + ".elem", segmentationLabels);
+    mshLabels.RelabelMesh(wdir + "/" + wmsh + ".elem", segmentationLabels);
     
     ParfilesNamesStruct pfn;
     pfn.SetDirectory(Path(SDIR.PAR));
@@ -2115,7 +2115,7 @@ void FourChamberView::PrintMeshingParameters(QString path_to_par){
     fo << "seg_dir = " << meshing_parameters.seg_dir.toStdString() << '\n';
     fo << "seg_name = " << meshing_parameters.seg_name.toStdString() << '\n';
     fo << "mesh_from_segmentation = " << meshing_parameters.mesh_from_segmentation << '\n';
-    fo << "boundary_relabelling = " << meshing_parameters.boundary_relabelling << '\n';
+    fo << "boundary_relabeling = " << meshing_parameters.boundary_relabeling << '\n';
     fo << "[meshing]"<< '\n';
     fo << "facet_angle         = "<< meshing_parameters.facet_angle << '\n';
     fo << "facet_size          = "<< meshing_parameters.facet_size << '\n';
@@ -2157,7 +2157,7 @@ void FourChamberView::LoadMeshingParametersFromJson(QString dir, QString json_fi
     meshing_parameters.seg_dir = json["seg_dir"].toString();
     meshing_parameters.seg_name = json["seg_name"].toString();
     meshing_parameters.mesh_from_segmentation = json["mesh_from_segmentation"].toBool();
-    meshing_parameters.boundary_relabelling = json["boundary_relabelling"].toBool();
+    meshing_parameters.boundary_relabeling = json["boundary_relabeling"].toBool();
     meshing_parameters.facet_angle = json["facet_angle"].toDouble();
     meshing_parameters.facet_size = json["facet_size"].toDouble();
     meshing_parameters.facet_distance = json["facet_distance"].toDouble();

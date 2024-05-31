@@ -415,14 +415,16 @@ class MeshingLabels {
             return labelsVector;
         }
 
-        std::unordered_map<int, int> SetLabelCorrespondence(SegmentationLabels& segLabelsObject) {
-            std::unordered_map<int, int> correspondence;
-
+        std::vector<int> SetLabelCorrespondence(SegmentationLabels& segLabelsObject) {
             std::vector<int> segLabels = segLabelsObject.GetMeshingLabels();
             std::vector<int> meshLabels = GetLabelsVector();
-            std::unordered_map<int, int> auxCorr;
 
-            for (int ix = 0; ix < segLabels.size(); ix++) {
+            int numLabels = segLabels.size();
+
+            std::vector<int> correspondenceVector(numLabels * 2);
+            std::vector<int> correspondenceVectorAux;
+
+            for (int ix = 0; ix < numLabels; ix++) {
                 int sourceId = segLabels.at(ix);
                 int targetId = meshLabels.at(ix);
                 
@@ -433,82 +435,109 @@ class MeshingLabels {
                 if (it != segLabels.end()) { // target exists in segLabels
                     std::cout << "Target label " << targetLabel << " already exists in segmentation labels.\n";
                     int auxLabel = GenerateNewLabel();
-                    correspondence[sourceLabel] = auxLabel;
-                    auxCorr[auxLabel] = targetLabel;
+                    
                     std::cout << "Source: " << sourceLabel << " aux Target: " << auxLabel << ". Then, Target: " << targetLabel << '\n';
+                    correspondenceVector.at(2*ix) = sourceLabel;
+                    correspondenceVector.at(2*ix + 1) = auxLabel;
+
+                    correspondenceVectorAux.push_back(auxLabel);
+                    correspondenceVectorAux.push_back(targetLabel);
                 } else {
-                    correspondence[sourceLabel] = targetLabel;
+                    std::cout << "Source: " << sourceLabel << " Target: " << targetLabel << '\n';
+
+                    correspondenceVector.at(2*ix) = sourceLabel;
+                    correspondenceVector.at(2*ix + 1) = targetLabel;
+
                 }
             }
 
             // append auxCorr to correspondence
-            correspondence.insert(auxCorr.begin(), auxCorr.end());
+            correspondenceVector.insert(correspondenceVector.end(), correspondenceVectorAux.begin(), correspondenceVectorAux.end());
 
             // print correspondence
-            for (const auto &pair : correspondence) {
-                std::cout << "Source: " << pair.first << " Target: " << pair.second << '\n';
+            std::cout << "Correspondence:\n";
+            for (unsigned int ix = 0; ix < numLabels; ix++) {
+                std::cout << "Source: " << correspondenceVector.at(2*ix) << " Target: " << correspondenceVector.at(2*ix + 1) << '\n';
             }
 
-            return correspondence;
+            return correspondenceVector;
         }
 
-        void UpdateElemFileLabels(QString elemFile, SegmentationLabels& segLabelsObject) {
-            std::unordered_map<int, int> correspondence = SetLabelCorrespondence(segLabelsObject);
+        void RelabelMesh(QString elemFile, SegmentationLabels& segLabelsObject) {
+            std::vector<int> correspondence = SetLabelCorrespondence(segLabelsObject);
+            unsigned int numCorrespondence = correspondence.size()/2;
             QFileInfo fi(elemFile);
             QString oldElemFile = fi.absolutePath() + "/" + fi.baseName() + "_old_labels.elem";
             QFile::copy(elemFile, oldElemFile);
 
-            for (const auto &pair : correspondence) {
-                UpdateSingleLabelInMesh(elemFile, pair.first, pair.second);
-            }
-        }
-
-        void UpdateSingleLabelInMesh(QString elemFile, int oldLabel, int newLabel) {
-            MITK_INFO << ("Updating label: " + QString::number(oldLabel) + " to " + QString::number(newLabel)).toStdString();
-            QFileInfo fi(elemFile);
-            QString auxElemFile = fi.absolutePath() + "/" + fi.baseName() + "_aux_labels_" + QString::number(oldLabel) + "_to_" + QString::number(newLabel) + ".elem";
-            QFile::copy(elemFile, auxElemFile);
-
-            int p0, p1, p2, p3, nElem;
+            int nElem;
             std::ifstream elemFileRead;
-            std::ofstream elemFileWrite(elemFile.toStdString());
-            elemFileRead.open(auxElemFile.toStdString());
+            elemFileRead.open(oldElemFile.toStdString());
             if (!elemFileRead.is_open()) {
-                MITK_INFO << ("Error: Failed to open input file:" + auxElemFile).toStdString();
+                MITK_INFO << ("Error: Failed to open input file:" + oldElemFile).toStdString();
                 return;
             }
+
             elemFileRead >> nElem;
-            std::string type;
-
-            elemFileWrite << nElem << '\n';
+            std::vector<int> values(4 * nElem); 
+            std::vector<int> labels(nElem);
+            MITK_INFO << "Reading elem file.";
             for (int ix = 0; ix < nElem; ix++) {
+                std::string type;
                 elemFileRead >> type;
-                elemFileRead >> p0;
-                elemFileRead >> p1;
-                elemFileRead >> p2;
-                elemFileWrite << type << " " << p0 << " " << p1 << " " << p2;
+                elemFileRead >> values.at(4*ix + 0);
+                elemFileRead >> values.at(4*ix + 1);
+                elemFileRead >> values.at(4*ix + 2);
                 if (type.compare("Tt") == 0) {
-                    elemFileRead >> p3;
-                    elemFileWrite << " " << p3 << " ";
-                }
-
-                int label;
-                elemFileRead >> label;
-                if (label == oldLabel) {
-                    elemFileWrite << newLabel;
+                    elemFileRead >> values.at(4*ix + 3);
                 } else {
-                    elemFileWrite << label;
+                    values.at(4*ix + 3) = -1;
                 }
-
-                elemFileWrite << '\n';
+                
+                elemFileRead >> labels.at(ix); 
             }
 
             elemFileRead.close();
+            
+            std::vector<int> newLabels(nElem);
+            for (int ix = 0; ix < nElem; ix++) {
+                newLabels.at(ix) = labels.at(ix);
+            }
+
+            for (unsigned int ix = 0; ix < numCorrespondence; ix++) {
+                int source = correspondence.at(2*ix);
+                int target = correspondence.at((2*ix) + 1);
+                MITK_INFO << ("Updating label: " + QString::number(source) + " to " + QString::number(target)).toStdString();
+
+                for (int jx = 0; jx < nElem; jx++) {
+                    if (newLabels.at(jx) == source) {
+                        newLabels.at(jx) = target;
+                    }
+                }
+            }
+
+            MITK_INFO << "Writing new elem file.";
+            std::ofstream elemFileWrite(elemFile.toStdString());
+            elemFileWrite << nElem << '\n';
+
+            for (int ix = 0; ix < nElem; ix++) {
+                bool isTetra = values.at(4 * ix + 3) == -1;
+
+                std::string type = (isTetra) ? "Tr" : "Tt";
+                elemFileWrite << type << " " << values.at(4*ix + 0) << " " << values.at(4*ix + 1) << " " << values.at(4*ix + 2);
+                if (isTetra) {
+                    elemFileWrite << " ";
+                } else {
+                    elemFileWrite << " " << values.at(4*ix + 3) << " ";
+                }
+
+                elemFileWrite << newLabels.at(ix) << '\n';
+            }
+
             elemFileWrite.close();
         }
 
-            QString GetMeshingLabelString(MeshLabelsType labelType)
-        {
+        QString GetMeshingLabelString(MeshLabelsType labelType) {
             QString res;
             switch (labelType) {
             case LV_mesh : res = "LV" ; break; 
@@ -637,7 +666,7 @@ struct ManualPointsStruct {
 struct M3DParameters {
     QString seg_dir, seg_name, out_dir, out_name, working_mesh;
 
-    bool mesh_from_segmentation, boundary_relabelling, verbose, eval_thickness;
+    bool mesh_from_segmentation, boundary_relabeling, verbose, eval_thickness;
 
     double facet_angle, facet_size, facet_distance;
     double cell_rad_edge_ratio, cell_size;
@@ -652,7 +681,7 @@ struct M3DParameters {
      out_dir(""),
      out_name(""),
      mesh_from_segmentation(true),
-     boundary_relabelling(false),
+     boundary_relabeling(false),
      verbose(true),
      eval_thickness(false),
      facet_angle(30.0),
@@ -684,11 +713,11 @@ struct M3DParameters {
     }
 
     void KeysAndValues(QStringList& keys, QStringList& values, QStringList& types){
-        keys << "seg_dir" << "seg_name" << "mesh_from_segmentation" << "boundary_relabelling" << 
+        keys << "seg_dir" << "seg_name" << "mesh_from_segmentation" << "boundary_relabeling" << 
                 "facet_angle" << "facet_size" << "facet_distance" << "cell_rad_edge_ratio" << "cell_size" << "rescaleFactor" << 
                 "abs_tol" << "rel_tol" << "itr_max" << "dimKrilovSp" << "verbose" << "eval_thickness" << 
                 "out_dir" << "out_name" << "out_medit" << "out_carp" << "out_carp_binary" << "out_vtk" << "out_vtk_binary" << "out_potential" << "working_mesh";
-        values << seg_dir << seg_name << QString::number(mesh_from_segmentation) << QString::number(boundary_relabelling)
+        values << seg_dir << seg_name << QString::number(mesh_from_segmentation) << QString::number(boundary_relabeling)
                << QString::number(facet_angle) << QString::number(facet_size) << QString::number(facet_distance) << QString::number(cell_rad_edge_ratio) 
                << QString::number(cell_size) << QString::number(rescaleFactor) << QString::number(abs_tol)
                << QString::number(rel_tol) << QString::number(itr_max) << QString::number(dimKrilovSp) << QString::number(verbose) << QString::number(eval_thickness) 
