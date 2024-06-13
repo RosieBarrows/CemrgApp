@@ -1935,7 +1935,7 @@ QString CemrgCommonUtils::ConvertToInr(mitk::Image::Pointer image, bool convert2
 
             MITK_INFO << "Write to binary file";
             std::string path = (dir + "/" + output_name).toStdString();
-            ofstream myFile(path, ios::out | ios::binary);
+            std::ofstream myFile(path, ios::out | ios::binary);
             myFile.write((char*)header, 256 * sizeof(char));
             myFile.write((char*)pv, dimensions * sizeof(uint8_t));
             myFile.close();

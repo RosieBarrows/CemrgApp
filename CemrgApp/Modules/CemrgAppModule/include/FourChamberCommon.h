@@ -453,13 +453,7 @@ class MeshingLabels {
 
             // append auxCorr to correspondence
             correspondenceVector.insert(correspondenceVector.end(), correspondenceVectorAux.begin(), correspondenceVectorAux.end());
-
-            // print correspondence
-            std::cout << "Correspondence:\n";
-            for (unsigned int ix = 0; ix < numLabels; ix++) {
-                std::cout << "Source: " << correspondenceVector.at(2*ix) << " Target: " << correspondenceVector.at(2*ix + 1) << '\n';
-            }
-
+            
             return correspondenceVector;
         }
 
