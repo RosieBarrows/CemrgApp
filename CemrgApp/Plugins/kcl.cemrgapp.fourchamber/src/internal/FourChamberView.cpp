@@ -1575,21 +1575,14 @@ void FourChamberView::SelectPointsCylinders() {
         QString seg_corrected = "seg_corrected.nrrd";
         QString seg_end = "seg_s2a.nrrd";
 
+
+        QString cylindersOutput = fourchCmd->DockerCreateCylinders(seg_corrected);
+        if (cylindersOutput=="ERROR_IN_PROCESSING") {
+            Warn("Error in processing", "Error in create cylinders");
+            return;
+        }
+
         bool process = true;
-        if (QFile::exists(heartFolder + "/" + seg_corrected)) {
-            int reply = Ask("Question", "Segmentation [" +seg_corrected.toStdString()+ "] already exists.\n\n Process again?");
-            process = (reply == QMessageBox::Yes);
-        }
-
-        if (process) {
-            QString cylindersOutput = fourchCmd->DockerCreateCylinders(seg_corrected);
-            if (cylindersOutput=="ERROR_IN_PROCESSING") {
-                Warn("Error in processing", "Error in create cylinders");
-                return;
-            }
-        }
-
-        process = true;
         if (QFile::exists(heartFolder + "/" + seg_end)) {
             int reply = Ask("Question", "Segmentation [" +seg_end.toStdString()+ "] already exists.\n\n Process again?");
             process = (reply == QMessageBox::Yes);
