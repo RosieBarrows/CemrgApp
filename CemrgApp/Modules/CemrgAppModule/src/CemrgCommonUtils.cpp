@@ -1961,3 +1961,31 @@ QString CemrgCommonUtils::ConvertToInr(QString dir, QString filename, bool conve
 
     return CemrgCommonUtils::ConvertToInr(im, convert2uint, dir, output_name);
 }
+
+mitk::Image::Pointer CemrgCommonUtils::SwapAxes(mitk::Image::Pointer image, const std::vector<int>& orderDimensions) {
+    // Define the pixel type and dimension for the ITK image
+    using PixelType = uint8_t;
+    constexpr unsigned int Dimension = 3;
+    using ImageType = itk::Image<PixelType, Dimension>;
+    using PermuteAxesFilterType = itk::PermuteAxesImageFilter<ImageType>;
+    using FlipImageFilterType = itk::FlipImageFilter<ImageType>;
+
+    // Convert MITK image to ITK image
+    ImageType::Pointer itkImage = ImageType::New();
+    mitk::CastToItkImage(image, itkImage);
+
+    // Create and configure the PermuteAxes filter
+    PermuteAxesFilterType::Pointer permuteFilter = PermuteAxesFilterType::New();
+    permuteFilter->SetInput(itkImage);
+
+    PermuteAxesFilterType::PermuteOrderArrayType order;
+    for (unsigned int i = 0; i < Dimension; ++i) {
+        order[i] = orderDimensions[i];
+    }
+    permuteFilter->SetOrder(order);
+    permuteFilter->Update();
+
+    mitk::Image::Pointer outputImage = mitk::ImportItkImage(permuteFilter->GetOutput())->Clone();
+    return outputImage;
+}
+

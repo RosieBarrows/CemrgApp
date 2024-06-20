@@ -98,6 +98,9 @@ public:
     void ReloadJsonPoints();
     std::string PrintPoints(QJsonObject json, QStringList keysList, QString title);
     void UpdateDataManager(mitk::Image::Pointer segmentation, std::string name, mitk::DataNode::Pointer &node, bool confirmLabels=false);
+    bool ImageNeedsFlipping(mitk::Image::Pointer image);
+    mitk::Image::Pointer SwapAxesIfNecessary(mitk::Image::Pointer image);
+    void PrintImageInfo(mitk::Image::Pointer image);
 
     void DisableCarpButtons();
 
@@ -213,7 +216,7 @@ private:
     
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
     ManualPointsStruct SegPointIds; // keeps track of the segmentation points
-    double origin[3], spacing[3];
+    double origin[3], spacing[3], dimensions[3];
 
     // members handling the current label of the segmentation being handled
     int imageLabel, userLabel, defaultLabel; // keeps track of the label in the image, the id selected by user and the default label

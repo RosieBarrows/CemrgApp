@@ -62,6 +62,7 @@ public:
     static mitk::Image::Pointer ReturnBinarised(mitk::Image::Pointer image, float background=0);
     static QString ConvertToInr(mitk::Image::Pointer image, bool convert2uint, QString dir, QString output_name);
     static QString ConvertToInr(QString dir, QString filename, bool convert2uint, QString output_name="");
+    static mitk::Image::Pointer SwapAxes(mitk::Image::Pointer image, const std::vector<int> &orderDimensions = {0, 1, 2});
 
     //Nifti Conversion Utils
     static bool ConvertToNifti(mitk::BaseData::Pointer oneNode, QString path2file, bool resample=false, bool reorient=false);

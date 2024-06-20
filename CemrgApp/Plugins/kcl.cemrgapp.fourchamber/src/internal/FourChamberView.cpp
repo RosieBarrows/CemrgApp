@@ -240,8 +240,10 @@ void FourChamberView::SetWorkingFolder(){
         } else {
             ParseJsonArray(json_geometry, "origin", origin);
             ParseJsonArray(json_geometry, "spacing", spacing);
+            ParseJsonArray(json_geometry, "dimensions", dimensions);
             std::cout << ArrayToString(origin, 3, "Loaded Origin").toStdString();
             std::cout << ArrayToString(spacing, 3, "Loaded Spacing").toStdString();
+            std::cout << ArrayToString(dimensions, 3, "Loaded Dimensions").toStdString();
             m_Controls.button_origin_spacing->setEnabled(false);
         }
     }
@@ -350,14 +352,20 @@ void FourChamberView::GetOriginSpacing() {
             image->GetGeometry()->GetOrigin().ToArray(origin);
             image->GetGeometry()->GetSpacing().ToArray(spacing);
 
+            for (int ix=0; ix<3; ix++) {
+                dimensions[ix] = image->GetDimension(ix);
+            }
+
             QString origin_str = QString::number(origin[0]) + "," + QString::number(origin[1]) + "," + QString::number(origin[2]);
             QString spacing_str = QString::number(spacing[0]) + "," + QString::number(spacing[1]) + "," + QString::number(spacing[2]);
+            QString dimensions_str = QString::number(dimensions[0]) + "," + QString::number(dimensions[1]) + "," + QString::number(dimensions[2]);
 
-            QJsonObject geom_json = CemrgCommonUtils::CreateJSONObject({"origin", "spacing"}, {origin_str, spacing_str}, {"array", "array"});
+            QJsonObject geom_json = CemrgCommonUtils::CreateJSONObject({"origin", "spacing", "dimensions"}, {origin_str, spacing_str, dimensions_str}, {"array", "array", "array"});
             CemrgCommonUtils::WriteJSONFile(geom_json, directory, FourChamberView::GEOMETRY_FILE);
 
             MITK_INFO << ("Origin: (" + origin_str + ")").toStdString();
             MITK_INFO << ("Spacing: (" + spacing_str + ")").toStdString();
+            MITK_INFO << ("Dimensions: (" + dimensions_str + ")").toStdString();
         }
     }
 }
@@ -1601,6 +1609,7 @@ void FourChamberView::SelectPointsCylinders() {
 
         MITK_INFO << "Loading segmentation ("+seg_end.toStdString()+") from file";
         mitk::Image::Pointer nextSeg = mitk::IOUtil::Load<mitk::Image>(nextSegmentation.toStdString());
+        
         UpdateDataManager(nextSeg, seg_end.toStdString(), nodes[0]);
 
         m_Controls.button_select_pts_a->setEnabled(false);
@@ -2000,6 +2009,39 @@ void FourChamberView::UpdateDataManager(mitk::Image::Pointer segmentation, std::
         this->GetDataStorage()->Remove(node);
     }
 
+}
+
+bool FourChamberView::ImageNeedsFlipping(mitk::Image::Pointer image) {
+    MITK_INFO << "Checking if image needs flipping";
+    bool flip = false;
+    for (int ix = 0; ix < 3; ix++) {
+        std::cout << "Dimension[" << ix << "]: " << dimensions[ix] << " Image[" << ix << "]: " << image->GetDimension(ix) << '\n';
+        if (dimensions[ix] != image->GetDimension(ix)) {
+            flip = true;
+            break;
+        }
+    }
+    return flip;
+}
+
+mitk::Image::Pointer FourChamberView::SwapAxesIfNecessary(mitk::Image::Pointer image) {
+    PrintImageInfo(image);
+    if (ImageNeedsFlipping(image)) {
+        MITK_INFO << "Swapping axes";
+        image = CemrgCommonUtils::SwapAxes(image, {2, 1, 0}); //swap_axes(image, 0, 2)
+    }
+    MITK_INFO(ImageNeedsFlipping(image)) << "Image did not flip correctly";
+    PrintImageInfo(image);
+
+    return image;
+}
+
+void FourChamberView::PrintImageInfo(mitk::Image::Pointer image) {
+    std::string msg = "Image Info: ";
+    for (int ix = 0; ix < 3; ix++) {
+        msg += "Dimension[" + std::to_string(ix) + "]: " + std::to_string(image->GetDimension(ix)) + " ";
+    }
+    MITK_INFO << msg;
 }
 
 void FourChamberView::DisableCarpButtons() {
