@@ -70,6 +70,8 @@ CemrgCommandLine::CemrgCommandLine() {
     dial->show();
 
     //Setup the process
+    numThreads = QThread::idealThreadCount();
+
     process = std::unique_ptr<QProcess>(new QProcess(this));
     process->setProcessChannelMode(QProcess::MergedChannels);
     connect(process.get(), SIGNAL(readyReadStandardOutput()), this, SLOT(UpdateStdText()));
@@ -1159,7 +1161,12 @@ QStringList CemrgCommandLine::GetDockerArguments(QString volume, QString dockere
 
     bool mirtkTest = QString::compare(_dockerimage, "biomedia/mirtk:v1.1.0", Qt::CaseSensitive);
     QStringList argumentList;
-    argumentList << "run" << "--rm"  << "--volume="+volume+":/data";
+    argumentList << "run";
+    if (numThreads > 0){
+        MITK_INFO << ("[...] Setting number of threads to: " + QString::number(numThreads)).toStdString();
+        argumentList << "--cpus=" + QString::number(numThreads);
+    }
+    argumentList  << "--rm" << "--volume=" + volume + ":/data";
     argumentList << _dockerimage;
     if (mirtkTest == 0)
         argumentList << dockerexe;

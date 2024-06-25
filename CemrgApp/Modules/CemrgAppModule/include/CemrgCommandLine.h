@@ -136,6 +136,7 @@ private:
     QString _dockerimage;
     bool _useDockerContainers, _debugvar;
     std::unique_ptr<QProcess> process;
+    int numThreads;
 };
 
 #endif // CemrgCommandLine_h
