@@ -217,6 +217,7 @@ private:
     FourChamberSubfolders SDIR; // helps set access subfolders in working directory
     ManualPointsStruct SegPointIds; // keeps track of the segmentation points
     double origin[3], spacing[3], dimensions[3];
+    bool geometry_set;
 
     // members handling the current label of the segmentation being handled
     int imageLabel, userLabel, defaultLabel; // keeps track of the label in the image, the id selected by user and the default label

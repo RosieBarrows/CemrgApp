@@ -191,6 +191,7 @@ void FourChamberView::CreateQtPartControl(QWidget *parent){
     SetButtonsEnableToOff();
     InitialiseJsonObjects();
     carpless = true;
+    geometry_set = false;
 
     fourchTools = std::unique_ptr<CemrgFourChamberTools>(new CemrgFourChamberTools());
     meshing_parameters = M3DParameters();
@@ -245,6 +246,7 @@ void FourChamberView::SetWorkingFolder(){
             std::cout << ArrayToString(spacing, 3, "Loaded Spacing").toStdString();
             std::cout << ArrayToString(dimensions, 3, "Loaded Dimensions").toStdString();
             m_Controls.button_origin_spacing->setEnabled(false);
+            geometry_set = true;
         }
     }
 
@@ -366,11 +368,18 @@ void FourChamberView::GetOriginSpacing() {
             MITK_INFO << ("Origin: (" + origin_str + ")").toStdString();
             MITK_INFO << ("Spacing: (" + spacing_str + ")").toStdString();
             MITK_INFO << ("Dimensions: (" + dimensions_str + ")").toStdString();
+
+            geometry_set = true;
         }
     }
 }
 
 void FourChamberView::SegmentImgs() {
+    if (!geometry_set) { 
+        Warn("Geometry not set", "Please set the origin and spacing before segmenting images.");
+        return;
+    }
+
     int reply_load = Ask("Question", "Do you have a segmentation to load?");
     QString path = "";
     if (reply_load == QMessageBox::Yes) {
